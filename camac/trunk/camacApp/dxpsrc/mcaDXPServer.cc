@@ -291,7 +291,9 @@ void mcaDXPServer::processMessages()
                            pMessageServer->getName(), detChan, cmd, pim->value)
             /* Find which channel on this module this detChan is */
             for (i=0; i<MAX_CHANS_PER_DXP; i++) {
-               if (dxpChannel[i].detChan == detChan) dxpChan = &dxpChannel[i];
+               if (dxpChannel[i].exists && dxpChannel[i].detChan == detChan) { 
+                  dxpChan = &dxpChannel[i];
+               }
             }
             if (dxpChan == NULL) {
                DEBUG(1,
