@@ -175,7 +175,7 @@ grecord(calcout,"$(P)ElapsedLive") {
 }
 
 grecord(ddfanout,"$(P)ReadAll") {
-        field(SCAN,"5 second")
+        field(SCAN,"1 second")
         field(DISV,"0")
         field(SDIS,"$(P)Acquiring NPP NMS")
         field(VAL, "1")
@@ -202,7 +202,7 @@ grecord(ddfanout,"$(P)ReadAll1") {
 }
 
 grecord(ddfanout,"$(P)ReadDXPs") {
-        field(SCAN,"5 second")
+        field(SCAN,"1 second")
         field(VAL, "1")
         field(OUTA,"$(P)dxp1.PROC  CA MS")
         field(OUTB,"$(P)dxp2.PROC  CA MS")

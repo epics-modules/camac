@@ -2,6 +2,9 @@ grecord(dxp,"$(P)$(R)")
 {
 # Input field
     field(INP,"$(INP)")
+
+# Process at initialization
+    field(PINI,"YES")
     
 # ASC parameters - 9 total
     field(A01L,"GAINDAC")
@@ -80,12 +83,12 @@ grecord(dxp,"$(P)$(R)")
     field(S14L,"NUMZIGZAG0")
 
 # Run tasks labels - 11 total
-    field(T01L,"Unused")
-    field(T01V,"No")
+    field(T01L,"Collect baseline histgrm")
+    field(T01V,"Yes")
     field(T02L,"Update slope")
     field(T02V,"Yes")
-    field(T03L,"Use IIR filter")
-    field(T03V,"Yes")
+    field(T03L,"Use FIR filter")
+    field(T03V,"No")
     field(T04L,"Update baseline")
     field(T04V,"Yes")
     field(T05L,"Adjust fast threshold")
@@ -95,7 +98,7 @@ grecord(dxp,"$(P)$(R)")
     field(T07L,"Sub. slope from baseline")
     field(T07V,"Yes")
     field(T08L,"Collect baseline history")
-    field(T08V,"Yes")
+    field(T08V,"No")
     field(T09L,"Special task/calibration")
     field(T09V,"No")
     field(T10L,"Histogram delta baseline")
