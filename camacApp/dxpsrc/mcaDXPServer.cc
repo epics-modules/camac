@@ -24,6 +24,10 @@
                       called it will not use cached values.
     13-Feb-2002  MLR  Fixed bug in setting preset live time or real time.
     10-Mar-2002  MLR  Added support for downloading new FiPPI code
+    02-Apr-2002  MLR  Set forceRead when acquiring starts, so that next status read
+                      will get true value, not cached value
+    03-Apr-2002  MLR  Increase stack size for MPF server tasks from 4000 to 6000. Were
+                      getting stack overflows in dxp_replace_fipconfig().
 */
 
 #include <vxWorks.h>
@@ -240,7 +244,7 @@ extern "C" int DXPConfig(const char *serverName, int chan1, int chan2,
 
     strcpy(taskname, "t");
     strcat(taskname, serverName);
-    int taskId = taskSpawn(taskname,100,VX_FP_TASK,4000,
+    int taskId = taskSpawn(taskname,100,VX_FP_TASK,6000,
         (FUNCPTR)mcaDXPServer::mcaDXPServerTask,(int)p,
         0,0,0,0,0,0,0,0,0);
     if(taskId==ERROR)
@@ -309,6 +313,7 @@ void mcaDXPServer::processMessages()
                      s = dxp_start_one_run(&detChan, &gate, &resume);
                      acquiring = 1;
                      erased = 0;
+                     forceRead = 1; // Don't used cached acquiring status next time
                      DEBUG(2,
                        "(mcaDXPServer [%s detChan=%d]): start acq. status=%d\n",
                        pMessageServer->getName(), detChan, s);
