@@ -19,6 +19,7 @@
  *                     Moved building peaking time strings to separate function.
  *                     Added debugging statements.
  * 10-Mar-02    mlr    Added support for FIPPI, EMAXRBC, GAINRBV fields.
+ * 12-Mar-02    mlr    Changed init_record to restore .GAIN, .EMAX, .FIPPI.
  */
 
 #include        <stdlib.h>
@@ -74,6 +75,7 @@ static void setPeakingTimeStrings(struct dxpRecord *pdxp);
 static void setPeakingTimeRangeStrings(struct dxpRecord *pdxp);
 static void setGain(struct dxpRecord *pdxp);
 static void setBinWidth(struct dxpRecord *pdxp);
+static void setFippi(struct dxpRecord *pdxp);
 
 struct rset dxpRSET={
         RSETNUMBER,
@@ -375,7 +377,19 @@ static long init_record(struct dxpRecord *pdxp, int pass)
     /* Create the peaking time strings */
     setPeakingTimeStrings(pdxp);
     setPeakingTimeRangeStrings(pdxp);
-    
+   
+    /* Set the peaking time */
+    setPeakingTime(pdxp);
+
+    /* Set the gain */
+    setGain(pdxp);
+
+    /* Set the bin width */
+    setBinWidth(pdxp);
+
+    /* Set the FiPPI file - bug don't do yet */
+    /* setFippi(pdxp); */
+ 
     /* Initialize the tasks */
     setDxpTasks(pdxp);
 
@@ -676,8 +690,7 @@ static long special(struct dbAddr *paddr, int after)
      }
 
      if (paddr->pfield == (void *) &pdxp->fippi) {
-        status = (*pdset->send_msg)
-                 (pdxp, MSG_DXP_DOWNLOAD_FIPPI, pdxp->fippi, NULL);
+        setFippi(pdxp);
         goto found_param;
      }
 
@@ -875,7 +888,12 @@ static void setBinWidth(struct dxpRecord *pdxp)
          break;
    }
 }
-
+
+static void setFippi(struct dxpRecord *pdxp)
+{
+   struct dxpDSET *pdset = (struct dxpDSET *)(pdxp->dset);
+   (*pdset->send_msg) (pdxp, MSG_DXP_DOWNLOAD_FIPPI, pdxp->fippi, NULL);
+}
 
 static long get_precision(struct dbAddr *paddr, long *precision)
 {
