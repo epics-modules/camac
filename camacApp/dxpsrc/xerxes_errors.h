@@ -1,4 +1,4 @@
-/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  *  xerxes_errors.h
@@ -50,12 +50,18 @@
  *  some error codes
  */
 #define DXP_SUCCESS            0
+
 /* I/O level error codes 1-100*/
 #define DXP_MDOPEN             1
 #define DXP_MDIO               2
 #define DXP_MDINITIALIZE       3
 #define DXP_MDLOCK			   4
 #define DXP_MDFILEIO		   5
+#define DXP_MDTIMEOUT          6
+#define DXP_MDSIZE             7
+#define DXP_MDOVERFLOW         8
+#define DXP_MDUNKNOWN          9
+
 /*  primitive level error codes (due to mdio failures) 101-200*/
 #define DXP_WRITE_TSAR       101
 #define DXP_WRITE_CSR        102
@@ -64,6 +70,7 @@
 #define DXP_WRITE_BLOCK      105
 #define DXP_READ_BLOCK       106
 #define DXP_DISABLE_LAM      107
+
 /* changed from DXP_CLEAR_LAM to DXP_CLR_LAM due to a conflict with an existing
  * function pointer
  */
@@ -80,6 +87,8 @@
 #define DXP_WRITE_WCR        118
 #define DXP_READ_WCR         119
 #define DXP_WRITE_MMU        120
+#define DXP_CHECKSUM         121
+
 /*  DSP/FIPPI level error codes 201-300  */
 #define DXP_MEMERROR         201
 #define DXP_DSPRUNERROR      202
@@ -101,6 +110,7 @@
 #define DXP_NOCONTROLTYPE    218
 #define DXP_NOFIPPI			 219
 #define DXP_DSPSLEEP		 220
+
 /*  configuration errors  301-400  */
 #define DXP_BAD_PARAM        301
 #define DXP_NODECIMATION     302
@@ -122,12 +132,15 @@
 #define DXP_BADCHANNEL       318
 #define DXP_DSPTIMEOUT       319
 #define DXP_INITORDER        320
+#define DXP_UDXPS            321
+
 /*  host machine errors codes:  401-500 */
 #define DXP_NOMEM            401
 #define DXP_CLOSE_FILE       403
 #define DXP_INDEXOOB         404
 #define DXP_RUNACTIVE		 405
 #define DXP_MEMINUSE         406
+
 /*  misc error codes:  501-600 */
 #define DXP_LOG_LEVEL		 501	/** Log level invalid */
 

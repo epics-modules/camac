@@ -1,4 +1,4 @@
-/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  * dxp4c2x.c
@@ -155,6 +155,8 @@ int dxp_init_dxp4c2x(Functions* funcs)
   funcs->dxp_get_runstats = dxp_get_runstats;
   funcs->dxp_change_gains = dxp_change_gains;
   funcs->dxp_setup_asc = dxp_setup_asc;
+
+  funcs->dxp_setup_cmd = dxp_setup_cmd;
 
   return DXP_SUCCESS;
 }
@@ -876,6 +878,20 @@ static int dxp_download_fpgaconfig(int* ioChan, int* modChan, char *name, Board*
     return status;
   }
 
+  /* Quick hack to always try and stop a run
+   * before doing anything else.
+   * Reference: BUG ID #29
+   */
+  status = dxp_end_run(ioChan, modChan);
+  
+  if (status != DXP_SUCCESS) {
+	
+	sprintf(info_string, "Error stopping a run on ioChan = %d, modChan = %d",
+			*ioChan, *modChan);
+	dxp_log_error("dxp_download_fpgaconfig", info_string, status);
+	return status;
+  }
+
   /* check the DSP download state, if downloaded, then sleep */
   if (board->chanstate[*modChan].dspdownloaded==1) {
     
@@ -896,7 +912,7 @@ static int dxp_download_fpgaconfig(int* ioChan, int* modChan, char *name, Board*
     
     /* Now wait for BUSY=7 to indicate the DSP is asleep */
     value = 7;
-    timeout = 2.0;
+    timeout = 5.0;
     if ((status=dxp_download_dsp_done(ioChan, modChan, &mod, board->dsp[*modChan], 
 				      &value, &timeout))!=DXP_SUCCESS) {
       sprintf(info_string,"Error waiting for BUSY=7 state for module %i",mod);
@@ -1006,7 +1022,7 @@ static int dxp_download_fpgaconfig(int* ioChan, int* modChan, char *name, Board*
 
     /* Now wait for BUSY=0 to indicate the DSP is ready */
     value = 0;
-    timeout = 2.0;
+    timeout = 5.0;
     if ((status=dxp_download_dsp_done(ioChan, modChan, &mod, board->dsp[*modChan], 
 				      &value, &timeout))!=DXP_SUCCESS) {
       sprintf(info_string,"Error waiting for BUSY=0 state for module %i",mod);
@@ -1640,9 +1656,9 @@ static int dxp_load_dspsymbol_table(FILE* fp, Dsp_Info* dsp)
 	  retval = sscanf(line, "%s %1s %hd %hd", dsp->params->parameters[i].pname, atype, 
 					  &(dsp->params->parameters[i].lbound), &(dsp->params->parameters[i].ubound));
 	  dsp->params->parameters[i].address = i;
-	  dsp->params->parameters[i].access = 0;
+	  dsp->params->parameters[i].access = 1;
 	  if (retval>1) {
-		if (strcmp(atype,"*")==0) dsp->params->parameters[i].access = 1;
+		if (strcmp(atype,"-")==0) dsp->params->parameters[i].access = 0;
 	  }
 	  if (retval==2) {
 		dsp->params->parameters[i].lbound = 0;
@@ -2725,10 +2741,15 @@ static int dxp_begin_run(int* ioChan, int* modChan, unsigned short* gate,
   int status;
   unsigned short data;
 
+  char info_string[INFO_LEN];
+
+
   itemp = modChan;
   btemp = board;
 
-  dxp_log_debug("dxp_begin_run", "Starting a run...");
+  sprintf(info_string, "Starting a run: ioChan = %d, modChan = %d, gate = %d, resume = %d", 
+		  *ioChan, *modChan, *gate, *resume);
+  dxp_log_debug("dxp_begin_run", info_string);
 
   /* read-modify-write to CSR to start data run */
   status = dxp_read_csr(ioChan, &data);                    /* read to CSR */
@@ -2741,8 +2762,18 @@ static int dxp_begin_run(int* ioChan, int* modChan, unsigned short* gate,
   data |= MASK_RUNENABLE;
   /*	data |= (*modChan==ALLCHAN ? MASK_ALLCHAN : *modChan<<6);*/
   data |= (unsigned short) MASK_ALLCHAN;
-  if (*resume == CLEARMCA) data |= MASK_RESETMCA;
-  if (*gate == IGNOREGATE) data |= MASK_IGNOREGATE;
+  if (*resume == CLEARMCA) 
+	{
+	  data |= MASK_RESETMCA;
+	} else {
+	  data &= ~MASK_RESETMCA;
+	}
+  if (*gate == IGNOREGATE) 
+	{
+	  data |= MASK_IGNOREGATE;
+	} else {
+	  data &= ~MASK_IGNOREGATE;
+	}
 
   status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
   if (status!=DXP_SUCCESS)
@@ -2768,12 +2799,16 @@ static int dxp_end_run(int* ioChan, int* modChan)
    *   Terminate a data taking for all channels of a single DXP module. 
    */
   int status;
+
   unsigned short data;
 
   float wait = .001f;
 
+  char info_string[INFO_LEN];
 
-  dxp_log_debug("dxp_end_run", "Stopping a run...");
+
+  sprintf(info_string, "Stopping a run: ioChan = %d, modChan = %d", *ioChan, *modChan);
+  dxp_log_debug("dxp_end_run", info_string);
 
   status = dxp_read_csr(ioChan, &data);
   if (status != DXP_SUCCESS) {
@@ -4045,4 +4080,20 @@ static FILE *dxp_find_file(const char* filename, const char* mode)
   return NULL;
 }
 
+
+/**********
+ * This routine does nothing for this product.
+ **********/
+static int dxp_setup_cmd(Board *board, char *name, unsigned int *lenS, 
+						 byte_t *send, unsigned int *lenR, byte_t *receive)
+{
+  UNUSED(board);
+  UNUSED(name);
+  UNUSED(lenS);
+  UNUSED(send);
+  UNUSED(lenR);
+  UNUSED(receive);
+
+  return DXP_SUCCESS;
+}
 

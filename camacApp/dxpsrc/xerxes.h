@@ -1,4 +1,4 @@
-/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  *  xerxes.h
@@ -174,6 +174,10 @@ XERXES_IMPORT int XERXES_API dxp_suppress_log(void);
 XERXES_IMPORT int XERXES_API dxp_set_log_level(int *level);
 XERXES_IMPORT int XERXES_API dxp_set_log_output(char *filename);
 
+  XERXES_IMPORT int XERXES_API dxp_setup_command(int *detChan, char *name, unsigned int *lenS,
+												 byte_t *send, unsigned int *lenR,
+												 byte_t *receive);
+
   /* Deprecated functions */
 XERXES_IMPORT int XERXES_API dxp_replace_fipconfig(int *detChan, char *filename);
 XERXES_IMPORT int XERXES_API dxp_reset_fipconfig(int *detChan);
@@ -283,15 +287,7 @@ XERXES_IMPORT int XERXES_API dxp_reset_fipconfig();
 }
 #endif
 
-/* Import the global variables from the DLL here */
-XERXES_IMPORT Interface    *iface_head;
-XERXES_IMPORT Utils        *utils;
-XERXES_IMPORT Board_Info   *btypes_head;
-XERXES_IMPORT Board        *system_head;
-XERXES_IMPORT System_Info  *info;
-XERXES_IMPORT Dsp_Info     *dsp_head;
-XERXES_IMPORT Fippi_Info   *fippi_head;
-XERXES_IMPORT Dsp_Defaults *defaults_head;
+XERXES_IMPORT Utils *utils;
 
 
 #endif						/* Endif for XERXES_H */

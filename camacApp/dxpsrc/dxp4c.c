@@ -1,4 +1,4 @@
-/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  * dxp4c.c
@@ -169,6 +169,8 @@ int dxp_init_dxp4c(Functions* funcs)
   funcs->dxp_get_runstats = dxp_get_runstats;
   funcs->dxp_change_gains = dxp_change_gains;
   funcs->dxp_setup_asc = dxp_setup_asc;
+
+  funcs->dxp_setup_cmd = dxp_setup_cmd;
 
   return DXP_SUCCESS;
 }
@@ -546,15 +548,7 @@ static int dxp_read_word(int* ioChan, int* modChan, int* xy,
 	return status;
   }
 
-  /* read-modify-write status register for initiating transfer */
-  status = dxp_read_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS)
-    {
-      dxp_log_error("dxp_read_word","Error reading from the CSR",status);
-      return status;
-    }
-
-  data |= MASK_CAMXFER;
+  data  = MASK_CAMXFER;
   data |= (*modChan<<6);
   if (*xy==YMEM) data |= MASK_YMEM;
 
@@ -612,15 +606,7 @@ static int dxp_write_word(int* ioChan, int* modChan, int* xy,
 	return status;
   }
 
-  /* read-modify-write status register for initiating transfer */
-  status = dxp_read_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS)
-    {
-      dxp_log_error("dxp_write_word","Error reading from the CSR",status);
-      return status;
-    }
-
-  data |= (MASK_CAMXFER | MASK_WRITE);
+  data = (MASK_CAMXFER | MASK_WRITE);
   if (*modChan == ALLCHAN) 
     {
       data |= MASK_ALLCHAN;
@@ -688,15 +674,8 @@ static int dxp_read_block(int* ioChan, int* modChan, int* xy, int* constaddr,
 	return status;
   }
 
-  /* read-modify-write status register for initiating transfer */
-  status = dxp_read_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS)
-    {
-      dxp_log_error("dxp_read_block","Error reading from the CSR",status);
-      return status;
-    }
-    
-  data |= MASK_CAMXFER;
+
+  data  = MASK_CAMXFER;
   data |= (*modChan<<6);
   if (*xy == YMEM) data |= MASK_YMEM;
   if (*constaddr == CONSTADD) data |= MASK_CONSTADD;
@@ -777,15 +756,7 @@ static int dxp_write_block(int* ioChan, int* modChan, int* xy, int* constaddr,
 	return status;
   }
 
-  /* read-modify-write status register for initiating transfer */
-  status = dxp_read_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS)
-    {
-      dxp_log_error("dxp_write_block","Error reading from the CSR",status);
-      return status;
-    }
-
-  data |= (MASK_CAMXFER | MASK_WRITE);
+  data = (MASK_CAMXFER | MASK_WRITE);
   if (*modChan ==ALLCHAN) 
     {
       data |= MASK_ALLCHAN;
@@ -898,19 +869,10 @@ static int dxp_download_fpgaconfig(int* ioChan, int* modChan, char *name, Board*
 	
   /* Write to CSR to initiate download */
 
-  status = dxp_read_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS){
-    dxp_log_error("dxp_download_fpgaconfig","Error reading the CSR",status); 
-    return status;
-  }
-
-  /* Mask off the channels bits */
-  data &= ~MASK_CHANNELS;
-
   /* turn on the fippi reset bit and the write bit */
-  data |= (MASK_FIPRESET|MASK_WRITE);
+  data = (MASK_FIPRESET | MASK_WRITE);
 
-  if (*modChan==ALLCHAN) 
+  if (*modChan == ALLCHAN) 
     {
       data |= MASK_ALLCHAN;
     } else {
@@ -1127,20 +1089,13 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
       status = DXP_BAD_PARAM;
       dxp_log_error("dxp_download_dspconfig",info_string,status);
     }
-  
-  status = dxp_read_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS)
-    {
-      dxp_log_error("dxp_download_dspconfig","Error reading the CSR",status);
-      return status;
-    }
-  /* Mask off the channel bits */
-  data &= ~MASK_CHANNELS;
-  
+   
   /* Write to CSR to initiate download */
   
-  data |= (MASK_DSPRESET|MASK_WRITE);
-  if (*modChan==ALLCHAN) data |= MASK_ALLCHAN;
+  data = (MASK_DSPRESET | MASK_WRITE);
+ 
+ if (*modChan==ALLCHAN) data |= MASK_ALLCHAN;
+
   else data |= (*modChan<<6);
   
   status = dxp_write_csr(ioChan, &data);
@@ -1583,9 +1538,9 @@ static int dxp_load_dspsymbol_table(FILE* fp, Dsp_Info* dsp)
 	  retval = sscanf(line, "%s %1s %hd %hd", dsp->params->parameters[i].pname, atype,
 					  &(dsp->params->parameters[i].lbound), &(dsp->params->parameters[i].ubound));
 	  dsp->params->parameters[i].address = i;
-	  dsp->params->parameters[i].access = 0;
+	  dsp->params->parameters[i].access = 1;
 	  if (retval>1) {
-		if (strcmp(atype,"*")==0) dsp->params->parameters[i].access = 1;
+		if (strcmp(atype,"-")==0) dsp->params->parameters[i].access = 0;
 	  }
 	  if (retval==2) {
 		dsp->params->parameters[i].lbound = 0;
@@ -2640,15 +2595,7 @@ static int dxp_begin_run(int* ioChan, int* modChan, unsigned short* gate,
   itemp = modChan;
   btemp = board;
 
-  /* read-modify-write status register to start a data run */
-  status = dxp_read_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS)
-    {
-      dxp_log_error("dxp_begin_run","Error reading from the CSR",status);
-      return status;
-    }
-
-  data |= MASK_RUNENABLE;
+  data = MASK_RUNENABLE;
   /*	data |= (unsigned short) (*modChan==ALLCHAN ? MASK_ALLCHAN : *modChan<<6);*/
   data |= (unsigned short) MASK_ALLCHAN;
   if (*resume == CLEARMCA) data |= MASK_RESETMCA;
@@ -2683,14 +2630,7 @@ static int dxp_end_run(int* ioChan, int* modChan)
   /* Assign unused inputs to avoid compiler warnings */
   itemp = modChan;
 
-  status = dxp_read_csr(ioChan, &data);
-  if (status != DXP_SUCCESS) 
-    {
-      dxp_log_error("dxp_end_run", "Error reading CST", status);
-    }
-
-  data &= ~MASK_RUNENABLE;
-  data |= MASK_ALLCHAN;
+  data = MASK_ALLCHAN;
 
   status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
   if (status!=DXP_SUCCESS) 
@@ -3933,5 +3873,22 @@ static int dxp_little_endian(VOID)
 
   return (endian);
 
+}
+
+
+/**********
+ * This routine does nothing for this product.
+ **********/
+static int dxp_setup_cmd(Board *board, char *name, unsigned int *lenS, 
+						 byte_t *send, unsigned int *lenR, byte_t *receive)
+{
+  UNUSED(board);
+  UNUSED(name);
+  UNUSED(lenS);
+  UNUSED(send);
+  UNUSED(lenR);
+  UNUSED(receive);
+
+  return DXP_SUCCESS;
 }
 
