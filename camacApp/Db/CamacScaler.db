@@ -1,10 +1,3 @@
-# This database implements a generic 2-D coordinate transformation.  Given two
-# real motors $(P)$(MX) and $(P)$(MY), which move in the X,Y coordinate system,
-# it will move two soft motors $(P)$(MXP) and $(P)$(MYP) in the X',Y'
-# coordinate system.  The offset between the two coordinate systems is
-# X0 = $(P)$(MXP)C1 and Y0 = $(P)$(MYP)C1, and the coordinate systems are 
-# rotated by angle theta = $(P)$(MYP)C2.
-
 grecord(bo,"$(P)$(S)_calc_ctrl") {
 	field(FLNK,"$(P)$(S)_cts1.PROC  PP MS")
 	field(ZNAM,"Counts")
