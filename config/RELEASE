@@ -9,8 +9,8 @@
 #
 # Add your declarations here
 
-include $(EPICS_SUPPORT_PATH)/config/STD_RELEASE
-include $(EPICS_SUPPORT_PATH)/config/MPF_RELEASE
-include $(EPICS_SUPPORT_PATH)/config/MCA_RELEASE
-include $(EPICS_SUPPORT_PATH)/config/MOTOR_RELEASE
-include $(EPICS_SUPPORT_PATH)/config/EPICS_BASE_RELEASE
+include $(TOP)/../config/STD_RELEASE
+include $(TOP)/../config/MPF_RELEASE
+include $(TOP)/../config/MCA_RELEASE
+include $(TOP)/../config/MOTOR_RELEASE
+include $(TOP)/../config/EPICS_BASE_RELEASE
