@@ -22,6 +22,7 @@
 #include "xerxes_structures.h"
 #include "md_windows.h"
 #include "md_generic.h"
+#include "xia_md.h"
 #define MODE 4
 
 /* variables to store the IO channel information */
@@ -77,7 +78,10 @@ XIA_MD_EXPORT int XIA_MD_API dxp_md_init_util(Xia_Util_Functions* funcs, char* t
 	funcs->dxp_md_set_log_level = dxp_md_set_log_level;
 	funcs->dxp_md_log	        = dxp_md_log;
 
-	out_stream = stdout;
+	if (out_stream == NULL)
+	{
+		out_stream = stdout;
+	}
 
 	return DXP_SUCCESS;
 }
@@ -424,6 +428,7 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_epp_io(int* camChan, unsigned int* function,
 	} else if (*address==2) {
 /*		dest = cport;
 		*length = 1;
+ */
 /* Status port*/
 	} else if (*address==3) {
 /*		dest = sport;

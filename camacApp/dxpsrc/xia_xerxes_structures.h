@@ -230,7 +230,7 @@ typedef int (*DXP_BEGIN_CONTROL_TASK)(int *ioChan, int *modChan, short *type, un
 									  int *info, Board *board);
 typedef int (*DXP_END_CONTROL_TASK)(int *ioChan, int *modChan, Board *board);
 typedef int (*DXP_CONTROL_TASK_PARAMS)(int *ioChan, int *modChan, short *type, Board *board, int *info);
-typedef int (*DXP_CONTROL_TASK_DATA)(int *ioChan, int *modChan, short *type, Board *board, long *data);
+typedef int (*DXP_CONTROL_TASK_DATA)(int *ioChan, int *modChan, short *type, Board *board, void *data);
 typedef int (*DXP_GET_RUNSTATS)(unsigned short *, Dsp_Info *, unsigned int *, unsigned int *, 
 								unsigned int *, unsigned int *, unsigned int *, double *);
 typedef int (*DXP_DECODE_ERROR)(unsigned short *, Dsp_Info *, unsigned short *, unsigned short *);

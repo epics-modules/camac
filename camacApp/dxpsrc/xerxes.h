@@ -130,6 +130,10 @@ XERXES_IMPORT void XERXES_API dxp_version(void);
 XERXES_IMPORT int XERXES_API dxp_locate_system_files(unsigned int *, char **);
 XERXES_IMPORT int XERXES_API dxp_locate_channel_files(int *, unsigned int *, char **);
 XERXES_IMPORT int XERXES_API dxp_lock_resource(int *detChan, short *lock);
+XERXES_IMPORT int XERXES_API dxp_enable_log(void);
+XERXES_IMPORT int XERXES_API dxp_suppress_log(void);
+XERXES_IMPORT int XERXES_API dxp_set_log_level(int *level);
+XERXES_IMPORT int XERXES_API dxp_set_log_output(char *filename);
 
 #else									/* Begin old style C prototypes */
 /*
@@ -222,6 +226,10 @@ XERXES_IMPORT void XERXES_API dxp_version();
 XERXES_IMPORT int XERXES_API dxp_locate_system_files();
 XERXES_IMPORT int XERXES_API dxp_locate_channel_files();
 XERXES_IMPORT int XERXES_API dxp_lock_resource();
+XERXES_IMPORT int XERXES_API dxp_enable_log();
+XERXES_IMPORT int XERXES_API dxp_suppress_log();
+XERXES_IMPORT int XERXES_API dxp_set_log_level();
+XERXES_IMPORT int XERXES_API dxp_set_log_output();
 
 #endif                                  /*   end if _XERXES_PROTO_ */
 

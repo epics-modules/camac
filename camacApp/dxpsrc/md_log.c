@@ -12,21 +12,21 @@
  *
  */
 
-#include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "xerxes_errors.h"
 #include "xerxes_structures.h"
-#include "md_windows.h"
 #include "md_generic.h"
+#include "xia_md.h"
+
+#define INFO_LEN	400
 
 /* Current output for the logging routines. By default, this is set to stdout */
 FILE *out_stream = NULL;
-/* error string used as a place holder for calls to dxp_md_error() */
-static char error_string[132];
 
 /* Static variables */
 static boolean isSuppressed = FALSE_;
@@ -89,6 +89,8 @@ XIA_MD_SHARED void XIA_MD_API dxp_md_log(int level, char *routine, char *message
 /* char *message;						Input: Log message to send to output */
 /* int error;							Input: Only used if this is an ERROR */
 {
+	char info_string[INFO_LEN];
+
 /* If logging is disabled or we aren't set
  * to log this message level then return gracefully, NOW! 
  */
@@ -96,6 +98,11 @@ XIA_MD_SHARED void XIA_MD_API dxp_md_log(int level, char *routine, char *message
 		return;
 	}
 	
+	sprintf(info_string, "&out_stream = %#p", out_stream);
+	dxp_md_debug("dxp_md_output", info_string, __FILE__, __LINE__);
+	sprintf(info_string, "&stdout = %#p", stdout);
+	dxp_md_debug("dxp_md_output", info_string, __FILE__, __LINE__);
+
 /* Validate level */
 	if ((level > MD_DEBUG) || (level < MD_ERROR)) {
 /* Don't log the message */
@@ -154,7 +161,7 @@ XIA_MD_SHARED void dxp_md_error(char* routine, char* message, int* error_code, c
 	struct tm *localTime = localtime(&current);
 	char logTimeFormat[20];
 
-	strftime(logTimeFormat, 20, "%c", localTime);
+	strftime(logTimeFormat, 20, "%C", localTime);
 
 /*	printf("%s [ERROR] [%d] %s: %s\n", logTimeFormat, *error_code, routine, message); */
 	fprintf(out_stream, "%s [ERROR] [%d] %s, line = %d, %s: %s\n", logTimeFormat, *error_code, file, line, routine, message);
@@ -163,7 +170,7 @@ XIA_MD_SHARED void dxp_md_error(char* routine, char* message, int* error_code, c
 
 
 /*****************************************************************************
- * 
+ *
  * Routine to handle reporting warnings. Messages are written to the output
  * defined in out_stream.
  *
@@ -176,7 +183,7 @@ XIA_MD_SHARED void dxp_md_warning(char *routine, char *message, char *file, int 
 	struct tm *localTime = localtime(&current);
 	char logTimeFormat[20];
 
-	strftime(logTimeFormat, 20, "%c", localTime);
+	strftime(logTimeFormat, 20, "%C", localTime);
 
 	fprintf(out_stream, "%s [WARN] %s, line = %d, %s: %s\n", logTimeFormat, file, line, routine, message);
 	fflush(out_stream);
@@ -209,7 +216,6 @@ XIA_MD_SHARED void dxp_md_debug(char *routine, char *message, char *file, int li
 /* char *message;					Input: Message to report				 */
 {
 	/* No time displayed for debug messages */
-
 	fprintf(out_stream, "[DEBUG] %s, line = %d, %s: %s\n", file, line, routine, message);
 	fflush(out_stream);
 }
@@ -226,6 +232,11 @@ XIA_MD_SHARED void dxp_md_output(char *filename)
 	int status;
 	char *strtmp = NULL;
 	unsigned int i;
+	char info_string[INFO_LEN];
+
+
+	sprintf(info_string, "filename = %s", filename);
+	dxp_md_log_debug("dxp_md_output", info_string);
 
 /* First close the currently opened stream, iff it is a file */
 	if ((out_stream!=stdout) && (out_stream!=stderr)) {
@@ -258,10 +269,14 @@ XIA_MD_SHARED void dxp_md_output(char *filename)
 	}
 /* The filename must be for a "real" file */
 	out_stream = fopen(filename,"w");
+
+	sprintf(info_string, "&out_stream = #%p", out_stream);
+	dxp_md_log_debug("dxp_md_output", info_string);
+
 	if (out_stream==NULL) {
 		status = DXP_MDFILEIO;
-		sprintf(error_string,"Unable to open filename: %s, no action performed",filename);
-		dxp_md_log_error("dxp_md_output",error_string,status);
+		sprintf(info_string,"Unable to open filename: %s, no action performed",filename);
+		dxp_md_log_error("dxp_md_output",info_string,status);
 		dxp_md_free(strtmp);
 		return;
 	}
@@ -269,5 +284,3 @@ XIA_MD_SHARED void dxp_md_output(char *filename)
 	return;
 
 }
-}
-

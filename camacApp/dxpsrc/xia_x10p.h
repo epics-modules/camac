@@ -191,10 +191,10 @@ XERXES_STATIC FILE* XERXES_API dxp_find_file();
 #endif
 
 /* Logging macro wrappers */
-#define dxp_log_error(x, y, z)	dxp_md_log(MD_ERROR, (x), (y), (z), __FILE__, __LINE__)
-#define dxp_log_warning(x, y)		dxp_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
-#define dxp_log_info(x, y)			dxp_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
-#define dxp_log_debug(x, y)		dxp_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_error(x, y, z)   x10p_md_log(MD_ERROR, (x), (y), (z), __FILE__, __LINE__)
+#define dxp_log_warning(x, y)		x10p_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_info(x, y)			x10p_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_debug(x, y)		x10p_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
 /* Useful Macros */
 #define STREQ(x, y)		(strcmp((x), (y)) == 0)
 

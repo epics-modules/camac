@@ -8,6 +8,8 @@
 #              bug in save_restore.c which causes USHORT fields to be corrupted
 #              during the save (not restore!) operation.  This bug should be fixed
 #              and the field returned to USHORT.
+# 25-Feb-2002  MLR Changed the BASE field from SHORT to USHORT 
+# 6-MAR-2002   MLR Added GAIN, PGAIN, EMAX fields
 
 menu(dxpPLRT) {
 	choice(dxpPLRT_Negative,"Negative")
@@ -36,7 +38,7 @@ recordtype(dxp) {
 		size(4)
 		extra("unsigned short *bptr")
 	}
-	field(BASE,DBF_SHORT) {
+	field(BASE,DBF_USHORT) {
 		prompt("Baseline Histogram")
 		asl(ASL0)
 		special(SPC_DBADDR)
@@ -1357,6 +1359,24 @@ recordtype(dxp) {
 		size(4)
 		extra("char *pkl")
 	}
+	field(GAIN,DBF_FLOAT) {
+                prompt("ASC Gain")
+		asl(ASL0)
+		special(SPC_MOD)
+                initial(1.)
+	}
+	field(PGAIN,DBF_FLOAT) {
+                prompt("Preamp Gain (mv/keV)")
+		asl(ASL0)
+		special(SPC_MOD)
+                initial(4.)
+	}
+	field(EMAX,DBF_FLOAT) {
+                prompt("Maximum energy (keV)")
+		asl(ASL0)
+		special(SPC_MOD)
+                initial(20.)
+	}
 
 # Input specification
 	field(INP,DBF_INLINK) {
@@ -1364,5 +1384,4 @@ recordtype(dxp) {
 		asl(ASL0)
 		special(SPC_NOMOD)
 	}
-
 }

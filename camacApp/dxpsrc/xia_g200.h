@@ -38,8 +38,6 @@ XERXES_STATIC int XERXES_API dxp_read_word(int *,int *,unsigned short *,unsigned
 XERXES_STATIC int XERXES_API dxp_write_word(int *,int *,unsigned short *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_read_block(int *,int *,unsigned short *,unsigned int *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_write_block(int *,int *, unsigned short *,unsigned int *,unsigned short *);
-XERXES_STATIC int XERXES_API dxp_read_long(int *,int *,unsigned short *,unsigned long *);
-XERXES_STATIC int XERXES_API dxp_write_long(int *,int *,unsigned short *,unsigned long *);
 XERXES_STATIC int XERXES_API dxp_look_at_me(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_ignore_me(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_clear_LAM(int *ioChan, int *modChan);
@@ -49,16 +47,16 @@ XERXES_STATIC int XERXES_API dxp_done_with_readout(int *, int *, Board *board);
 XERXES_STATIC int XERXES_API dxp_begin_run(int *ioChan, int *modChan,unsigned short *gate,unsigned short *resume, Board *board);
 XERXES_STATIC int XERXES_API dxp_end_run(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_run_active(int *ioChan, int *modChan, int *active);
-XERXES_STATIC int XERXES_API dxp_begin_control_task(int* ioChan, int* modChan, short *type, 
+XERXES_STATIC int XERXES_API dxp_begin_control_task(int* ioChan, int* modChan, short *type,
 													unsigned int *length, int *info, Board *board);
 XERXES_STATIC int XERXES_API dxp_end_control_task(int* ioChan, int* modChan, Board *board);
-XERXES_STATIC int XERXES_API dxp_control_task_params(int* ioChan, int* modChan, short *type, 
+XERXES_STATIC int XERXES_API dxp_control_task_params(int* ioChan, int* modChan, short *type,
 													 Board *board, int *info);
-XERXES_STATIC int XERXES_API dxp_control_task_data(int* ioChan, int* modChan, short *type, 
-												   Board *board, long *data);
-XERXES_STATIC int XERXES_API dxp_do_control_task(int* ioChan, int* modChan, short *type, 
-												 Board *board, unsigned int *ilen, int *info, 
-												 float *timeout, long *data);
+XERXES_STATIC int XERXES_API dxp_control_task_data(int* ioChan, int* modChan, short *type,
+												   Board *board, void *data);
+XERXES_STATIC int XERXES_API dxp_do_control_task(int* ioChan, int* modChan, short *type,
+												 Board *board, unsigned int *ilen, int *info,
+												 float *timeout, long *odata);
 XERXES_STATIC int XERXES_API dxp_loc(char *, Dsp_Info *, unsigned short *);
 XERXES_STATIC int XERXES_API dxp_dspparam_dump(int *,int *, Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_begin_calibrate(int *, int *, int *, Board *board);
@@ -188,8 +186,6 @@ XERXES_STATIC int XERXES_API dxp_change_gains();
 XERXES_STATIC int XERXES_API dxp_setup_asc();
 XERXES_STATIC int XERXES_API dxp_calibrate_asc();
 XERXES_STATIC int XERXES_API dxp_calibrate_channel();
-XERXES_STATIC int XERXES_API dxp_read_long();
-XERXES_STATIC int XERXES_API dxp_write_long();
 XERXES_STATIC int XERXES_API dxp_little_endian();
 XERXES_STATIC FILE* XERXES_API dxp_find_file();
 
@@ -200,10 +196,10 @@ XERXES_STATIC FILE* XERXES_API dxp_find_file();
 #endif
 
 /* Logging macro wrappers */
-#define dxp_log_error(x, y, z)	dxp_md_log(MD_ERROR, (x), (y), (z), __FILE__, __LINE__)
-#define dxp_log_warning(x, y)		dxp_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
-#define dxp_log_info(x, y)			dxp_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
-#define dxp_log_debug(x, y)		dxp_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_error(x, y, z)	g200_md_log(MD_ERROR, (x), (y), (z), __FILE__, __LINE__)
+#define dxp_log_warning(x, y)		g200_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_info(x, y)			g200_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_debug(x, y)		g200_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
 /* Useful Macros */
 #define STREQ(x, y)		(strcmp((x), (y)) == 0)
 

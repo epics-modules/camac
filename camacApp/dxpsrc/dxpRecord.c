@@ -27,6 +27,7 @@
 #include        <stdioLib.h>
 #include        <lstLib.h>
 #include        <string.h>
+#include        <math.h>
 
 #include        <alarm.h>
 #include        <dbDefs.h>
@@ -57,7 +58,7 @@ static long cvt_dbaddr();
 static long get_array_info();
 #define put_array_info NULL
 #define get_units NULL
-#define get_precision NULL
+static long get_precision();
 static long get_enum_str();
 static long get_enum_strs();
 static long put_enum_str();
@@ -69,6 +70,8 @@ static long monitor(struct dxpRecord *pdxp);
 static void setDxpTasks(struct dxpRecord *pdxp);
 static void setPeakingTime(struct dxpRecord *pdxp);
 static void setPeakingTimeStrings(struct dxpRecord *pdxp);
+static void setGain(struct dxpRecord *pdxp);
+static void setBinWidth(struct dxpRecord *pdxp);
 
 struct rset dxpRSET={
         RSETNUMBER,
@@ -212,6 +215,9 @@ typedef struct {
    unsigned short slowgap;
    unsigned short peaksamp;
    unsigned short peakint;
+   unsigned short gaindac;
+   unsigned short binfact;
+   unsigned short mcalimhi;
 } PARAM_OFFSETS;
 
 typedef struct {
@@ -220,6 +226,7 @@ typedef struct {
    unsigned short *ubound;
    unsigned short nsymbols;
    double clock;
+   double adc_gain;
    unsigned int nbase;
    PARAM_OFFSETS offsets;
 } MODULE_INFO;
@@ -256,6 +263,8 @@ static long init_record(struct dxpRecord *pdxp, int pass)
     /* Initialize values for each type of module */
     moduleInfo[DXP4C].clock = .050;
     moduleInfo[DXP2X].clock = .025;
+    moduleInfo[DXP4C].adc_gain = 1024./1000.;  /* ADC bits/mV */
+    moduleInfo[DXP2X].adc_gain = 1024./1000.;
 
     /* Figure out what kind of module this is */
     dxp_get_board_type(&module, boardString);
@@ -332,18 +341,22 @@ static long init_record(struct dxpRecord *pdxp, int pass)
     dxp_get_symbol_index(&module, "SLOWLEN",    &minfo->offsets.slowlen);
     dxp_get_symbol_index(&module, "SLOWGAP",    &minfo->offsets.slowgap);
     dxp_get_symbol_index(&module, "PEAKINT",    &minfo->offsets.peakint);
+    dxp_get_symbol_index(&module, "MCALIMHI",    &minfo->offsets.mcalimhi);
     /* For some reason the DXP2X uses PEAKSAM rather than PEAKSAMP */
     switch (pdxp->mtyp) {
        case DXP4C:
           dxp_get_symbol_index(&module, "PEAKSAMP",   &minfo->offsets.peaksamp);
+          dxp_get_symbol_index(&module, "BINFACT",   &minfo->offsets.binfact);
           break;
        case DXP2X:
           dxp_get_symbol_index(&module, "PEAKSAM",   &minfo->offsets.peaksamp);
+          dxp_get_symbol_index(&module, "GAINDAC",   &minfo->offsets.gaindac);
+          dxp_get_symbol_index(&module, "BINFACT1",   &minfo->offsets.binfact);
           break;
     }
 
     /* Allocate the space for the baseline array */
-    pdxp->bptr = (unsigned short *)calloc(minfo->nbase, sizeof(short));
+    pdxp->bptr = (unsigned short *)calloc(minfo->nbase, sizeof(unsigned short));
 
     /* Allocate the space for the parameter array */
     pdxp->pptr = (unsigned short *)calloc(minfo->nsymbols, 
@@ -373,16 +386,16 @@ struct dbAddr *paddr;
    if (paddr->pfield == &(pdxp->base)) {
       paddr->pfield = (void *)(pdxp->bptr);
       paddr->no_elements = minfo->nbase;
-      paddr->field_type = DBF_SHORT;
+      paddr->field_type = DBF_USHORT;
       paddr->field_size = sizeof(short);
-      paddr->dbr_field_type = DBF_SHORT;
+      paddr->dbr_field_type = DBF_USHORT;
       Debug(5, "(cvt_dbaddr): field=base\n");
    } else if (paddr->pfield == &(pdxp->parm)) {
          paddr->pfield = (void *)(pdxp->pptr);
          paddr->no_elements = minfo->nsymbols;
-         paddr->field_type = DBF_SHORT;
+         paddr->field_type = DBF_USHORT;
          paddr->field_size = sizeof(short);
-         paddr->dbr_field_type = DBF_SHORT;
+         paddr->dbr_field_type = DBF_USHORT;
          Debug(5, "(cvt_dbaddr): field=parm\n");
    } else {
       Debug(1, "(cvt_dbaddr): field=unknown\n");
@@ -458,6 +471,8 @@ static long monitor(struct dxpRecord *pdxp)
    DXP_TASK_PARAM *task_param;
    unsigned short short_val;
    unsigned short runtasks;
+   unsigned short gaindac;
+   float gain;
    long long_val;
    unsigned short monitor_mask = recGblResetAlarms(pdxp) | DBE_VALUE | DBE_LOG;
    MODULE_INFO *minfo = &moduleInfo[pdxp->mtyp];
@@ -523,6 +538,27 @@ static long monitor(struct dxpRecord *pdxp)
       pdxp->rcal=0;
       db_post_events(pdxp,&pdxp->rcal, monitor_mask);
    }
+
+   /* If GAINDAC has changed then recompute GAIN */   
+   switch (pdxp->mtyp) {
+      case DXP2X:
+         /* See comments in function setGain below *
+          * Gain = 0.5*10^((GAINDAC/65536)*40/20) */
+         gaindac = pdxp->pptr[minfo->offsets.gaindac];
+         gain = 0.5*pow(10., (gaindac/32768.));
+         if (gain != pdxp->gain) {
+            pdxp->gain = gain;
+            db_post_events(pdxp,&pdxp->gain, monitor_mask);
+         }
+         break;
+      case DXP4C:
+         /* Work needed here !!! set coarse gain, fine gain?*/
+         break;
+   }
+
+   /* Post events on the baseline histogram field */
+    db_post_events(pdxp,pdxp->bptr,monitor_mask);
+   
 
    Debug(5, "dxpRecord(monitor): exit\n");
    return(0);
@@ -590,6 +626,23 @@ static long special(struct dbAddr *paddr, int after)
 
      if (paddr->pfield == (void *) &pdxp->pktm) {
         setPeakingTime(pdxp);
+        setBinWidth(pdxp);
+        goto found_param;
+     }
+
+     if (paddr->pfield == (void *) &pdxp->gain) {
+        setGain(pdxp);
+        setBinWidth(pdxp);
+        goto found_param;
+     }
+
+     if (paddr->pfield == (void *) &pdxp->pgain) {
+        setBinWidth(pdxp);
+        goto found_param;
+     }
+
+     if (paddr->pfield == (void *) &pdxp->emax) {
+        setBinWidth(pdxp);
         goto found_param;
      }
 
@@ -642,6 +695,9 @@ static void setDxpTasks(struct dxpRecord *pdxp)
       }
       Debug(5, "dxpRecord(setDxpTasks): runtasks=%d, offset=%d\n", 
          runtasks, minfo->offsets.runtasks);
+   /* Copy new value to parameter array in case other routines needit
+    * before record processes again */
+   pdxp->pptr[minfo->offsets.runtasks] = runtasks;
       status = (*pdset->send_msg)
          (pdxp,  MSG_DXP_SET_SHORT_PARAM, minfo->offsets.runtasks, runtasks);
    }
@@ -696,6 +752,11 @@ static void setPeakingTime(struct dxpRecord *pdxp)
       default:
          Debug(1, "(special) Unexpected decimation = %d\n", decimation)
    }
+   /* Copy new values to parameter array in case other routines need them
+    * before record processes again */
+   pdxp->pptr[minfo->offsets.slowlen] = slowlen;
+   pdxp->pptr[minfo->offsets.peaksamp] = peaksamp;
+   pdxp->pptr[minfo->offsets.peakint] = peakint;
    (*pdset->send_msg)
             (pdxp,  MSG_DXP_SET_SHORT_PARAM, minfo->offsets.slowlen, slowlen);
    (*pdset->send_msg)
@@ -704,6 +765,79 @@ static void setPeakingTime(struct dxpRecord *pdxp)
             (pdxp,  MSG_DXP_SET_SHORT_PARAM, minfo->offsets.peakint, peakint);
 }
 
+static void setGain(struct dxpRecord *pdxp)
+{
+   struct dxpDSET *pdset = (struct dxpDSET *)(pdxp->dset);
+   MODULE_INFO *minfo = &moduleInfo[pdxp->mtyp];
+   unsigned short gaindac;
+
+   /* New value of GAIN.  
+    * Compute new values of GAINDAC, etc. */
+
+   switch (pdxp->mtyp) {
+      case DXP2X:
+         /* This algorithm is from page 49 of the DXP2X User's Manual
+          * Gain = Gin * Gvar * Gbase
+          * Gin = 1, Gbase=~.5, Gvar=10^((GAINDAC/65536)*40/20)
+          * Gain = 0.5*10^((GAINDAC/65536)*40/20)
+          * GAINDAC=LOG10(2*GAIN)*32768 */
+         if (pdxp->gain < 0.5) pdxp->gain=0.5;
+         if (pdxp->gain > 50.) pdxp->gain=50.;
+         gaindac = log10(2.*pdxp->gain)*32768.;
+         /* Copy new value to parameter array in case other routines need it
+          * before record processes again */
+         pdxp->pptr[minfo->offsets.gaindac] = gaindac;
+         (*pdset->send_msg)
+            (pdxp,  MSG_DXP_SET_SHORT_PARAM, minfo->offsets.gaindac, gaindac);
+         break;
+      case DXP4C:
+         /* Work needed here !!! set coarse gain, fine gain?*/
+         break;
+   }
+}
+
+static void setBinWidth(struct dxpRecord *pdxp)
+{
+   struct dxpDSET *pdset = (struct dxpDSET *)(pdxp->dset);
+   MODULE_INFO *minfo = &moduleInfo[pdxp->mtyp];
+   unsigned short binfact1;
+   unsigned short slowlen;
+   float binwidth;
+
+   /* New value of binfact1 to obtain the desired value of EMAX.  This must be
+    * done whenever the preamp gain (PGAIN), the ASC gain (GAIN), or the shaping 
+    * time is changed. */
+
+   switch (pdxp->mtyp) {
+      case DXP2X:
+         binwidth = pdxp->emax / pdxp->pptr[minfo->offsets.mcalimhi];
+         slowlen = pdxp->pptr[minfo->offsets.slowlen];
+         binfact1 = pdxp->pgain * pdxp->gain * minfo->adc_gain * 4. * 
+                    slowlen * binwidth + 0.5;
+         /* Copy new value to parameter array in case other routines need it
+          * before record processes again */
+         pdxp->pptr[minfo->offsets.binfact] = binfact1;
+         (*pdset->send_msg)
+            (pdxp,  MSG_DXP_SET_SHORT_PARAM, minfo->offsets.binfact, binfact1);
+         break;
+      case DXP4C:
+         /* Work needed here !!! */
+         break;
+   }
+}
+
+
+static long get_precision(struct dbAddr *paddr, long *precision)
+{
+    int fieldIndex = dbGetFieldIndex(paddr);
+
+    if (fieldIndex == dxpRecordGAIN) {
+       *precision = 3;
+       return(0);
+    }
+    recGblGetPrec(paddr,precision);
+    return(0);
+}
 
 static long get_graphic_double(struct dbAddr *paddr, struct dbr_grDouble *pgd)
 {
@@ -714,6 +848,11 @@ static long get_graphic_double(struct dbAddr *paddr, struct dbr_grDouble *pgd)
    DXP_SHORT_PARAM *short_param;
    DXP_LONG_PARAM *long_param;
 
+   if (fieldIndex == dxpRecordGAIN) {
+      pgd->upper_disp_limit = 50.;
+      pgd->lower_disp_limit = 0.5;
+      return(0);
+   }
    if ((fieldIndex < dxpRecordA01V) || (fieldIndex > dxpRecordS13V)) {
       recGblGetGraphicDouble(paddr,pgd);
       return(0);
@@ -752,6 +891,11 @@ static long get_control_double(struct dbAddr *paddr, struct dbr_ctrlDouble *pcd)
    DXP_SHORT_PARAM *short_param;
    DXP_LONG_PARAM *long_param;
 
+   if (fieldIndex == dxpRecordGAIN) {
+      pcd->upper_ctrl_limit = 50.;
+      pcd->lower_ctrl_limit = 0.5;
+      return(0);
+   }
    if ((fieldIndex < dxpRecordA01V) || (fieldIndex > dxpRecordS13V)) {
       recGblGetControlDouble(paddr,pcd);
       return(0);
