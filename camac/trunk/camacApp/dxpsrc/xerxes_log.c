@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  * xerxes_log.c
  *
@@ -77,7 +79,6 @@ XERXES_EXPORT int XERXES_API dxp_set_log_level(int *level)
 XERXES_EXPORT int XERXES_API dxp_set_log_output(char *filename)
 /* char *filename;					Input: name of file to redirect reporting */
 {
-	char info_string[INFO_LEN];
 
 	if (xerxes_md_output==NULL) {
 
@@ -85,11 +86,7 @@ XERXES_EXPORT int XERXES_API dxp_set_log_output(char *filename)
 		dxp_install_utils("NULL");
 	}
 
-	sprintf(info_string, "&xerxes_md_output = %#p", xerxes_md_output);
-	dxp_log_debug("dxp_set_log_output", info_string);
-
 	xerxes_md_output(filename);
 
 	return DXP_SUCCESS;
 }
-

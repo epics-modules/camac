@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  *  xia_dxp4c2x.h
  *
@@ -97,7 +99,7 @@ XERXES_STATIC unsigned int XERXES_API dxp_get_event_length(Dsp_Info *, unsigned 
 XERXES_STATIC unsigned int XERXES_API dxp_get_history_length(Dsp_Info *, unsigned short *);
 XERXES_STATIC int XERXES_API dxp_read_spectrum(int *, int *, Board *, unsigned long *);
 XERXES_STATIC int XERXES_API dxp_read_baseline(int *, int *, Board*, unsigned short *);
-XERXES_STATIC int XERXES_API dxp_read_event(int *, int *, Board *, unsigned short *);
+  /*XERXES_STATIC int XERXES_API dxp_read_event(int *, int *, Board *, unsigned short *);*/
 XERXES_STATIC int XERXES_API dxp_read_history(int *, int *, Board *, unsigned short *);
 XERXES_STATIC int XERXES_API dxp_perform_gaincalc(float *,unsigned short *,short *);
 XERXES_STATIC int XERXES_API dxp_change_gains(int *, int *, int *, float *,Dsp_Info *);
@@ -172,7 +174,7 @@ XERXES_STATIC int XERXES_API dxp_read_dspparams();
 XERXES_STATIC int XERXES_API dxp_write_dspparams();
 XERXES_STATIC int XERXES_API dxp_read_spectrum();
 XERXES_STATIC int XERXES_API dxp_read_baseline();
-XERXES_STATIC int XERXES_API dxp_read_event();
+  /*XERXES_STATIC int XERXES_API dxp_read_event();*/
 XERXES_STATIC int XERXES_API dxp_read_history();
 XERXES_STATIC int XERXES_API dxp_perform_gaincalc();
 XERXES_STATIC int XERXES_API dxp_change_gains();

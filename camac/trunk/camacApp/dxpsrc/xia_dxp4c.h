@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  *  xia_dxp4c.h
  *
@@ -38,12 +40,9 @@ XERXES_STATIC int XERXES_API dxp_read_word(int *,int *,int *,unsigned short *,un
 XERXES_STATIC int XERXES_API dxp_write_word(int *,int *,int *,unsigned short *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_read_block(int *,int *,int *,int *,unsigned short *,unsigned int *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_write_block(int *,int *,int *,int *, unsigned short *,unsigned int *,unsigned short *);
-XERXES_STATIC int XERXES_API dxp_read_long(int *,int *,int *,unsigned short *,unsigned long *);
-XERXES_STATIC int XERXES_API dxp_write_long(int *,int *,int *,unsigned short *,unsigned long *);
 XERXES_STATIC int XERXES_API dxp_look_at_me(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_ignore_me(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_clear_LAM(int *ioChan, int *modChan);
-XERXES_STATIC int XERXES_API dxp_read_CSR(int *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_prep_for_readout(int *, int *);
 XERXES_STATIC int XERXES_API dxp_done_with_readout(int *, int *, Board *board);
 XERXES_STATIC int XERXES_API dxp_begin_run(int *, int *,unsigned short *,unsigned short *, Board *);
@@ -130,7 +129,6 @@ XERXES_STATIC int XERXES_API dxp_write_block();
 XERXES_STATIC int XERXES_API dxp_disable_LAM();
 XERXES_STATIC int XERXES_API dxp_enable_LAM();
 XERXES_STATIC int XERXES_API dxp_clear_LAM();
-XERXES_STATIC int XERXES_API dxp_read_CSR();
 XERXES_STATIC int XERXES_API dxp_download_fipconfig();
 XERXES_STATIC int XERXES_API dxp_download_dspconfig();
 XERXES_STATIC int XERXES_API dxp_download_dsp_done();
@@ -182,8 +180,6 @@ XERXES_STATIC int XERXES_API dxp_change_gains();
 XERXES_STATIC int XERXES_API dxp_setup_asc();
 XERXES_STATIC int XERXES_API dxp_calibrate_asc();
 XERXES_STATIC int XERXES_API dxp_calibrate_channel();
-XERXES_STATIC int XERXES_API dxp_read_long();
-XERXES_STATIC int XERXES_API dxp_write_long();
 XERXES_STATIC int XERXES_API dxp_little_endian();
 XERXES_STATIC FILE* XERXES_API dxp_find_file();
 

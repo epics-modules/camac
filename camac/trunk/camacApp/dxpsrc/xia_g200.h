@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  *  xia_g200.h
  *
@@ -34,6 +36,7 @@ XERXES_STATIC int XERXES_API dxp_read_wcr(int *, unsigned short *);
 XERXES_STATIC int XERXES_API dxp_write_data(int *, unsigned short *, unsigned int);
 XERXES_STATIC int XERXES_API dxp_read_data(int *, unsigned short *, unsigned int);
 XERXES_STATIC int XERXES_API dxp_write_fippi(int *, unsigned short *, unsigned int);
+XERXES_STATIC int XERXES_API dxp_write_mmu(int *, unsigned short *, unsigned int);
 XERXES_STATIC int XERXES_API dxp_read_word(int *,int *,unsigned short *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_write_word(int *,int *,unsigned short *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_read_block(int *,int *,unsigned short *,unsigned int *,unsigned short *);
@@ -125,6 +128,7 @@ XERXES_STATIC int XERXES_API dxp_read_wcr();
 XERXES_STATIC int XERXES_API dxp_write_data();
 XERXES_STATIC int XERXES_API dxp_read_data();
 XERXES_STATIC int XERXES_API dxp_write_fippi();
+XERXES_STATIC int XERXES_API dxp_write_mmu();
 XERXES_STATIC int XERXES_API dxp_read_word();
 XERXES_STATIC int XERXES_API dxp_write_word();
 XERXES_STATIC int XERXES_API dxp_read_block();

@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*----------------------------------------------------------
     CAMACDLL.C 3/22/97 using dynamic linking to wnaspi32
     The function camxfr() is exported to the users application
@@ -50,6 +52,11 @@ SRB_ExecSCSICmd ExecTURSRB;
 /* WinASPI structures */
 SRB_GDEVBlock GetCamDevSRB;
 
+/* A little boolean help to stop the compiler from warning 
+ * about while(1) expressions.
+ */
+#define TRUE_  (1 == 1)
+
 /*******************************************************************************
  * 
  * Routine to perform initialization of the SCSI layer, this will scan the
@@ -85,7 +92,7 @@ __declspec(dllexport) long xia_caminit(short* buf)
 	ThisSRB.SRB_Flags = 0;
 	ThisSRB.SRB_Hdr_Rsvd = 0;
 	for (i=0; i< (unsigned int) min(MAX_ADAPTS,numHA); i++) { // loop over host adapters
-		ThisSRB.SRB_HaId = i;
+		ThisSRB.SRB_HaId = (unsigned char)i;
 		(*fpSendAspi32Cmd) ( (LPSRB) &ThisSRB );
 		if (ThisSRB.SRB_Status != SS_COMP){	// if HA did not respond
 			for (j=0; j<16; j++) cam_dev_type[i][j]=0;
@@ -93,10 +100,10 @@ __declspec(dllexport) long xia_caminit(short* buf)
 		}
              
 		align_mask[i] = (WORD)((ThisSRB.HA_Unique[1]<< 8) | ThisSRB.HA_Unique[0]);
-		resid_sup[i] = ThisSRB.HA_Unique[2] & 2;
+		resid_sup[i] = (unsigned char)(ThisSRB.HA_Unique[2] & 2);
 		n_targs[i] = 8;
 		if (ThisSRB.HA_Unique[3] != 0) n_targs[i] = ThisSRB.HA_Unique[3];
-		n_targs[i]=min(n_targs[i],16);		// send warning if n_targs > 16 
+		n_targs[i] = (unsigned char)min(n_targs[i],16);		// send warning if n_targs > 16 
              
 		max_len[i] = (DWORD)((ThisSRB.HA_Unique[7] <<8) | ThisSRB.HA_Unique[6]);  
 		max_len[i] = (max_len[i] <<8) | (DWORD)ThisSRB.HA_Unique[5];
@@ -109,17 +116,17 @@ __declspec(dllexport) long xia_caminit(short* buf)
 			if ( j == ha_scsi_id[i] ) cam_dev_type[i][j] = 0;  //except for host ID
 			else {
 				GetCamDevSRB.SRB_Cmd = SC_GET_DEV_TYPE;
-				GetCamDevSRB.SRB_HaId = i;
+				GetCamDevSRB.SRB_HaId = (unsigned char)i;
 				GetCamDevSRB.SRB_Flags = 0;
 				GetCamDevSRB.SRB_Hdr_Rsvd = 0L;
-				GetCamDevSRB.SRB_Target = j;
+				GetCamDevSRB.SRB_Target = (unsigned char)j;
 				GetCamDevSRB.SRB_Lun = 0;
 				GetCamDevSRB.SRB_Rsvd1 = 0;
 				ReturnVal =(*fpSendAspi32Cmd) ( (LPSRB) &GetCamDevSRB );
 				if( (ReturnVal == SS_COMP) && ((GetCamDevSRB.SRB_DeviceType & 0x1f)== PROC_DEV_TYPE) )
 				{	
 					cam_dev_type[i][j] = 1;          //it is 73A
-					buf[index++]=i;   buf[index++]=j;
+					buf[index++] = (unsigned short)i;   buf[index++] = (unsigned short)j;
 				}
 				
 			/*if ( ReturnVal == SS_NO_DEVICE) cam_dev_type[i][j] = 0;
@@ -134,7 +141,7 @@ __declspec(dllexport) long xia_caminit(short* buf)
 			}
 		}
 	}		// ends loop over host adapters
-	buf[0]=(index-1)/2;
+	buf[0] = (unsigned short)((index - 1) / 2);
 	return(0);
 
 }
@@ -192,14 +199,14 @@ __declspec(dllexport) long xia_camxfr(short* camadr, short cam_func, long len,
 			if(t == 100)
 				return 12;//-1;
 			Sleep(2);
-		}while(1);
+		}while(TRUE_);
 //**********************************************************
 		tested[camadr[HA_NMBR]][camadr[CRATE]] = 1;
 	}
 	if (!(cam_func & 8)) {
 		ExecCAMSRB.SRB_Cmd = SC_EXEC_SCSI_CMD;
 		ExecCAMSRB.SRB_HaId = (unsigned char)camadr[HA_NMBR];
-		ExecCAMSRB.SRB_Flags = (cam_func & 16) ? SRB_DIR_OUT : SRB_DIR_IN;
+		ExecCAMSRB.SRB_Flags = (unsigned char)((cam_func & 16) ? SRB_DIR_OUT : SRB_DIR_IN);
 		ExecCAMSRB.SRB_Hdr_Rsvd = 0;
 		ExecCAMSRB.SRB_Target = (BYTE)camadr[CRATE];
 		ExecCAMSRB.SRB_Lun = 0;
@@ -215,7 +222,7 @@ __declspec(dllexport) long xia_camxfr(short* camadr, short cam_func, long len,
 		ExecCAMSRB.CDBByte[0] = 0x21;
 		ExecCAMSRB.CDBByte[1] = 0;
 		ExecCAMSRB.CDBByte[2] = (BYTE)cam_func;
-		ExecCAMSRB.CDBByte[3] = (mode << 5) | (camadr[STA] & 0x1F);
+		ExecCAMSRB.CDBByte[3] = (unsigned char)((mode << 5) | (camadr[STA] & 0x1F));
 		ExecCAMSRB.CDBByte[4] = (BYTE)camadr[SUBADR];
 		ExecCAMSRB.CDBByte[5] = 0;
 		ExecCAMSRB.CDBByte[8] = (BYTE)len;
@@ -236,7 +243,7 @@ __declspec(dllexport) long xia_camxfr(short* camadr, short cam_func, long len,
 			if(t == 100)
 				return 12;//-1;
 			Sleep(2);
-		}while(1);
+		}while(TRUE_);
 		
 		if(retval != SS_COMP)
 			return 13;
@@ -286,7 +293,7 @@ __declspec(dllexport) long xia_camxfr(short* camadr, short cam_func, long len,
 			if(t == 100)
 				return 12;//-1;
 			Sleep(2);
-		}while(1);
+		}while(TRUE_);
 		
 		if(retval != SS_COMP)
 			return 13;
@@ -303,4 +310,5 @@ __declspec(dllexport) long xia_camxfr(short* camadr, short cam_func, long len,
 		//return(0x2000);
 	}
 }
+
 

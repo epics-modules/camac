@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  * g200.c
  *
@@ -438,7 +440,44 @@ static int dxp_write_fippi(int* ioChan, unsigned short* data, unsigned int len)
 	status=g200_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
 	if (status!=DXP_SUCCESS){
 		status = DXP_WRITE_FIPPI;
-		dxp_log_error("dxp_write_fippi","Error writing to FiPPi reg",status);
+		dxp_log_error("dxp_write_fippi","Error writing to FiPPi configuration register",status);
+	}
+	return status;
+}
+
+/******************************************************************************
+ * Routine to write MMU data
+ * 
+ * This is the routine that transfers the MMU program to the G200.  It 
+ * assumes that the MMU is already reset.
+ *
+ ******************************************************************************/
+static int dxp_write_mmu(int* ioChan, unsigned short* data, unsigned int len)
+/* int *ioChan;							Input: I/O channel of G200 module   */
+/* unsigned short *data;				Input: address of data to write    */
+/* unsigned int len;						Input: length of the data to read  */
+{
+	unsigned int f, a;
+	int status;
+	unsigned short saddr;
+
+/* write transfer start address register */
+	
+	saddr = G200_MMU_ADDRESS;
+	status = dxp_write_tsar(ioChan, &saddr);
+	if (status!=DXP_SUCCESS){
+		dxp_log_error("dxp_write_fippi","Error writing TSAR",status);
+		return status;
+	}
+
+/* Write the FIPPI data */
+
+	f=G200_MMU_F_WRITE;
+	a=G200_MMU_A_WRITE;
+	status=g200_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
+	if (status!=DXP_SUCCESS){
+		status = DXP_WRITE_MMU;
+		dxp_log_error("dxp_write_fippi","Error writing to MMU configuration register",status);
 	}
 	return status;
 }
@@ -533,17 +572,6 @@ static int dxp_clear_LAM(int* ioChan, int* modChan)
 	}
 
 	return status;
-}
-
-/******************************************************************************
- * Wrapper routine to keep the system backward compatible.  Change the name
- * to using no caps in the function calls.
- ******************************************************************************/
-static int dxp_read_CSR(int* ioChan, unsigned short* data)
-/* int *ioChan;					Input: I/O channel of G200 module        */
-/* unsigned short *data;		Output: CAMAC status register value     */
-{
-	return dxp_read_csr(ioChan, data);
 }
 
 /********------******------*****------******-------******-------******------*****
@@ -786,11 +814,10 @@ static int dxp_write_block(int* ioChan, int* modChan, unsigned short* addr,
  *
  ********------******------*****------******-------******-------******------*****/
 /******************************************************************************
- * Routine to download the FiPPi configuration
+ * Routine to download all FPGA firmware
  * 
- * This routine downloads the FiPPi program of specifice decimation(number
- * of clocks to sum data over), CAMAC channel and DXP channel.  If -1 for the 
- * DXP channel is specified then all channels are downloaded.
+ * This routine downloads the MMU (memory manager unit) and Fippi programs
+ * to the G200.
  *
  ******************************************************************************/
 static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
@@ -799,8 +826,7 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
 /* Board *board;					Input: Board data					*/
 {
 /*
- *   Download the appropriate FiPPi configuration file to a single channel
- *   or all channels of a single DXP module.
+ *   Download the appropriate Firmware configuration files to a G200
  */
 	int status;
 	char info_string[INFO_LEN];
@@ -817,6 +843,59 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
 		return status;
 	}
 
+/* Download the Memory manager */
+	fippi = board->mmu;
+/* make sure a valid MMU was found */
+	if (fippi==NULL) {
+		sprintf(info_string,"There is no valid MMU defined for module %i",board->mod);
+        status = DXP_NOFIPPI;
+        dxp_log_error("dxp_download_fipconfig",info_string,status);
+		return status;
+	}
+
+	length = fippi->proglen;
+	
+/* Write to CSR to initiate download */
+	
+	data=MASK_MMURESET;
+
+	status = dxp_write_csr(ioChan, &data);
+	if (status!=DXP_SUCCESS){
+		dxp_log_error("dxp_download_fipconfig","Error writing CSR while reseting MMU",status); 
+		return status;
+	}
+
+/* wait 50ms, for LCA to be ready for next data */
+
+	wait = 0.050f;
+	status = g200_md_wait(&wait);
+
+/* Retrieve MAXBLK and check if single transfer is needed */
+	maxblk = g200_md_get_maxblk();
+	if (maxblk <= 0) maxblk = length;
+
+/* prepare for the first pass thru loop */
+	nxfers = ((length-1)/maxblk) + 1;
+	xlen = ((maxblk>=length) ? length : maxblk);
+	j = 0;
+    do {
+
+/* now write the data */
+        
+		status = dxp_write_mmu(ioChan, &(fippi->data[j*maxblk]), xlen);
+		if (status!=DXP_SUCCESS){
+			status = DXP_WRITE_BLOCK;
+			sprintf(info_string,"Error in %dth (last) block transfer of MMU",j);
+			dxp_log_error("dxp_download_fipconfig",info_string,status);
+			return status;
+        }
+/* Next loop */
+		j++;
+/* On last pass thru loop transfer the remaining bytes */
+		if (j==(nxfers-1)) xlen=((length-1)%maxblk) + 1;
+	} while (j<nxfers);
+	
+/* Now proceed with the FIPPI download */
 /* If allchan chosen, then select the first valid fippi */
 	for (i=0;i<board->nchan;i++) {
 		if (((board->used)&(0x1<<i))!=0) {
@@ -1648,6 +1727,8 @@ static int dxp_test_spectrum_memory(int* ioChan, int* modChan, int* pattern,
 	int info[20];
 	float timeout=1.0;
 
+	return DXP_SUCCESS;
+	
 	type_write = CT_DGFG200_WRITE_MEMORY_FIRST;
 	type_read = CT_DGFG200_READ_MEMORY_FIRST;
 	
@@ -2053,7 +2134,7 @@ static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name,
 /* Write the value of the symbol into DSP memory */
 	
 	if((status=dxp_write_dsp_param_addr(ioChan,modChan,&(dsp->params->parameters[addr].address),
-												value))!=DXP_SUCCESS){
+										value))!=DXP_SUCCESS){
 		sprintf(info_string, "Error writing parameter %s", uname);
 		dxp_log_error("dxp_modify_dspsymbol",info_string,status);
 		return status;
@@ -2409,27 +2490,6 @@ static unsigned int dxp_get_event_length(Dsp_Info* dsp, unsigned short* params)
 }
 
 /******************************************************************************
- *
- * Routine to return the length of the history buffer.
- *
- ******************************************************************************/
-static unsigned int dxp_get_history_length(Dsp_Info* dsp, unsigned short* params)
-/* Dsp_Info *dsp;					Input: Relavent DSP info			*/
-/* unsigned short *params;			Input: Array of DSP parameters	*/
-{
-	unsigned short ustemp;
-	Dsp_Info *dsptemp;
-
-	dsptemp = dsp;
-	ustemp = *params;
-
-/* There is no history buffer in the DGF line */
-
-	return 0;
-
-}
-
-/******************************************************************************
  * Routine to readout the spectrum memory from a single DSP.
  * 
  * This routine reads the spectrum histogramfrom the DSP pointed to by ioChan and
@@ -2536,37 +2596,6 @@ static int dxp_read_baseline(int* ioChan, int* modChan, Board* board,
 	ustemp = baseline;
 
 /* There is no baseline buffer in the DGF line */
-
-	return status;
-}
-	
-/******************************************************************************
- * Routine to readout the history buffer from a single DSP.
- * 
- * This routine reads the history buffer from the DSP pointed to by ioChan and
- * modChan.  It returns the array to the caller.
- *
- ******************************************************************************/
-static int dxp_read_history(int* ioChan, int* modChan, Board* board, 
-							unsigned short* history)
-/* int *ioChan;						Input: I/O channel of DSP					*/
-/* int *modChan;					Input: module channel of DSP				*/
-/* Board *board;					Input: Relevent Board info		*/
-/* unsigned short *params;			Input: Array of DSP parameters				*/
-/* unsigned short *history;			Output: array of history buffervalues		*/
-{
-	int status = DXP_SUCCESS;
-	
-	int *itemp;
-	unsigned short *ustemp;
-	Board *btemp;
-
-	itemp = ioChan;
-	itemp = modChan;
-	btemp = board;
-	ustemp = history;
-
-/* There is no history buffer in the DGF line */
 
 	return status;
 }
@@ -2851,6 +2880,13 @@ static int dxp_end_run(int* ioChan, int* modChan)
 	int status;
 	unsigned short data;
 
+	status = dxp_read_csr(ioChan, &data);                    /* read from CSR */
+	if (status!=DXP_SUCCESS) {
+		dxp_log_error("dxp_end_run","Error reading CSR",status);
+	}
+
+	data &= ~MASK_RUNENABLE;
+	
 	status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
 	if (status!=DXP_SUCCESS) {
 		dxp_log_error("dxp_end_run","Error writing CSR",status);
@@ -2888,7 +2924,7 @@ static int dxp_run_active(int* ioChan, int* modChan, int* active)
 /* Check the run active bit of the CSR */
 	if ((data & MASK_RUN_ACTIVE)!=0) *active = 1;
 
-    return status;    
+   return status;    
 
 }
 
@@ -2927,6 +2963,10 @@ static int dxp_begin_control_task(int* ioChan, int* modChan, short *type,
 		dxp_log_error("dxp_begin_control_task",info_string,status);
         return status;
 	}
+
+	printf("dsp param = %s\n", board->dsp[*modChan]->params->parameters[106].pname);
+	printf("dsp param addr = %i\n", board->dsp[*modChan]->params->parameters[106].address);
+	printf("dsp param access = %i\n", board->dsp[*modChan]->params->parameters[106].access);
 
 /* Write the RUNTASK parameter */
 	runtask = CONTROL_TASK_RUN;
@@ -4036,36 +4076,4 @@ static FILE *dxp_find_file(const char* filename, const char* mode)
 	return NULL;
 }
 
-/******************************************************************************
- * Routine to swap the the words of an array of (long)s
- * 
- ******************************************************************************/
-VOID dxp_swaplong(unsigned int* len, unsigned long* array)
-/* unsigned int *len;				Input: Number of elements in array to swap	*/
-/* unsigned long *array;			I/O: Input/Output of array					*/
-{
 
-    unsigned int i;
-
-    for (i=0; i<*len; i++) array[i]=
-        ((array[i]<<16)&0xFFFF0000) | ((array[i]>>16)&0x0000FFFF);
-}
-
-/******************************************************************************
- * Routine to determine if the system is little or big endian....
- *
- ******************************************************************************/
-static int dxp_little_endian(VOID)
-{
-
-    static int endian=-1;
-    union{ long Long; char Char[sizeof(long)]; }u;
-
-    if(endian == -1){
-        u.Long=1;
-        endian = u.Char[0]==1 ? 1 : 0;
-    }
-
-    return (endian);
-
-}

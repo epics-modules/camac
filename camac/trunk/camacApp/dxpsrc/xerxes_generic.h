@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  *  xerxes_generic.h
  *
@@ -17,7 +19,7 @@
 
 #define MAXDET				500
 #define MAXSYM              500
-#define MAXSYMBOL_LEN        13
+#define MAXSYMBOL_LEN        15
 #define MAXFILENAME_LEN     200
 #define MAXDXP				100		/* Maximum number of DXP modules in system */
 #define MAXBOARDNAME_LEN	 20

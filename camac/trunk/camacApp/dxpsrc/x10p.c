@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  * x10p.c
  *
@@ -24,41 +26,8 @@
  *   All rights reserved
  *
  *
- *   This file contains the following DXP primative routines.  All arguments 
- *   are pass by reference, hence, all arguments are callable via fortran 
- *   (EXCEPT dxp_loc and dxp_symbolname: which have a character string 
- *   argument.  fortran users  must call dxp_loc_fortran and
- *   dxp_symbolname_fortran which are in the file fortran_users.c -- these
- *   versions pass fortran character string by descriptor.
- *
- *     dxp_read_word(ioChan,modChan,xy,addr,readdata)
- *     dxp_write_word(ioChan,modChan,xy,addr,writedata)
- *     dxp_read_block(ioChan,modChan,xy,constaddr,addr,length,readdata[])
- *     dxp_write_block(ioChan,modChan,xy,constaddr,addr,length,writedata[])
- *     dxp_disable_LAM(ioChan)
- *     dxp_clear_LAM(ioChan)
- *     dxp_read_CSR(ioChan,data)
- *     dxp_download_fipconfig(ioChan,modChan,decimation)
- *     dxp_download_dspconfig(ioChan,modChan)
- *     dxp_begin_run(ioChan,gate,resume)
- *     dxp_end_run(ioChan)
- *     dxp_loc(symbolname,address)
- *     dxp_mem_dump(ioChan,dxp_chan)
- *     dxp_begin_calibrate(ioChan,calib_task);
- *     dxp_test_mem(ioChan,modChan,whichtest,xy,length,addr)
- *     dxp_free_fipconfig()
- *     dxp_get_dspconfig()
- *     dxp_free_dspconfig()
- *     dxp_decode_error(params[],runerror,errinfo)
- *     dxp_clear_error(ioChan,modChan)
- *     dxp_get_runstats(params[],evts,under,over,fast,base,live)
- *     dxp_swaplong(len,array)
- *     dxp_symbolname(lindex,name)
- *     dxp_read_long(ioChan,modChan,xy,addr,readdata)
- *     dxp_write_long(ioChan,modChan,xy,addr,writedata)
- *     dxp_little_endian()
- *
  */
+
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -457,17 +426,6 @@ static int dxp_clear_LAM(int* ioChan, int* modChan)
 	return DXP_SUCCESS;
 }
 
-/******************************************************************************
- * Wrapper routine to keep the system backward compatible.  Change the name
- * to using no caps in the function calls.
- ******************************************************************************/
-static int dxp_read_CSR(int* ioChan, unsigned short* data)
-/* int *ioChan;					Input: I/O channel of DXP module        */
-/* unsigned short *data;		Output: CAMAC status register value     */
-{
-	return dxp_read_csr(ioChan, data);
-}
-
 /********------******------*****------******-------******-------******------*****
  * Now begins the code devoted to routines that look like CAMAC transfers to 
  * a preset address to the external world.  They actually write to the TSAR, 
@@ -698,100 +656,6 @@ static int dxp_write_block(int* ioChan, int* modChan, unsigned short* addr,
 	} while (i<nxfers);
 
 	return status;
-}
-
-/******************************************************************************
- * Routine to read a (long) from DSP memory.  Handle those pesky 24-bit program
- * memory addresses.
- * 
- * Read a long from successive DSP addresses, for a single channel of a
- * single DXP module.  Convert to little-endian if necessary.
- *
- ******************************************************************************/
-static int dxp_read_long(int* ioChan, int* modChan, unsigned short* addr, 
-						 unsigned long* readdata)
-/* int *ioChan;						Input: I/O channel of DXP module      */
-/* int *modChan;					Input: DXP channels no (0,1,2,3)      */
-/* unsigned short *addr;			Input: Address within X or Y mem.     */
-/* unsigned long *readdata;			Output: longword read from memory     */
-{
-	int status;
-	unsigned short address= *addr;
-	unsigned int one=1;
-	unsigned short *sptr= (unsigned short *) readdata;
-   
-/* Read the first word and Store in first 2 bytes of sptr */
-
-	if((status = dxp_read_word(ioChan,
-							   modChan,
-							   &address,
-							   sptr))!=DXP_SUCCESS){
-		dxp_log_error("dxp_read_long","Error reading high order bytes",status);
-		return status;
-	}
-/* Read the second word and Store in next 2 bytes of sptr */
-
-	address += 1;
-	sptr += 1;
-	if((status = dxp_read_word(ioChan,
-							   modChan,
-							   &address,
-							   sptr))!=DXP_SUCCESS){
-		dxp_log_error("dxp_read_long","Error readong low order bytes",status);
-		return status;
-	}
-	if (dxp_little_endian()) dxp_swaplong(&one, readdata);
-
-	return DXP_SUCCESS;
-}
-
-/******************************************************************************
- * Routine to write a (long) to DSP memory.  Handle those pesky 24-bit program
- * memory addresses.
- * 
- * Write a long to successive DSP addresses, for a single channel of a
- * single DXP module.  Convert to little-endian if necessary.
- *
- ******************************************************************************/
-static int dxp_write_long(int* ioChan, int* modChan, unsigned short* addr,
-						  unsigned long* writedata)
-/* int *ioChan;						Input: I/O channel of DXP module     */
-/* int *modChan;					Input: DXP channels no (0,1,2,3)     */
-/* unsigned short *addr;			Input: Address within X or Y mem.    */
-/* unsigned long *writedata;		Input: longword to write to memory   */
-{
-	int status;
-	unsigned int one=1;
-	unsigned short address= *addr;
-	unsigned long data = *writedata;
-	unsigned short *sptr= (unsigned short *) &data;
-   
-	if (dxp_little_endian()) dxp_swaplong(&one, &data);
-
-	/* Write the first word into the DSP (lower bits) */
-	
-	if((status = dxp_write_word(ioChan,
-							   modChan,
-							   &address,
-							   sptr))!=DXP_SUCCESS){
-		dxp_log_error("dxp_write_long","Error writing high order bytes",status);
-		return status;
-	}
-	
-	/* Now write the second word (upper bits) */
-	
-	address += 1;
-	sptr += 1;
-	if((status = dxp_write_word(ioChan,
-   								modChan,
-								&address,
-								sptr))!=DXP_SUCCESS){
-		dxp_log_error("dxp_write_long","Error writing low order bytes",status);
-		return status;
-	}
-	
-	return DXP_SUCCESS;
-	
 }
 
 /********------******------*****------******-------******-------******------*****
@@ -2552,18 +2416,21 @@ static int dxp_read_history(int* ioChan, int* modChan, Board* board,
  * modChan.  It returns the array to the caller.
  *
  ******************************************************************************/
+/*
 static int dxp_read_event(int* ioChan, int* modChan, Board* board, 
 						  unsigned short* event)
+*/
 /* int *ioChan;						Input: I/O channel of DSP					*/
 /* int *modChan;					Input: module channel of DSP				*/
 /* Board *board;				Input: Relavent Board info			*/
 /* unsigned short *event;			Output: array of history buffervalues		*/
+/*
 {
 
 	int status;
 	unsigned short addr, start;
-	unsigned int len;					/* number of short words in spectrum	*/
-
+	unsigned int len;*/					/* number of short words in spectrum	*/
+/*
 	if((status=dxp_loc("EVTBSTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
 		status = DXP_NOSYMBOL;
 		dxp_log_error("dxp_read_event","Unable to find EVTBSTART symbol",status);
@@ -2572,9 +2439,9 @@ static int dxp_read_event(int* ioChan, int* modChan, Board* board,
 	start = (unsigned short) (board->params[*modChan][addr] + DATA_BASE);
 	len = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
 
-	
+*/
 /* Read out the basline histogram. */
-	
+/*
 	if((status=dxp_read_block(ioChan,modChan,&start,&len,event))!=DXP_SUCCESS){
 		dxp_log_error("dxp_read_event","Error reading out event buffer",status);
 		return status;
@@ -2582,7 +2449,9 @@ static int dxp_read_event(int* ioChan, int* modChan, Board* board,
 
 	return status;
 }
-	
+*/
+
+
 /******************************************************************************
  * Routine to prepare the DXP4C2X for data readout.
  * 
@@ -2700,6 +2569,13 @@ static int dxp_end_run(int* ioChan, int* modChan)
 	int status;
 	unsigned short data;
 
+	status = dxp_read_csr(ioChan, &data);                    /* read from CSR */
+	if (status!=DXP_SUCCESS) {
+		dxp_log_error("dxp_end_run","Error reading CSR",status);
+	}
+
+	data &= ~MASK_RUNENABLE;
+	
 	status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
 	if (status!=DXP_SUCCESS) {
 		dxp_log_error("dxp_end_run","Error writing CSR",status);
@@ -2973,9 +2849,6 @@ static int dxp_end_control_task(int* ioChan, int* modChan, Board *board)
     }
 /* Remove the CONTROL_TASK bit and add the WRITE_BASELINE bit */
 /* modify */
-	sprintf(info_string, "runtasks = %#x\n", runtasks);
-	dxp_log_debug("dxp_end_control_task", info_string);
-
 	runtasks = (unsigned short) ((temp & ~CONTROL_TASK) & ~STOP_BASELINE);
 	
 	sprintf(info_string, "runtasks = %#x\n", runtasks);
@@ -2990,8 +2863,7 @@ static int dxp_end_control_task(int* ioChan, int* modChan, Board *board)
         return status;
 	}
 
-	return status;    
-
+	return status;
 }
 
 /******************************************************************************
@@ -3009,6 +2881,10 @@ static int dxp_control_task_params(int* ioChan, int* modChan, short *type,
 {
 	int status = DXP_SUCCESS;
 	char info_string[INFO_LEN];
+	int *itemp;
+
+/* Dummy assignment to get rid of warnings */
+	itemp = ioChan;
 
 /* Default values */
 /* nothing to readout here */
@@ -3974,36 +3850,4 @@ static FILE *dxp_find_file(const char* filename, const char* mode)
 	return NULL;
 }
 
-/******************************************************************************
- * Routine to swap the the words of an array of (long)s
- * 
- ******************************************************************************/
-VOID dxp_swaplong(unsigned int* len, unsigned long* array)
-/* unsigned int *len;				Input: Number of elements in array to swap	*/
-/* unsigned long *array;			I/O: Input/Output of array					*/
-{
 
-    unsigned int i;
-
-    for (i=0; i<*len; i++) array[i]=
-        ((array[i]<<16)&0xFFFF0000) | ((array[i]>>16)&0x0000FFFF);
-}
-
-/******************************************************************************
- * Routine to determine if the system is little or big endian....
- *
- ******************************************************************************/
-static int dxp_little_endian(VOID)
-{
-
-    static int endian=-1;
-    union{ long Long; char Char[sizeof(long)]; }u;
-
-    if(endian == -1){
-        u.Long=1;
-        endian = u.Char[0]==1 ? 1 : 0;
-    }
-
-    return (endian);
-
-}

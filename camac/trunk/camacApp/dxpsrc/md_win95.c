@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*****************************************************************************
  *
  *  md_win95.c
@@ -62,6 +64,12 @@ XIA_MD_EXPORT int XIA_MD_API dxp_md_init_util(Xia_Util_Functions* funcs, char* t
 /* Xia_Util_Functions *funcs;	*/
 /* char *type;					*/
 {
+  /* Legacy "type" argument should be used to keep the compiler happy */
+  char *dummy = NULL;
+
+  dummy = type;
+
+
 	funcs->dxp_md_error_control = dxp_md_error_control;
 	funcs->dxp_md_alloc         = dxp_md_alloc;
 	funcs->dxp_md_free          = dxp_md_free;
@@ -131,10 +139,20 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_initialize(unsigned int* maxMod, char* dllna
 /* unsigned int *maxMod;					Input: maximum number of dxp modules allowed */
 /* char *dllname;							Input: name of the DLL						*/
 {
-	int status = DXP_SUCCESS, lstatus=-1;
+	int status = DXP_SUCCESS; 
+	int lstatus = -1;
+	int len;
+	
 	short buf[256];
 
-/* Initialize the CAMAC interface
+	/* "dllname" argument should be used to keep the compiler happy.
+	 * We may choose to expand the functionality of the library
+	 * to use this in the future...
+	 */
+	len = strlen(dllname);
+
+
+	/* Initialize the CAMAC interface */
 		
 /* check if all the memory was allocated */
     if (*maxMod>MAXMOD){
@@ -378,10 +396,15 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_epp_io(int* camChan, unsigned int* function,
 /* unsigned short *data;				I/O:  data read or written					*/
 /* unsigned int *length;				Input: how much data to read or write		*/
 {
-	int rstat=0, status;
+	int rstat = 0; 
+	int status;
+	int garbage;
+
 	unsigned int i;
 
 	unsigned long *temp=NULL;
+
+	garbage = *camChan;
 
 /* Data*/
 	if (*address==0) {
@@ -578,3 +601,4 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_puts(char* s)
 	return printf("%s", s);
 
 }
+
