@@ -6,6 +6,10 @@
 
     This is device support for the DXP record with MPF servers.
 
+    Modified:
+    8-Feb-2002  MLR  Removed connectIO routine and modified sendFloat64Message
+                     to call connectWait, which was recently added to DevMpf.
+
 */
 
 
@@ -52,7 +56,6 @@ public:
         DevDxpMpf(dbCommon*,DBLINK*);
         long startIO(dbCommon* pr);
         long completeIO(dbCommon* pr,Message* m);
-        virtual void connectIO(dbCommon *pr, Message *message);
         virtual void receiveReply(dbCommon* pr, Message* m);
         static long init_record(void*);
         static long send_msg(dxpRecord *pdxp, unsigned long msg, 
@@ -176,35 +179,15 @@ long DevDxpMpf::send_msg(dxpRecord *pdxp, unsigned long msg, int v1, int v2)
     return(devDxpMpf->sendFloat64Message(msg, v1, v2));
 }
 
-void DevDxpMpf::connectIO(dbCommon *pr, Message* message)
-{
-   // Set the acquisition parameters when the server connects
-   // The DXP record attempts to do this if PINI is true.  However, for MPF
-   // device support the MPF server may not yet be connected when the DXP
-   // record initializes, so we need to send the device dependent setup info
-   // whenever the server connects.
-   ConnectMessage *pConnectMessage = (ConnectMessage *)message;
-   DEBUG(5,"DevDxpIp330::connectIO, enter, record=%s, status=%d\n",
-            pr->name, pConnectMessage->status);
-   if (pConnectMessage->status != connectYes) goto finish;
-
-   //  Do anything that needs to be done when the server connects here.
-finish:
-   // Call the base class method
-   DevMpf::connectIO(pr, message);
-}
-                                           
-   
 int DevDxpMpf::sendFloat64Message(int cmd, int v1, int v2)
 {
     Float64Message *pfm = new Float64Message;
     // We use a Float64Message even though we are sending ints to be compatible
     // with the mca record device support, which is talking to the same server
     
-    // If we are not connected don't send the message.  This could be called
-    // before we connect, and that screws up DevMpf.
-    if (!isConnected()) {
-       DEBUG(1, "(sendFloat64Message): not connected!\n");
+    // Wait for connect
+    if (!connectWait(30.)) {
+       DEBUG(1, "(sendFloat64Message): connectWait failed!\n");
        return(-1);
     }
     pfm->cmd = cmd;
@@ -217,7 +200,7 @@ int DevDxpMpf::sendFloat64Message(int cmd, int v1, int v2)
 void DevDxpMpf::receiveReply(dbCommon* pr, Message* m)
 {
     // This routine is called when replies are received from the server for 
-    // messages sent by sendFloat64Message().  It simply deletes the reply, si
+    // messages sent by sendFloat64Message().  It simply deletes the reply, since
     // the record is not waiting for the response.
     dxpRecord* pdxp = (dxpRecord*)pr;
     DEBUG(5, "%s DevDxpMpf:receiveReply enter\n", pdxp->name);
