@@ -5,8 +5,8 @@ file {
 }
 display {
 	object {
-		x=428
-		y=519
+		x=185
+		y=339
 		width=580
 		height=340
 	}
@@ -110,34 +110,6 @@ text {
 	}
 	textix="16 Element Detector Control"
 }
-"text update" {
-	object {
-		x=9
-		y=133
-		width=103
-		height=20
-	}
-	monitor {
-		chan="$(P)ElapsedReal"
-		clr=54
-		bclr=4
-	}
-	align="horiz. right"
-	limits {
-	}
-}
-text {
-	object {
-		x=118
-		y=134
-		width=170
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Elapsed real time"
-}
 text {
 	object {
 		x=118
@@ -150,24 +122,12 @@ text {
 	}
 	textix="Status"
 }
-text {
-	object {
-		x=117
-		y=159
-		width=160
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Preset real time"
-}
 rectangle {
 	object {
 		x=4
 		y=37
 		width=295
-		height=290
+		height=300
 	}
 	"basic attribute" {
 		clr=54
@@ -180,7 +140,7 @@ rectangle {
 		x=319
 		y=37
 		width=250
-		height=290
+		height=300
 	}
 	"basic attribute" {
 		clr=54
@@ -272,121 +232,6 @@ rectangle {
 	}
 	label="Stop"
 	press_msg="1"
-}
-menu {
-	object {
-		x=31
-		y=185
-		width=80
-		height=20
-	}
-	control {
-		chan="$(P)StatusAll.SCAN"
-		clr=14
-		bclr=51
-	}
-}
-text {
-	object {
-		x=117
-		y=186
-		width=110
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Status rate"
-}
-menu {
-	object {
-		x=31
-		y=210
-		width=80
-		height=20
-	}
-	control {
-		chan="$(P)ReadAll.SCAN"
-		clr=14
-		bclr=51
-	}
-}
-text {
-	object {
-		x=117
-		y=211
-		width=110
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="MCA Read rate"
-}
-"text entry" {
-	object {
-		x=31
-		y=158
-		width=80
-		height=22
-	}
-	control {
-		chan="$(P)PresetReal"
-		clr=14
-		bclr=51
-	}
-	limits {
-	}
-}
-menu {
-	object {
-		x=31
-		y=260
-		width=80
-		height=20
-	}
-	control {
-		chan="$(P)EnableClientWait"
-		clr=14
-		bclr=51
-	}
-}
-text {
-	object {
-		x=117
-		y=261
-		width=160
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Wait for client"
-}
-text {
-	object {
-		x=117
-		y=286
-		width=160
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Client Wait"
-}
-menu {
-	object {
-		x=31
-		y=285
-		width=80
-		height=20
-	}
-	control {
-		chan="$(P)ClientWait"
-		clr=14
-		bclr=51
-	}
 }
 text {
 	object {
@@ -824,10 +669,137 @@ composite {
 		}
 	}
 }
+text {
+	object {
+		x=117
+		y=180
+		width=160
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Preset real time"
+}
 menu {
 	object {
 		x=31
-		y=235
+		y=206
+		width=80
+		height=20
+	}
+	control {
+		chan="$(P)StatusAll.SCAN"
+		clr=14
+		bclr=51
+	}
+}
+text {
+	object {
+		x=117
+		y=207
+		width=110
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Status rate"
+}
+menu {
+	object {
+		x=31
+		y=231
+		width=80
+		height=20
+	}
+	control {
+		chan="$(P)ReadAll.SCAN"
+		clr=14
+		bclr=51
+	}
+}
+text {
+	object {
+		x=117
+		y=232
+		width=110
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="MCA Read rate"
+}
+"text entry" {
+	object {
+		x=31
+		y=179
+		width=80
+		height=22
+	}
+	control {
+		chan="$(P)PresetReal"
+		clr=14
+		bclr=51
+	}
+	limits {
+	}
+}
+menu {
+	object {
+		x=31
+		y=281
+		width=80
+		height=20
+	}
+	control {
+		chan="$(P)EnableClientWait"
+		clr=14
+		bclr=51
+	}
+}
+text {
+	object {
+		x=117
+		y=282
+		width=160
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Wait for client"
+}
+text {
+	object {
+		x=117
+		y=307
+		width=160
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Client Wait"
+}
+menu {
+	object {
+		x=31
+		y=306
+		width=80
+		height=20
+	}
+	control {
+		chan="$(P)ClientWait"
+		clr=14
+		bclr=51
+	}
+}
+menu {
+	object {
+		x=31
+		y=256
 		width=80
 		height=20
 	}
@@ -840,7 +812,7 @@ menu {
 text {
 	object {
 		x=117
-		y=236
+		y=257
 		width=110
 		height=20
 	}
@@ -848,4 +820,72 @@ text {
 		clr=14
 	}
 	textix="DXP Read rate"
+}
+composite {
+	object {
+		x=9
+		y=133
+		width=279
+		height=21
+	}
+	"composite name"=""
+	children {
+		"text update" {
+			object {
+				x=9
+				y=133
+				width=103
+				height=20
+			}
+			monitor {
+				chan="$(P)ElapsedReal"
+				clr=54
+				bclr=4
+			}
+			align="horiz. right"
+			limits {
+			}
+		}
+		text {
+			object {
+				x=118
+				y=134
+				width=170
+				height=20
+			}
+			"basic attribute" {
+				clr=14
+			}
+			textix="Elapsed real time"
+		}
+	}
+}
+"text update" {
+	object {
+		x=31
+		y=156
+		width=80
+		height=20
+	}
+	monitor {
+		chan="$(P)DeadTime"
+		clr=15
+		bclr=14
+	}
+	clrmod="alarm"
+	align="horiz. right"
+	limits {
+	}
+}
+text {
+	object {
+		x=118
+		y=157
+		width=170
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="% Dead time"
 }

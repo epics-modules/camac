@@ -5,8 +5,8 @@ file {
 }
 display {
 	object {
-		x=28
-		y=50
+		x=-44
+		y=193
 		width=1020
 		height=914
 	}
@@ -2704,57 +2704,6 @@ rectangle {
 		chan="$(P)$(R).RCAL"
 	}
 }
-menu {
-	object {
-		x=902
-		y=536
-		width=100
-		height=25
-	}
-	control {
-		chan="$(P)$(R).PKTM"
-		clr=14
-		bclr=51
-	}
-}
-text {
-	object {
-		x=922
-		y=488
-		width=60
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Peaking"
-	align="horiz. centered"
-}
-text {
-	object {
-		x=902
-		y=506
-		width=100
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Time"
-	align="horiz. centered"
-}
-rectangle {
-	object {
-		x=892
-		y=487
-		width=120
-		height=80
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-}
 composite {
 	object {
 		x=331
@@ -3607,63 +3556,10 @@ composite {
 		}
 	}
 }
-text {
-	object {
-		x=922
-		y=581
-		width=60
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Baseline"
-	align="horiz. centered"
-}
-text {
-	object {
-		x=902
-		y=599
-		width=100
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Histogram"
-	align="horiz. centered"
-}
-rectangle {
-	object {
-		x=892
-		y=580
-		width=120
-		height=80
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-}
-"related display" {
-	object {
-		x=916
-		y=625
-		width=81
-		height=23
-	}
-	display[0] {
-		name="dxp_baseline.adl"
-		args="P=$(P), R=$(R)"
-	}
-	clr=14
-	bclr=51
-	label="  Plot"
-}
 valuator {
 	object {
-		x=903
-		y=716
+		x=303
+		y=856
 		width=100
 		height=25
 	}
@@ -3679,8 +3575,8 @@ valuator {
 }
 "text entry" {
 	object {
-		x=915
-		y=691
+		x=316
+		y=831
 		width=74
 		height=20
 	}
@@ -3694,8 +3590,8 @@ valuator {
 }
 text {
 	object {
-		x=902
-		y=672
+		x=303
+		y=791
 		width=100
 		height=20
 	}
@@ -3707,77 +3603,35 @@ text {
 }
 rectangle {
 	object {
-		x=892
-		y=666
+		x=293
+		y=785
 		width=120
-		height=80
+		height=100
 	}
 	"basic attribute" {
 		clr=14
 		fill="outline"
 	}
 }
-valuator {
+"text update" {
 	object {
-		x=903
-		y=801
-		width=100
-		height=25
-	}
-	control {
-		chan="$(P)$(R).PGAIN"
-		clr=14
-		bclr=51
-	}
-	label="outline"
-	dPrecision=1.000000
-	limits {
-	}
-}
-"text entry" {
-	object {
-		x=915
-		y=776
+		x=316
+		y=811
 		width=74
-		height=20
+		height=15
 	}
-	control {
-		chan="$(P)$(R).PGAIN"
-		clr=14
-		bclr=51
+	monitor {
+		chan="$(P)$(R).GAINRBV"
+		clr=54
+		bclr=3
 	}
 	limits {
 	}
 }
-text {
-	object {
-		x=902
-		y=757
-		width=100
-		height=20
-	}
-	"basic attribute" {
-		clr=14
-	}
-	textix="Preamp Gain"
-	align="horiz. centered"
-}
-rectangle {
-	object {
-		x=892
-		y=751
-		width=120
-		height=80
-	}
-	"basic attribute" {
-		clr=14
-		fill="outline"
-	}
-}
 valuator {
 	object {
-		x=903
-		y=886
+		x=433
+		y=856
 		width=100
 		height=25
 	}
@@ -3793,8 +3647,8 @@ valuator {
 }
 "text entry" {
 	object {
-		x=915
-		y=861
+		x=445
+		y=831
 		width=74
 		height=20
 	}
@@ -3808,8 +3662,8 @@ valuator {
 }
 text {
 	object {
-		x=902
-		y=842
+		x=432
+		y=791
 		width=100
 		height=20
 	}
@@ -3821,13 +3675,273 @@ text {
 }
 rectangle {
 	object {
+		x=422
+		y=785
+		width=120
+		height=100
+	}
+	"basic attribute" {
+		clr=14
+		fill="outline"
+	}
+}
+"text update" {
+	object {
+		x=445
+		y=811
+		width=74
+		height=15
+	}
+	monitor {
+		chan="$(P)$(R).EMAXRBV"
+		clr=54
+		bclr=3
+	}
+	limits {
+	}
+}
+composite {
+	object {
+		x=550
+		y=785
+		width=120
+		height=80
+	}
+	"composite name"=""
+	children {
+		valuator {
+			object {
+				x=561
+				y=835
+				width=100
+				height=25
+			}
+			control {
+				chan="$(P)$(R).PGAIN"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=573
+				y=810
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)$(R).PGAIN"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		text {
+			object {
+				x=560
+				y=791
+				width=100
+				height=20
+			}
+			"basic attribute" {
+				clr=14
+			}
+			textix="Preamp Gain"
+			align="horiz. centered"
+		}
+		rectangle {
+			object {
+				x=550
+				y=785
+				width=120
+				height=80
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=680
+		y=756
+		width=120
+		height=80
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=710
+				y=757
+				width=60
+				height=20
+			}
+			"basic attribute" {
+				clr=14
+			}
+			textix="Baseline"
+			align="horiz. centered"
+		}
+		text {
+			object {
+				x=690
+				y=775
+				width=100
+				height=20
+			}
+			"basic attribute" {
+				clr=14
+			}
+			textix="Histogram"
+			align="horiz. centered"
+		}
+		rectangle {
+			object {
+				x=680
+				y=756
+				width=120
+				height=80
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+		}
+		"related display" {
+			object {
+				x=704
+				y=801
+				width=81
+				height=23
+			}
+			display[0] {
+				name="dxp_baseline.adl"
+				args="P=$(P), R=$(R)"
+			}
+			clr=14
+			bclr=51
+			label="  Plot"
+		}
+	}
+}
+menu {
+	object {
+		x=898
+		y=536
+		width=110
+		height=20
+	}
+	control {
+		chan="$(P)$(R).FIPPI"
+		clr=14
+		bclr=51
+	}
+}
+text {
+	object {
+		x=922
+		y=488
+		width=60
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Peaking"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=902
+		y=506
+		width=100
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Time Range"
+	align="horiz. centered"
+}
+rectangle {
+	object {
 		x=892
-		y=836
+		y=487
 		width=120
 		height=80
 	}
 	"basic attribute" {
 		clr=14
 		fill="outline"
+	}
+}
+composite {
+	object {
+		x=892
+		y=574
+		width=120
+		height=80
+	}
+	"composite name"=""
+	children {
+		menu {
+			object {
+				x=902
+				y=623
+				width=100
+				height=25
+			}
+			control {
+				chan="$(P)$(R).PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		text {
+			object {
+				x=922
+				y=575
+				width=60
+				height=20
+			}
+			"basic attribute" {
+				clr=14
+			}
+			textix="Peaking"
+			align="horiz. centered"
+		}
+		text {
+			object {
+				x=902
+				y=593
+				width=100
+				height=20
+			}
+			"basic attribute" {
+				clr=14
+			}
+			textix="Time"
+			align="horiz. centered"
+		}
+		rectangle {
+			object {
+				x=892
+				y=574
+				width=120
+				height=80
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+		}
 	}
 }
