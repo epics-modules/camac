@@ -125,7 +125,7 @@ grecord(ddfanout,"$(P)PresetLive1") {
 }
 
 grecord(calcout,"$(P)Acquiring") {
-        field(CALC, "(A+B+C+D+E+F+G+H+I+K+L) > 0")
+        field(CALC, "(A+B+C+D+E+F+G+H+I+J+K+L)>0")
         field(INPA,"$(P)mca1.ACQG  CP MS")
         field(INPB,"$(P)mca2.ACQG  CP MS")
         field(INPC,"$(P)mca3.ACQG  CP MS")
@@ -338,7 +338,7 @@ grecord(ddfanout,"$(P)dxpCopyPktm1") {
 }
 
 grecord(ddfanout,"$(P)dxpCopyFippi") {
-        field(DOL, "$(P)dxp1.PKTM NPP NMS")
+        field(DOL, "$(P)dxp1.FIPPI NPP NMS")
         field(OMSL,"closed_loop")
 #        field(OUTA,"$(P)dxp1.FIPPI  CA MS")
         field(OUTB,"$(P)dxp2.FIPPI  CA MS")
