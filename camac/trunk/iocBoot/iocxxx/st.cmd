@@ -4,52 +4,16 @@ mem = malloc(1024*1024*96)
 # vxWorks startup file
 < cdCommands
 
-< ../nfsCommandsGSE
+< ../nfsCommands
 
-cd appbin
-ld < iocCore
-ld < seq
-ld < CARSLib
-
-putenv("EPICS_TS_MIN_WEST=300")
-
-# This IOC talks to a local GPIB server
-#ld < gpibHideosLocal.o
-# Currently, the only thing we do in initHooks is call reboot_restore(), which
-# restores positions and settings saved ~continuously while EPICS is alive.
-# See calls to "create_monitor_set()" at the end of this file.  To disable
-# autorestore, comment out the following line.
-ld < initHooks.o
+cd topbin
+ld < devCamacApp.munch
 cd startup
-
-# Initialize MPF stuff
-routerInit
-
-# Initialize local MPF connection
-localMessageRouterStart(0)
-
-# This IOC loads the MPF server code locally - disabled for now
-# < st_mpfserver.cmd
-
-
-
-# override address, interrupt vector, etc. information in module_types.h
-module_types()
-
-# Set debugging flags
-mcaRecordDebug = 0
-devScalerCamacDebug=0
-devE500Debug=0
-drvE500Debug=0
-aimDebug=0
-icbDebug=0
-dxpRecordDebug=0
-mcaDXPServerDebug=0
-devDxpMpfDebug=0
 
 # Tell EPICS all about the record types, device-support modules, drivers,
 # etc. in this build from CARSApp
-dbLoadDatabase("../../dbd/CARSApp.dbd")
+dbLoadDatabase("$(TOP)/dbd/devCamac.dbd")
+devCamac_registerRecordDeviceDriver(pdbbase)
 
 # Setup the ksc2917 hardware definitions
 # These are all actually the defaults, so this is not really necessary
@@ -61,13 +25,8 @@ ksc2917_setup(1, 0xFF00, 0x00A0, 2)
 # because we need to initialize the DXP hardware.
 camacLibInit
 
-# Load the DXP stuff
-< 16element.cmd
-# <  4element.cmd
-# < 8element.cmd
-
 # Generic CAMAC record
-dbLoadRecords("camacApp/Db/generic_camac.db","P=13GE2:,R=camac1,SIZE=2048", camac)
+dbLoadRecords("$(TOP)/camacApp/Db/generic_camac.db","P=xxx:,R=camac1,SIZE=2048")
 
 ### Motors
 # E500 driver setup parameters: 
@@ -86,14 +45,6 @@ E500Config(1, 0, 0, 14)
 
 dbLoadTemplate  "motors.template"
 
-# Multichannel analyzer stuff
-# AIMConfig(mpfServer, card, ethernet_address, port, maxChans,
-#           maxSignals, maxSequences, ethernetDevice, queueSize)
-#AIMConfig("AIM1/1", 0x59e, 1, 4000, 1, 1, "ei0", 100)
-#dbLoadRecords("mcaApp/Db/mca.db", "P=13GE2:,M=aim_adc1,DTYPE=MPF MCA,INP=#C0 S0 @AIM1/1,NCHAN=2048", mca)
-#
-
-### Scalers: CAMAC scaler
 ### Scalers: CAMAC scaler
 # CAMACScalerSetup(int max_cards)   /* maximum number of logical cards */
 CAMACScalerSetup(1)
@@ -106,10 +57,7 @@ CAMACScalerSetup(1)
 #  int counter_type,                   /* 0=QS-450 */
 #  int counter_slot)                   /* Counter N */
 CAMACScalerConfig(0, 0, 0, 0, 20, 0, 21)
-dbLoadRecords("camacApp/Db/CamacScaler.db","P=13GE2:,S=scaler1,C=0", camac)
-
-# Test record for scaler synchronization at X-26
-#dbLoadRecords("CARSApp/Db/X26_scaler_sync.db","P=13GE2:,M=med:mca1,S=scaler1", top)
+dbLoadRecords("$(TOP)/camacApp/Db/CamacScaler.db","P=xxx:,S=scaler1,C=0")
 
 ### Scan-support software
 # crate-resident scan.  This executes 1D, 2D, 3D, and 4D scans, and caches
@@ -117,28 +65,13 @@ dbLoadRecords("camacApp/Db/CamacScaler.db","P=13GE2:,S=scaler1,C=0", camac)
 # or the equivalent for that.)  This database is configured to use the
 # "alldone" database (above) to figure out when motors have stopped moving
 # and it's time to trigger detectors.
-dbLoadRecords("stdApp/Db/scan.db","P=13GE2:,MAXPTS1=2000,MAXPTS2=200,MAXPTS3=20,MAXPTS4=10,MAXPTSH=10", std)
-
-# A set of scan parameters for each positioner.  This is a convenience
-# for the user.  It can contain an entry for each scannable thing in the
-# crate.
-dbLoadTemplate "scanParms.template", std
-
-# Free-standing user string/number calculations (sCalcout records)
-dbLoadRecords("stdApp/Db/userStringCalcs10.db","P=13GE2:", std)
-
-# Free-standing user transforms (transform records)
-dbLoadRecords("stdApp/Db/userTransforms10.db","P=13GE2:", std)
+dbLoadRecords("$(STD)/stdApp/Db/scan.db","P=xxx:,MAXPTS1=2000,MAXPTS2=200,MAXPTS3=20,MAXPTS4=10,MAXPTSH=10")
 
 # vme test record
-dbLoadRecords("stdApp/Db/vme.db", "P=13GE2:,Q=vme1", std)
+dbLoadRecords("$(STD)/stdApp/Db/vme.db", "P=xxx:,Q=vme1")
 
 # Miscellaneous PV's, such as burtResult
-dbLoadRecords("stdApp/Db/misc.db","P=13GE2:", std)
-
-# vxWorks statistics
-dbLoadRecords("stdApp/Db/VXstats.db","P=13GE2:", std)
-
+dbLoadRecords("$(STD)/stdApp/Db/misc.db","P=xxx:")
 
 ################################################################################
 # Setup device/driver support addresses, interrupt vectors, etc.
@@ -163,13 +96,9 @@ iocInit
 < ../requestFileCommands
 #
 # save positions every five seconds
-create_monitor_set("auto_positions.req",5)
+create_monitor_set("auto_positions.req",5,"P=xxx:")
 # save other things every thirty seconds
-create_monitor_set("auto_settings.req",30)
-
-# Enable user string calcs and user transforms
-dbpf "13GE2:EnableUserTrans.PROC","1"
-dbpf "13GE2:EnableUserSCalcs.PROC","1"
+create_monitor_set("auto_settings.req",30,"P=xxx:")
 
 # Free the memory we allocated at the beginning of this script
 free(mem)
