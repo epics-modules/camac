@@ -25,6 +25,7 @@
  *                      calling hw_cssa, which calls semTake().  This is illegal
  *                      and was hanging tNetTask on the MVME167.
  *                      Created HW_INTERLOCK_ON and HW_INTERLOCK_OFF macros.
+ * 15-Apr-2002	MLR     Added same debugging to hw_csblock that was in hw_cfblock
  * 
  *****************************************************************************/
 
@@ -1224,7 +1225,7 @@ STATUS  hw_cfblock (int f, int *extb, hwInfo *phwInfo, int *intc, int cb[4],
    }
    /* Compute VME address for DMA 	*/
    vme_addr      = (unsigned int)intc | (unsigned int)phwInfo->dma_offset;
-   Debug(2, "hw_cfblock: intc = %p, vme_addr = %x\n", intc, vme_addr);
+   Debug(1, "hw_cfblock: intc = %p, vme_addr = %x\n", intc, vme_addr);
    /* This address gets put into 3 different registers.			*/
    /*   Bits 24-31 go in amr (along with address modifier)		*/
    /*   Bits 16-23 go in machi						*/
@@ -1260,11 +1261,11 @@ STATUS  hw_cfblock (int f, int *extb, hwInfo *phwInfo, int *intc, int cb[4],
    else if (READ_F(f)) {			/* Read operation */
       ksc2917_docr = MASK_docr_cycstl | MASK_docr_read | MASK_docr_word;
 						/* Set DMA engine for reads */
-   Debug(2, "hw_cfblock: docr = %x\n", ksc2917_docr);
+      Debug(2, "hw_cfblock: docr = %x\n", ksc2917_docr);
       ksc2917_sccr = MASK_sccr_start;	/* Start DMA engine */
-   Debug(2, "hw_cfblock: sccr = %x\n", ksc2917_sccr);
+      Debug(2, "hw_cfblock: sccr = %x\n", ksc2917_sccr);
       ksc2917_csr = MASK_csr_go | MASK_csr_dma;
-   Debug(2, "hw_cfblock: csr = %x\n", ksc2917_csr);
+      Debug(2, "hw_cfblock: csr = %x\n", ksc2917_csr);
       status = semTake(phwInfo->ready, phwInfo->dma_timeout);
    }
    else { 					/* Control operation */
@@ -1306,12 +1307,14 @@ STATUS  hw_csblock (int f, int *extb, hwInfo *phwInfo, short *intc, int cb[4],
 {
    register ksc2917Regs  *pksc2917;	/* Pointer to register base	*/
    int                   status;	/* Local status variable	*/
+   int                   i;		/* Loop counter			*/
    double_word           cnaf;		/* Local copy of cnaf sequence	*/
    unsigned int          vme_addr;	/* Used to compute VME address	*/
 
    phwInfo->dma_timeout = cb[0]*MAX_BLOCKTIME*one_second;/* DMA	timeout */
    if (phwInfo->dma_timeout < MIN_DMA_CLOCK_TICKS) 
    		phwInfo->dma_timeout = MIN_DMA_CLOCK_TICKS;
+   Debug(2, "hw_csblock: phwInfo->dma_timeout = %d\n", phwInfo->dma_timeout);
    pksc2917     = phwInfo->prBase;	/* Get register base address	*/
 
    HW_INTERLOCK_ON;
@@ -1324,24 +1327,37 @@ STATUS  hw_csblock (int f, int *extb, hwInfo *phwInfo, short *intc, int cb[4],
    ksc2917_cmr = 0xFFFF;	/* Word count high (not used)		*/
    ksc2917_cmr = MASK_cmr_halt;
    ksc2917_cmar = 0;		/* Reset to start of list 		*/
+   if (ksc2917Debug > 1) {
+   	for (i=0; i<5; i++) errlogPrintf("hw_csblock: cmr = %x\n", ksc2917_cmr);
+   	ksc2917_cmar = 0; /* Reset to start of list 		*/
+   }
    /* Compute VME address for DMA 					*/
    vme_addr      = (unsigned int)intc | (unsigned int)phwInfo->dma_offset;
+   Debug(1, "hw_csblock: intc = %p, vme_addr = %x\n", intc, vme_addr);
    /* This address gets put into 3 different registers.			*/
    /*   Bits 24-31 go in amr (along with address modifier)		*/
    /*   Bits 16-23 go in machi						*/
    /*   Bits 0-15  go in maclo						*/
    ksc2917_amr = ((vme_addr >> 16) & 0xFF00) | MASK_amr_lword | phwInfo->dma_am;
+   Debug(2, "hw_csblock: amr = %x\n", ksc2917_amr);
    ksc2917_machi = vme_addr >> 16;
+   Debug(2, "hw_csblock: machi = %x\n", ksc2917_machi);
    ksc2917_maclo = vme_addr;
+   Debug(2, "hw_csblock: maclo = %x\n", ksc2917_maclo);
    ksc2917_mtc = cb[0];	/* DMA transfer length (16 bit words) */
+   Debug(2, "hw_csblock: mtc = %x\n", ksc2917_mtc);
    ksc2917_sccr = 0;		/* Release soft abort */
+   Debug(2, "hw_csblock: sccr = %x\n", ksc2917_sccr);
    /* Note - the following seems strange because we are CLEARING the	*/
    /* coc, ndt and err bits. However, the DMA chip clears these fields	*/
    /* when they are written with a 1.					*/
    ksc2917_cser = MASK_cser_coc | MASK_cser_ndt | MASK_cser_err;
+   Debug(2, "hw_csblock: cser = %x\n", ksc2917_cser);
    /* Enable interrupts at end of DMA operation				*/
    ksc2917_icr_dma  |= MASK_icr_intena;	  	/* Enable DMA interrupt */
+   Debug(2, "hw_csblock: icr_dma = %x\n", ksc2917_icr_dma);
    ksc2917_icr_abort |= MASK_icr_intena; 	/* Enable Abort interrupt */
+   Debug(2, "hw_csblock: icr_abort = %x\n", ksc2917_icr_abort);
    if (WRITE_F(f)) {
       ksc2917_docr = MASK_docr_cycstl | MASK_docr_word;
 						/* Set DMA engine for writes */
@@ -1352,14 +1368,20 @@ STATUS  hw_csblock (int f, int *extb, hwInfo *phwInfo, short *intc, int cb[4],
    else if (READ_F(f)) {			/* Read operation */
       ksc2917_docr = MASK_docr_cycstl | MASK_docr_read | MASK_docr_word;
 						/* Set DMA engine for reads */
+      Debug(2, "hw_csblock: docr = %x\n", ksc2917_docr);
       ksc2917_sccr = MASK_sccr_start;		/* Start DMA engine */
+      Debug(2, "hw_csblock: sccr = %x\n", ksc2917_sccr);
       ksc2917_csr = MASK_csr_go | MASK_csr_dma; /* Start executing list */
+      Debug(2, "hw_csblock: csr = %x\n", ksc2917_csr);
       status = semTake(phwInfo->ready, phwInfo->dma_timeout);
    }
    else { 					/* Control operation */
       ksc2917_csr = MASK_csr_go;
       status = semTake(phwInfo->ready, phwInfo->dma_timeout);
    }
+   Debug(2, "  After DMA operation\n");
+   Debug(2, "hw_csblock: cser = %x\n", ksc2917_cser);
+   Debug(2, "hw_csblock: csr = %x\n", ksc2917_csr);
    ksc2917_icr_dma  &= ~MASK_icr_intena;/* Disable DMA interrupts	*/
    ksc2917_icr_abort &= ~MASK_icr_intena;/* Disable Abort interrupts	*/
    ksc2917_sccr = MASK_sccr_abort; 	/* Abort any left over DMA */
