@@ -28,6 +28,8 @@
                       will get true value, not cached value
     03-Apr-2002  MLR  Increase stack size for MPF server tasks from 4000 to 6000. Were
                       getting stack overflows in dxp_replace_fipconfig().
+    05-Apr-2002  MLR  Interlock call to dxp_replace_fipconfig() with global semaphore
+                      to prevent conflicts with global structures in Xerxes.
 */
 
 #include <vxWorks.h>
@@ -164,8 +166,8 @@ extern "C" int DXPConfig(const char *serverName, int chan1, int chan2,
 
     // Keep track if there are any DXP4C modules
     if (p->moduleType == MODEL_DXP4C) numDXP4C++;
-    if (numDXP4C == 1) {
-       // First DXP4C, create semaphore
+    if (dxpSEMID==NULL) {
+       // Create semaphore for all DXP modules
        dxpSEMID = semBCreate (      /* Create semaphore    */
                       SEM_Q_FIFO,   /* Queue in FIFO order */
                       SEM_FULL);	   /* Initially full		  */
@@ -244,7 +246,7 @@ extern "C" int DXPConfig(const char *serverName, int chan1, int chan2,
 
     strcpy(taskname, "t");
     strcat(taskname, serverName);
-    int taskId = taskSpawn(taskname,100,VX_FP_TASK,6000,
+    int taskId = taskSpawn(taskname,100,VX_FP_TASK,10000,
         (FUNCPTR)mcaDXPServer::mcaDXPServerTask,(int)p,
         0,0,0,0,0,0,0,0,0);
     if(taskId==ERROR)
@@ -474,7 +476,13 @@ void mcaDXPServer::processMessages()
                   int_value = (int)pim->value;
                   DEBUG(2, "(mcaDXPServer [%s detChan=%d]): download FiPPI file=%s\n",
                            pMessageServer->getName(), detChan, fippiFiles[int_value]);
+                  /* dxp_replace_fipconfig modifies global structures in Xerxes
+                   * (reading FiPPI files, etc.).  There must be only 1 task doing 
+                   * this at once.  Take the semaphore that blocks all other DXP tasks
+                   */
+   		  semTake(dxpSEMID, WAIT_FOREVER);
                   dxp_replace_fipconfig(&detChan, fippiFiles[int_value]);
+                  semGive(dxpSEMID);
                   break;
                default:
                   errlogPrintf("%s mcaDXPServer got illegal command %d\n",
