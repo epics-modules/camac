@@ -2316,7 +2316,7 @@ GLOBAL_RTN
 void cfga (int fa[], int exta[], int intc[], int qa[], int cb[4])
 {
    int                b;		/* Branch number		*/
-   int                i;		/* Loop counter			*/
+   int                i=0;		/* Loop counter			*/
    branch_structure  *pbranch;		/* Pointer to branch structure	*/
    register hwInfo   *phwInfo;		/* Pointer to branch hw info	*/
    char              *rtnName="cfga";	/* Name of this routine		*/
@@ -2387,7 +2387,7 @@ GLOBAL_RTN
 void csga (int fa[], int exta[], short intc[], int qa[], int cb[4])
 {
    int                b;		/* Branch number		*/
-   int                i;		/* Loop counter			*/
+   int                i=0;		/* Loop counter			*/
    branch_structure  *pbranch;		/* Pointer to branch structure	*/
    register hwInfo   *phwInfo;		/* Pointer to branch hw info	*/
    char              *rtnName="csga";	/* Name of this routine		*/
