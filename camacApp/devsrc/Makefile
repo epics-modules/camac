@@ -32,8 +32,10 @@ devCamacApp_SRCS += devCamacMain.cpp
 #The following adds support from base/src/vxWorks
 devCamacApp_OBJS += $(EPICS_BASE_BIN)/vxComLibrary
 
-devCamacApp_LIBS += camac devCamac
+devCamacApp_LIBS += devCamac
+devCamacApp_LIBS += camac
 devCamacApp_LIBS += std
+devCamacApp_LIBS += mpf mpfEpics
 devCamacApp_LIBS += motor softMotor
 devCamacApp_LIBS += $(EPICS_BASE_IOC_LIBS)
 
