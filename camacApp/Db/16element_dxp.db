@@ -174,6 +174,39 @@ grecord(calcout,"$(P)ElapsedLive") {
         field(PREC, "2")
 }
 
+grecord(calcout,"$(P)DeadTime") {
+        field(CALC, "MAX(MAX(MAX(MAX(A,B),C),D),E)")
+        field(INPA,"$(P)mca1.IDTIM  CP MS")
+        field(INPB,"$(P)mca2.IDTIM  CP MS")
+        field(INPC,"$(P)mca3.IDTIM  CP MS")
+        field(INPD,"$(P)mca4.IDTIM  CP MS")
+        field(INPE,"$(P)DeadTime1   CP MS")
+        field(PREC, "2")
+}
+grecord(calcout,"$(P)DeadTime1") {
+        field(CALC, "MAX(MAX(MAX(MAX(A,B),C),D),E)")
+        field(INPA,"$(P)mca5.IDTIM  CP MS")
+        field(INPB,"$(P)mca6.IDTIM  CP MS")
+        field(INPC,"$(P)mca7.IDTIM  CP MS")
+        field(INPD,"$(P)mca8.IDTIM  CP MS")
+        field(INPE,"$(P)DeadTime2   CP MS")
+}
+grecord(calcout,"$(P)DeadTime2") {
+        field(CALC, "MAX(MAX(MAX(MAX(A,B),C),D),E)")
+        field(INPA,"$(P)mca9.IDTIM  CP MS")
+        field(INPB,"$(P)mca10.IDTIM  CP MS")
+        field(INPC,"$(P)mca11.IDTIM  CP MS")
+        field(INPD,"$(P)mca12.IDTIM  CP MS")
+        field(INPE,"$(P)DeadTime3   CP MS")
+}
+grecord(calcout,"$(P)DeadTime3") {
+        field(CALC, "MAX(MAX(MAX(MAX(A,B),C),D),E)")
+        field(INPA,"$(P)mca13.IDTIM  CP MS")
+        field(INPB,"$(P)mca14.IDTIM  CP MS")
+        field(INPC,"$(P)mca15.IDTIM  CP MS")
+        field(INPD,"$(P)mca16.IDTIM  CP MS")
+}
+
 grecord(ddfanout,"$(P)ReadAll") {
         field(SCAN,"1 second")
         field(DISV,"0")
@@ -224,6 +257,110 @@ grecord(ddfanout,"$(P)ReadDXPs1") {
         field(OUTF,"$(P)dxp14.PROC  CA MS")
         field(OUTG,"$(P)dxp15.PROC  CA MS")
         field(OUTH,"$(P)dxp16.PROC  CA MS")
+}
+
+grecord(ddfanout,"$(P)dxpCopyGain") {
+        field(DOL, "$(P)dxp1.GAIN NPP NMS")
+        field(OMSL,"closed_loop")
+#        field(OUTA,"$(P)dxp1.GAIN  CA MS")
+        field(OUTB,"$(P)dxp2.GAIN  CA MS")
+        field(OUTC,"$(P)dxp3.GAIN  CA MS")
+        field(OUTD,"$(P)dxp4.GAIN  CA MS")
+        field(OUTE,"$(P)dxp5.GAIN  CA MS")
+        field(OUTF,"$(P)dxp6.GAIN  CA MS")
+        field(OUTG,"$(P)dxp7.GAIN  CA MS")
+        field(OUTH,"$(P)dxp8.GAIN  CA MS")
+        field(FLNK,"$(P)dxpCopyGain1.PROC")
+}
+grecord(ddfanout,"$(P)dxpCopyGain1") {
+        field(DOL, "$(P)dxp1.GAIN NPP NMS")
+        field(OMSL,"closed_loop")
+        field(OUTA,"$(P)dxp9.GAIN   CA MS")
+        field(OUTB,"$(P)dxp10.GAIN  CA MS")
+        field(OUTC,"$(P)dxp11.GAIN  CA MS")
+        field(OUTD,"$(P)dxp12.GAIN  CA MS")
+        field(OUTE,"$(P)dxp13.GAIN  CA MS")
+        field(OUTF,"$(P)dxp14.GAIN  CA MS")
+        field(OUTG,"$(P)dxp15.GAIN  CA MS")
+        field(OUTH,"$(P)dxp16.GAIN  CA MS")
+}
+
+grecord(ddfanout,"$(P)dxpCopyEmax") {
+        field(DOL, "$(P)dxp1.EMAX NPP NMS")
+        field(OMSL,"closed_loop")
+#        field(OUTA,"$(P)dxp1.EMAX  CA MS")
+        field(OUTB,"$(P)dxp2.EMAX  CA MS")
+        field(OUTC,"$(P)dxp3.EMAX  CA MS")
+        field(OUTD,"$(P)dxp4.EMAX  CA MS")
+        field(OUTE,"$(P)dxp5.EMAX  CA MS")
+        field(OUTF,"$(P)dxp6.EMAX  CA MS")
+        field(OUTG,"$(P)dxp7.EMAX  CA MS")
+        field(OUTH,"$(P)dxp8.EMAX  CA MS")
+        field(FLNK,"$(P)dxpCopyEmax1.PROC")
+}
+grecord(ddfanout,"$(P)dxpCopyEmax1") {
+        field(DOL, "$(P)dxp1.EMAX NPP NMS")
+        field(OMSL,"closed_loop")
+        field(OUTA,"$(P)dxp9.EMAX   CA MS")
+        field(OUTB,"$(P)dxp10.EMAX  CA MS")
+        field(OUTC,"$(P)dxp11.EMAX  CA MS")
+        field(OUTD,"$(P)dxp12.EMAX  CA MS")
+        field(OUTE,"$(P)dxp13.EMAX  CA MS")
+        field(OUTF,"$(P)dxp14.EMAX  CA MS")
+        field(OUTG,"$(P)dxp15.EMAX  CA MS")
+        field(OUTH,"$(P)dxp16.EMAX  CA MS")
+}
+
+grecord(ddfanout,"$(P)dxpCopyPktm") {
+        field(DOL, "$(P)dxp1.PKTM NPP NMS")
+        field(OMSL,"closed_loop")
+#        field(OUTA,"$(P)dxp1.PKTM  CA MS")
+        field(OUTB,"$(P)dxp2.PKTM  CA MS")
+        field(OUTC,"$(P)dxp3.PKTM  CA MS")
+        field(OUTD,"$(P)dxp4.PKTM  CA MS")
+        field(OUTE,"$(P)dxp5.PKTM  CA MS")
+        field(OUTF,"$(P)dxp6.PKTM  CA MS")
+        field(OUTG,"$(P)dxp7.PKTM  CA MS")
+        field(OUTH,"$(P)dxp8.PKTM  CA MS")
+        field(FLNK,"$(P)dxpCopyPktm1.PROC")
+}
+grecord(ddfanout,"$(P)dxpCopyPktm1") {
+        field(DOL, "$(P)dxp1.PKTM NPP NMS")
+        field(OMSL,"closed_loop")
+        field(OUTA,"$(P)dxp9.PKTM   CA MS")
+        field(OUTB,"$(P)dxp10.PKTM  CA MS")
+        field(OUTC,"$(P)dxp11.PKTM  CA MS")
+        field(OUTD,"$(P)dxp12.PKTM  CA MS")
+        field(OUTE,"$(P)dxp13.PKTM  CA MS")
+        field(OUTF,"$(P)dxp14.PKTM  CA MS")
+        field(OUTG,"$(P)dxp15.PKTM  CA MS")
+        field(OUTH,"$(P)dxp16.PKTM  CA MS")
+}
+
+grecord(ddfanout,"$(P)dxpCopyFippi") {
+        field(DOL, "$(P)dxp1.PKTM NPP NMS")
+        field(OMSL,"closed_loop")
+#        field(OUTA,"$(P)dxp1.FIPPI  CA MS")
+        field(OUTB,"$(P)dxp2.FIPPI  CA MS")
+        field(OUTC,"$(P)dxp3.FIPPI  CA MS")
+        field(OUTD,"$(P)dxp4.FIPPI  CA MS")
+        field(OUTE,"$(P)dxp5.FIPPI  CA MS")
+        field(OUTF,"$(P)dxp6.FIPPI  CA MS")
+        field(OUTG,"$(P)dxp7.FIPPI  CA MS")
+        field(OUTH,"$(P)dxp8.FIPPI  CA MS")
+        field(FLNK,"$(P)dxpCopyFippi1.PROC")
+}
+grecord(ddfanout,"$(P)dxpCopyFippi1") {
+        field(DOL, "$(P)dxp1.FIPPI NPP NMS")
+        field(OMSL,"closed_loop")
+        field(OUTA,"$(P)dxp9.FIPPI   CA MS")
+        field(OUTB,"$(P)dxp10.FIPPI  CA MS")
+        field(OUTC,"$(P)dxp11.FIPPI  CA MS")
+        field(OUTD,"$(P)dxp12.FIPPI  CA MS")
+        field(OUTE,"$(P)dxp13.FIPPI  CA MS")
+        field(OUTF,"$(P)dxp14.FIPPI  CA MS")
+        field(OUTG,"$(P)dxp15.FIPPI  CA MS")
+        field(OUTH,"$(P)dxp16.FIPPI  CA MS")
 }
 
 grecord(ddfanout,"$(P)StatusAll") {
