@@ -10,6 +10,7 @@
 #              and the field returned to USHORT.
 # 25-Feb-2002  MLR Changed the BASE field from SHORT to USHORT 
 # 6-MAR-2002   MLR Added GAIN, PGAIN, EMAX fields
+# 10-MAR-2002  MLR Added FIPPI, EMAXRBV, GAINRBV fields
 
 menu(dxpPLRT) {
 	choice(dxpPLRT_Negative,"Negative")
@@ -1359,11 +1360,28 @@ recordtype(dxp) {
 		size(4)
 		extra("char *pkl")
 	}
+        field(FIPPI,DBF_ENUM) {
+                prompt("FiPPI")
+                asl(ASL0)
+                special(SPC_MOD)
+        }
+	field(PKRL,DBF_NOACCESS) {
+		prompt("Peak range pointer")
+		special(SPC_NOMOD)
+		interest(4)
+		size(4)
+		extra("char *pkrl")
+	}
 	field(GAIN,DBF_FLOAT) {
                 prompt("ASC Gain")
 		asl(ASL0)
 		special(SPC_MOD)
                 initial(1.)
+	}
+	field(GAINRBV,DBF_FLOAT) {
+                prompt("ASC Gain Readback")
+		asl(ASL0)
+		special(SPC_NOMOD)
 	}
 	field(PGAIN,DBF_FLOAT) {
                 prompt("Preamp Gain (mv/keV)")
@@ -1376,6 +1394,11 @@ recordtype(dxp) {
 		asl(ASL0)
 		special(SPC_MOD)
                 initial(20.)
+	}
+	field(EMAXRBV,DBF_FLOAT) {
+                prompt("Maximum energy readback")
+		asl(ASL0)
+		special(SPC_NOMOD)
 	}
 
 # Input specification

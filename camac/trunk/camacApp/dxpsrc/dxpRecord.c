@@ -18,6 +18,7 @@
  * 02/13/02     mlr    Update run task menus based on readback of RUNTASKS.
  *                     Moved building peaking time strings to separate function.
  *                     Added debugging statements.
+ * 10-Mar-02    mlr    Added support for FIPPI, EMAXRBC, GAINRBV fields.
  */
 
 #include        <stdlib.h>
@@ -70,6 +71,7 @@ static long monitor(struct dxpRecord *pdxp);
 static void setDxpTasks(struct dxpRecord *pdxp);
 static void setPeakingTime(struct dxpRecord *pdxp);
 static void setPeakingTimeStrings(struct dxpRecord *pdxp);
+static void setPeakingTimeRangeStrings(struct dxpRecord *pdxp);
 static void setGain(struct dxpRecord *pdxp);
 static void setBinWidth(struct dxpRecord *pdxp);
 
@@ -196,7 +198,9 @@ typedef struct  {
 #define DXP2X 1
 
 #define MAX_PEAKING_TIMES 5
-static int peakingTimes[] = {5,10,15,20,25};
+static int peakingTimes[MAX_PEAKING_TIMES] = {5,10,15,20,25};
+#define MAX_DECIMATIONS 4
+static int allDecimations[MAX_DECIMATIONS] = {0,2,4,6};
 
 /* Debug support */
 #if 0
@@ -365,9 +369,12 @@ static long init_record(struct dxpRecord *pdxp, int pass)
     /* Allocate space for the peaking time strings */
     pdxp->pkl = (char *)calloc(DXP_STRING_SIZE * MAX_PEAKING_TIMES, 
                                sizeof(char));
+    pdxp->pkrl = (char *)calloc(DXP_STRING_SIZE * MAX_DECIMATIONS, 
+                               sizeof(char));
 
     /* Create the peaking time strings */
     setPeakingTimeStrings(pdxp);
+    setPeakingTimeRangeStrings(pdxp);
     
     /* Initialize the tasks */
     setDxpTasks(pdxp);
@@ -471,8 +478,6 @@ static long monitor(struct dxpRecord *pdxp)
    DXP_TASK_PARAM *task_param;
    unsigned short short_val;
    unsigned short runtasks;
-   unsigned short gaindac;
-   float gain;
    long long_val;
    unsigned short monitor_mask = recGblResetAlarms(pdxp) | DBE_VALUE | DBE_LOG;
    MODULE_INFO *minfo = &moduleInfo[pdxp->mtyp];
@@ -541,18 +546,42 @@ static long monitor(struct dxpRecord *pdxp)
 
    /* If GAINDAC has changed then recompute GAIN */   
    switch (pdxp->mtyp) {
+      unsigned short gaindac;
+      float gain;
       case DXP2X:
          /* See comments in function setGain below *
           * Gain = 0.5*10^((GAINDAC/65536)*40/20) */
          gaindac = pdxp->pptr[minfo->offsets.gaindac];
          gain = 0.5*pow(10., (gaindac/32768.));
-         if (gain != pdxp->gain) {
-            pdxp->gain = gain;
-            db_post_events(pdxp,&pdxp->gain, monitor_mask);
+         if (gain != pdxp->gainrbv) {
+            pdxp->gainrbv = gain;
+            db_post_events(pdxp,&pdxp->gainrbv, monitor_mask);
          }
          break;
       case DXP4C:
          /* Work needed here !!! set coarse gain, fine gain?*/
+         break;
+   }
+
+   /* See if EMAX has changed  */   
+   switch (pdxp->mtyp) {
+      unsigned short slowlen;
+      unsigned short binfact1;
+      float binwidth;
+      float emax;
+      case DXP2X:
+         slowlen = pdxp->pptr[minfo->offsets.slowlen];
+         binfact1 = pdxp->pptr[minfo->offsets.binfact];
+         binwidth = binfact1 / (pdxp->pgain * pdxp->gain * minfo->adc_gain * 4. * 
+                    slowlen);
+         emax = binwidth * pdxp->pptr[minfo->offsets.mcalimhi];
+         if (emax != pdxp->emaxrbv) {
+            pdxp->emaxrbv = emax;
+            db_post_events(pdxp,&pdxp->emaxrbv, monitor_mask);
+         }
+         break;
+      case DXP4C:
+         /* Work needed here !!!*/
          break;
    }
 
@@ -646,6 +675,12 @@ static long special(struct dbAddr *paddr, int after)
         goto found_param;
      }
 
+     if (paddr->pfield == (void *) &pdxp->fippi) {
+        status = (*pdset->send_msg)
+                 (pdxp, MSG_DXP_DOWNLOAD_FIPPI, pdxp->fippi, NULL);
+        goto found_param;
+     }
+
     /* Check if the tasks have changed */
     task_param = (DXP_TASK_PARAM *)&pdxp->t01v;
     for (i=0; i<NUM_TASK_PARAMS; i++) {
@@ -716,6 +751,21 @@ static void setPeakingTimeStrings(struct dxpRecord *pdxp)
       /* Minimum peaking time on the DXP4C of .5 microsecond */
       if ((pdxp->mtyp == DXP4C) && (peakingTime < 0.5)) peakingTime = 0.5;
       sprintf(pdxp->pkl+DXP_STRING_SIZE*i, "%.2f us", peakingTime);
+   }
+}
+
+static void setPeakingTimeRangeStrings(struct dxpRecord *pdxp)
+{
+   double minTime, maxTime;
+   MODULE_INFO *minfo = &moduleInfo[pdxp->mtyp];
+   int i;
+   
+   for (i=0; i < MAX_DECIMATIONS; i++) {
+      minTime = peakingTimes[0] * minfo->clock * 
+                            (1<<allDecimations[i]);
+      maxTime = peakingTimes[MAX_PEAKING_TIMES-1] * minfo->clock *
+                            (1<<allDecimations[i]);
+      sprintf(pdxp->pkrl+DXP_STRING_SIZE*i, "%.2f-%.2f us", minTime, maxTime);
    }
 }
 
@@ -831,7 +881,11 @@ static long get_precision(struct dbAddr *paddr, long *precision)
 {
     int fieldIndex = dbGetFieldIndex(paddr);
 
-    if (fieldIndex == dxpRecordGAIN) {
+    if ((fieldIndex == dxpRecordGAIN)   ||
+        (fieldIndex == dxpRecordGAINRBV) ||
+        (fieldIndex == dxpRecordPGAIN)  ||
+        (fieldIndex == dxpRecordEMAX)   ||
+        (fieldIndex == dxpRecordEMAXRBV)) {
        *precision = 3;
        return(0);
     }
@@ -851,6 +905,16 @@ static long get_graphic_double(struct dbAddr *paddr, struct dbr_grDouble *pgd)
    if (fieldIndex == dxpRecordGAIN) {
       pgd->upper_disp_limit = 50.;
       pgd->lower_disp_limit = 0.5;
+      return(0);
+   }
+   if (fieldIndex == dxpRecordPGAIN) {
+      pgd->upper_disp_limit = 50.;
+      pgd->lower_disp_limit = 0;
+      return(0);
+   }
+   if (fieldIndex == dxpRecordEMAX) {
+      pgd->upper_disp_limit = 200.;
+      pgd->lower_disp_limit = 0;
       return(0);
    }
    if ((fieldIndex < dxpRecordA01V) || (fieldIndex > dxpRecordS13V)) {
@@ -896,6 +960,16 @@ static long get_control_double(struct dbAddr *paddr, struct dbr_ctrlDouble *pcd)
       pcd->lower_ctrl_limit = 0.5;
       return(0);
    }
+   if (fieldIndex == dxpRecordPGAIN) {
+      pcd->upper_ctrl_limit = 50.;
+      pcd->lower_ctrl_limit = 0;
+      return(0);
+   }
+   if (fieldIndex == dxpRecordEMAX) {
+      pcd->upper_ctrl_limit = 200.;
+      pcd->lower_ctrl_limit = 0;
+      return(0);
+   }
    if ((fieldIndex < dxpRecordA01V) || (fieldIndex > dxpRecordS13V)) {
       recGblGetControlDouble(paddr,pcd);
       return(0);
@@ -933,12 +1007,22 @@ static long get_enum_str(struct dbAddr *paddr, char *pstring)
     unsigned short val=*pfield;
 
     index = dbGetFieldIndex(paddr);
-    if (index != dxpRecordPKTM) {
-        strcpy(pstring,"Illegal_Value");
-    } else if (val < MAX_PEAKING_TIMES) {
-       strncpy(pstring, pdxp->pkl+DXP_STRING_SIZE*val, DXP_STRING_SIZE);
-    } else {
-        strcpy(pstring,"Illegal Value");
+    switch (index) {
+    case dxpRecordPKTM:
+       if (val < MAX_PEAKING_TIMES)
+          strncpy(pstring, pdxp->pkl+DXP_STRING_SIZE*val, DXP_STRING_SIZE);
+       else
+          strcpy(pstring,"Illegal Value");
+       break;
+    case dxpRecordFIPPI:
+       if (val < MAX_DECIMATIONS)
+          strncpy(pstring, pdxp->pkrl+DXP_STRING_SIZE*val, DXP_STRING_SIZE);
+       else
+          strcpy(pstring,"Illegal Value");
+       break;
+    default:
+       strcpy(pstring,"Illegal_Value");
+       break;
     }
     return(0);
 }
@@ -951,11 +1035,22 @@ static long get_enum_strs(struct dbAddr *paddr, struct dbr_enumStrs *pes)
     int index;
 
     index = dbGetFieldIndex(paddr);
-    if (index != dxpRecordPKTM) return(S_db_badChoice);
-
-    pes->no_str = MAX_PEAKING_TIMES;
-    for (i=0; i < pes->no_str; i++) {
-       strncpy(pes->strs[i], pdxp->pkl+DXP_STRING_SIZE*i, DXP_STRING_SIZE);
+    switch (index) {
+    case dxpRecordPKTM:
+       pes->no_str = MAX_PEAKING_TIMES;
+       for (i=0; i < pes->no_str; i++) {
+          strncpy(pes->strs[i], pdxp->pkl+DXP_STRING_SIZE*i, DXP_STRING_SIZE);
+       }
+       break;
+    case dxpRecordFIPPI:
+       pes->no_str = MAX_DECIMATIONS;
+       for (i=0; i < pes->no_str; i++) {
+          strncpy(pes->strs[i], pdxp->pkrl+DXP_STRING_SIZE*i, DXP_STRING_SIZE);
+       }
+       break;
+    default:
+       return(S_db_badChoice);
+       break;
     }
     return(0);
 }
@@ -968,12 +1063,26 @@ static long put_enum_str(struct dbAddr *paddr, char *pstring)
     int index;
 
     index = dbGetFieldIndex(paddr);
-    if (index != dxpRecordPKTM) return(S_db_badChoice);
-    for (i=0; i < MAX_PEAKING_TIMES; i++){
-       if(strncmp(pdxp->pkl+DXP_STRING_SIZE*i,pstring,DXP_STRING_SIZE)==0) {
-          pdxp->pktm = i;
-          return(0);
+    switch (index) {
+    case dxpRecordPKTM:
+       for (i=0; i < MAX_PEAKING_TIMES; i++){
+          if(strncmp(pdxp->pkl+DXP_STRING_SIZE*i,pstring,DXP_STRING_SIZE)==0) {
+             pdxp->pktm = i;
+             return(0);
+          }
        }
+       break;
+    case dxpRecordFIPPI:
+       for (i=0; i < MAX_DECIMATIONS; i++){
+          if(strncmp(pdxp->pkrl+DXP_STRING_SIZE*i,pstring,DXP_STRING_SIZE)==0) {
+             pdxp->fippi = i;
+             return(0);
+          }
+       }
+       break;
+    default:
+       return(S_db_badChoice);
+       break;
     }
-    return(S_db_badChoice);
+    return(0);
 }
