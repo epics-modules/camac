@@ -1,3 +1,14 @@
+# dxpRecord.dbd
+# Database definition for DXP record.
+# 
+# Created:  Mark Rivers, 1999?
+#
+# Modifications:
+# 14-Feb-2002  MLR Changed the A01V field from USHORT to SHORT to work around
+#              bug in save_restore.c which causes USHORT fields to be corrupted
+#              during the save (not restore!) operation.  This bug should be fixed
+#              and the field returned to USHORT.
+
 menu(dxpPLRT) {
 	choice(dxpPLRT_Negative,"Negative")
 	choice(dxpPLRT_Positive,"Positive")
@@ -49,7 +60,7 @@ recordtype(dxp) {
 	}
 
 # ASC parameters - 9 total
-	field(A01V,DBF_USHORT) {
+	field(A01V,DBF_SHORT) {
                 prompt("A01V")
 		asl(ASL0)
 		special(SPC_MOD)
