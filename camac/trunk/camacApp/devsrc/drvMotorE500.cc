@@ -44,7 +44,7 @@ volatile int drvE500Debug = 0;
 
 /*----------------functions-----------------*/
 STATIC int recv_mess(int, char *, int);
-STATIC RTN_STATUS send_mess(int card, char const *com, char c);
+STATIC RTN_STATUS send_mess(int card, char const *com, char *c);
 STATIC void start_status(int card);
 STATIC void readE500Status(int card);
 STATIC int set_status(int card, int signal);
@@ -328,7 +328,7 @@ STATIC int set_status(int card, int signal)
 /* send a message to the E500 board                  */
 /* send_mess()                                       */
 /*****************************************************/
-STATIC RTN_STATUS send_mess(int card, char const *com, char inchar)
+STATIC RTN_STATUS send_mess(int card, char const *com, char *inchar)
 {
     /* This is a no-op for the E500, but must be present */
     return (OK);
