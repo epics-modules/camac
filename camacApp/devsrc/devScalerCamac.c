@@ -102,7 +102,7 @@ struct scaler_state {
         int preset[MAX_SCALER_CHANNELS];
         int overflow_counts[MAX_SCALER_CHANNELS];
         int prev_counting;
-        struct callback *pcallback;
+        CALLBACK *pcallback;
 };
 STATIC struct scaler_state **scaler_state = 0;
 
@@ -159,7 +159,7 @@ STATIC long scaler_init(int after)
 STATIC long scaler_init_record(struct scalerRecord *psr)
 {
    int card = psr->out.value.vmeio.card;
-   struct callback *pcallbacks;
+   CALLBACK *pcallbacks;
 
    /* out must be an VME_IO */
    switch (psr->out.type)
@@ -190,8 +190,8 @@ STATIC long scaler_init_record(struct scalerRecord *psr)
    scaler_state[card]->prev_counting = 0;
    
    /* setup callbacks */
-   pcallbacks = (struct callback *)psr->dpvt;
-   scaler_state[card]->pcallback = (struct callback *)&(pcallbacks[3]);
+   pcallbacks = (CALLBACK *)psr->dpvt;
+   scaler_state[card]->pcallback = (CALLBACK *)&(pcallbacks[3]);
 
    return(0);
 }
