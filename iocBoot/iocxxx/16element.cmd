@@ -2,11 +2,15 @@
 # Change the following environment variable to point to the desired
 # system configuration file
 putenv("XIA_CONFIG=xiasystem.cfg")
-# Set environment variables for the FiPPI files
+# Set environment variables for the FiPPI files. 
+# FIPPI0,FIPPI1,FIPPI2,FIPPI3 should point to the files for 
+# decimation=0,2,4,6 respectively. FIPPI_DEFAULT should point to the
+# file that will be loaded initially at boot time.
 putenv("FIPPI0=f01x2p0g.fip")
 putenv("FIPPI1=f01x2p2g.fip")
 putenv("FIPPI2=f01x2p4g.fip")
 putenv("FIPPI3=f01x2p6g.fip")
+putenv("FIPPI_DEFAULT=f01x2p4g.fip")
 # Set logging level (1=ERROR, 2=WARNING, 3=XXX, 4=DEBUG)
 dxp_md_set_log_level(4)
 dxp_initialize

@@ -23,7 +23,7 @@ board_type   dxp4c2x
 iolibrary    camacdll.dll
 interface    CAMAC
 module  0003 0 1 2 3 
-default_fippi  f01x2p4g.fip
+default_fippi  FIPPI_DEFAULT
 default_dsp    d2xr0104b.hex
 default_param  dxp2x.cfg
 module  0004 4 5 6 7 
