@@ -1,8 +1,7 @@
 TOP = ..
-include $(TOP)/configure/CONFIG
+include $(TOP)/config/CONFIG_APP
 DIRS += src
+DIRS += dxpsrc
 DIRS += devsrc
-DIRS := $(DIRS) $(filter-out $(DIRS), $(wildcard *db*))
-DIRS := $(DIRS) $(filter-out $(DIRS), $(wildcard *Db*))
-include $(TOP)/configure/RULES_DIRS
-
+DIRS += $(wildcard *Db*)
+include $(TOP)/config/RULES_DIRS
