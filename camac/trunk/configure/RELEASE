@@ -9,12 +9,12 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #INSTALL_LOCATION_APP=<fullpathname>
 
 #If using the sequencer, point SNCSEQ at its top directory:
-SNCSEQ=/corvette/usr/local/epics/seq-2.0.4
+#SNCSEQ=/corvette/usr/local/epics/seq-2.0.4
 
 # EPICS_BASE usually appears last so other apps can override stuff:
-EPICS_BASE=/corvette/usr/local/epics/base-3.14.3
-STD=/corvette/home/epics/3.14/std
-MOTOR=/corvette/home/epics/3.14/motor
+EPICS_BASE=/corvette/usr/local/epics/base-3.14.4
+STD=/corvette/home/epics/3_14/std
+MOTOR=/corvette/home/epics/3_14/motor
 
 #Capfast users may need the following definitions
 #CAPFAST_TEMPLATES=
