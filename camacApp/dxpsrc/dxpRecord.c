@@ -20,6 +20,9 @@
  *                     Added debugging statements.
  * 10-Mar-02    mlr    Added support for FIPPI, EMAXRBC, GAINRBV fields.
  * 12-Mar-02    mlr    Changed init_record to restore .GAIN, .EMAX, .FIPPI.
+ * 04-Apr-02    mlr    Moved some initialization from init_record to process, since
+ *                     it cannot be done until the device parameters have been read
+ *                     once
  */
 
 #include        <stdlib.h>
@@ -374,21 +377,19 @@ static long init_record(struct dxpRecord *pdxp, int pass)
     pdxp->pkrl = (char *)calloc(DXP_STRING_SIZE * MAX_DECIMATIONS, 
                                sizeof(char));
 
-    /* Create the peaking time strings */
-    setPeakingTimeStrings(pdxp);
+    /* Some higher-level initialization can be done here, i.e. things which don't
+     * require information on the current device parameters.  Things which do
+     * require information on the current device parameters must be done in process,
+     * after the first time the device is read */
+                                  
+    /* Create the peaking time range strings */
     setPeakingTimeRangeStrings(pdxp);
    
-    /* Set the peaking time */
-    setPeakingTime(pdxp);
-
     /* Set the gain */
     setGain(pdxp);
 
-    /* Set the bin width */
-    setBinWidth(pdxp);
-
-    /* Set the FiPPI file - bug don't do yet */
-    /* setFippi(pdxp); */
+    /* Set the FiPPI file */
+    setFippi(pdxp);
  
     /* Initialize the tasks */
     setDxpTasks(pdxp);
@@ -458,7 +459,6 @@ static long process(pdxp)
     int status;
 
     Debug(5, "dxpRecord(process): entry\n");
-    Debug(5,"  enter process a01v=%d\n",pdxp->a01v);
 
     /*** Check existence of device support ***/
     if ( (pdset==NULL) || (pdset->read_array==NULL) ) {
@@ -472,12 +472,31 @@ static long process(pdxp)
     /* See if device support set pact=true, meaning it will call us back */
     if (!pact && pdxp->pact) return(0);
     pdxp->pact = TRUE;
+    
+    if (pdxp->udf==2) {
+       /* If device support set udf=2 this is a flag to indicate that the device
+        * has been succesfully read for the first time.  We do some additional
+        * higher-level initialization that requires information about the device
+        * parameters */
+       
+       /* Set udf to 0 */
+       pdxp->udf=0;
+       
+       /* Create the peaking time strings */
+       setPeakingTimeStrings(pdxp);
+
+       /* Set the peaking time */
+       setPeakingTime(pdxp);
+
+       /* Set the bin width */
+       setBinWidth(pdxp);
+    }
+
     recGblGetTimeStamp(pdxp);
     monitor(pdxp);
     recGblFwdLink(pdxp);
     pdxp->pact=FALSE;
 
-    Debug(5,"  exit process a01v=%d\n",pdxp->a01v);
     Debug(5, "dxpRecord(process): exit\n");
     return(0);
 }
@@ -743,7 +762,7 @@ static void setDxpTasks(struct dxpRecord *pdxp)
       }
       Debug(5, "dxpRecord(setDxpTasks): runtasks=%d, offset=%d\n", 
          runtasks, minfo->offsets.runtasks);
-   /* Copy new value to parameter array in case other routines needit
+   /* Copy new value to parameter array in case other routines need it
     * before record processes again */
    pdxp->pptr[minfo->offsets.runtasks] = runtasks;
       status = (*pdset->send_msg)
@@ -782,6 +801,7 @@ static void setPeakingTimeRangeStrings(struct dxpRecord *pdxp)
    }
 }
 
+
 static void setPeakingTime(struct dxpRecord *pdxp)
 {
    struct dxpDSET *pdset = (struct dxpDSET *)(pdxp->dset);
@@ -828,6 +848,7 @@ static void setPeakingTime(struct dxpRecord *pdxp)
             (pdxp,  MSG_DXP_SET_SHORT_PARAM, minfo->offsets.peakint, peakint);
 }
 
+
 static void setGain(struct dxpRecord *pdxp)
 {
    struct dxpDSET *pdset = (struct dxpDSET *)(pdxp->dset);
@@ -859,6 +880,7 @@ static void setGain(struct dxpRecord *pdxp)
    }
 }
 
+
 static void setBinWidth(struct dxpRecord *pdxp)
 {
    struct dxpDSET *pdset = (struct dxpDSET *)(pdxp->dset);
@@ -888,7 +910,7 @@ static void setBinWidth(struct dxpRecord *pdxp)
          break;
    }
 }
-
+
 static void setFippi(struct dxpRecord *pdxp)
 {
    struct dxpDSET *pdset = (struct dxpDSET *)(pdxp->dset);
