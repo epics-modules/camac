@@ -14,21 +14,18 @@
 #ifndef XIA_XERXES_H
 #define XIA_XERXES_H
 
-#ifndef XERXESDEF_H
+/* Define some generic constants for use by XerXes */
+#include <xerxes_generic.h>
+
+/* Include structure typedefs for exporting of global variables */
+#include <xia_xerxes_structures.h>
+#include <xerxes_structures.h>
+
 #include <xerxesdef.h>
-#endif
 
 #define CODE_VERSION					   0
 #define CODE_REVISION		  			   6
-/*
- *    
- */
-#define MAXDET				500
-#define MAXSYM              500
-#define MAXSYMBOL_LEN        13
-#define MAXFILENAME_LEN     200
-#define MAXDXP				100		/* Maximum number of DXP modules in system */
-#define MAXBOARDNAME_LEN	 20
+
 /*
  *    CAMAC status Register control codes
  */
@@ -47,12 +44,16 @@ extern "C" {
  */
 XERXES_EXPORT int XERXES_API dxp_initialize(void);
 XERXES_EXPORT int XERXES_API dxp_init_ds(void);
+XERXES_EXPORT int XERXES_API dxp_enable_log(void);
+XERXES_EXPORT int XERXES_API dxp_suppress_log(void);
+XERXES_EXPORT int XERXES_API dxp_set_log_level(int *level);
+XERXES_EXPORT int XERXES_API dxp_set_log_output(char *filename);
 XERXES_EXPORT int XERXES_API dxp_init_boards_ds(void);
 XERXES_EXPORT int XERXES_API dxp_init_library(void);
 XERXES_EXPORT int XERXES_API dxp_install_utils(const char *utilname);
 XERXES_EXPORT int XERXES_API dxp_read_config(char *cname);
-XERXES_EXPORT int XERXES_API dxp_add_system_item(char *token, char **values);
-XERXES_EXPORT int XERXES_API dxp_add_board_item(char *token, char **values);
+XERXES_EXPORT int XERXES_API dxp_add_system_item(char *ltoken, char **values);
+XERXES_EXPORT int XERXES_API dxp_add_board_item(char *ltoken, char **values);
 XERXES_EXPORT int XERXES_API dxp_assign_channel(void);
 XERXES_EXPORT int XERXES_API dxp_user_setup(void);
 XERXES_EXPORT int XERXES_API dxp_reset_channel(int *detChan);
@@ -72,13 +73,17 @@ XERXES_EXPORT int XERXES_API dxp_enable_LAM(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_disable_LAM(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_reset_LAM(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_start_run(unsigned short *gate, unsigned short *resume);
-XERXES_EXPORT int XERXES_API dxp_resume_run();
+XERXES_EXPORT int XERXES_API dxp_resume_run(void);
 XERXES_EXPORT int XERXES_API dxp_stop_run(void);
 XERXES_EXPORT int XERXES_API dxp_start_one_run(int *detChan, unsigned short *gate, unsigned short *resume);
 XERXES_EXPORT int XERXES_API dxp_resume_one_run(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_stop_one_run(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_isrunning(int *detChan, int *active);
 XERXES_EXPORT int XERXES_API dxp_isrunning_any(int *detChan, int *active);
+XERXES_EXPORT int XERXES_API dxp_start_control_task(int *detChan, short *type, unsigned int *length, int *info);
+XERXES_EXPORT int XERXES_API dxp_stop_control_task(int *detChan);
+XERXES_EXPORT int XERXES_API dxp_control_task_info(int *detChan, short *type, int *info);
+XERXES_EXPORT int XERXES_API dxp_get_control_task_data(int *detChan, short *type, void *data);
 XERXES_EXPORT int XERXES_API dxp_readout_detector_run(int *, unsigned short [], unsigned short [], unsigned long []);
 XERXES_EXPORT int XERXES_API dxp_write_spectra(int *,int *);
 XERXES_EXPORT int XERXES_API dxp_dspdefaults(int *);
@@ -90,7 +95,7 @@ XERXES_EXPORT int XERXES_API dxp_put_dspparams(void);
 XERXES_EXPORT int XERXES_API dxp_replace_dspparams(int *);
 XERXES_EXPORT int XERXES_API dxp_dspparams(char *);
 XERXES_EXPORT int XERXES_API dxp_upload_dspparams(int *);
-XERXES_EXPORT int XERXES_API dxp_get_symbol_index(int* detChan, char* name, unsigned short* index);
+XERXES_EXPORT int XERXES_API dxp_get_symbol_index(int* detChan, char* name, unsigned short* symindex);
 XERXES_EXPORT int XERXES_API dxp_set_dspsymbol(char *, unsigned short *);
 XERXES_EXPORT int XERXES_API dxp_set_one_dspsymbol(int *,char *, unsigned short *);
 XERXES_EXPORT int XERXES_API dxp_get_one_dspsymbol(int *,char *, unsigned short *);
@@ -132,7 +137,6 @@ XERXES_EXPORT void XERXES_API dxp_version(void);
 XERXES_EXPORT int XERXES_API dxp_locate_system_files(unsigned int *, char **);
 XERXES_EXPORT int XERXES_API dxp_locate_channel_files(int *, unsigned int *, char **);
 XERXES_EXPORT int XERXES_API dxp_lock_resource(int *detChan, short *lock);
-XERXES_EXPORT int XERXES_API dxp_read_adc(int *detChan, unsigned short *data);
 
 XERXES_STATIC int XERXES_API dxp_get_btype(char *name, Board_Info **current);
 XERXES_STATIC int XERXES_API dxp_add_btype_library(Board_Info *current);
@@ -156,13 +160,18 @@ XERXES_STATIC int XERXES_API dxp_pick_filename(unsigned int, char *, char *);
 XERXES_STATIC int XERXES_API dxp_strnstrm(char *, char *, unsigned int *, unsigned int *);
 XERXES_STATIC int XERXES_API dxp_readout_run(Board *, int *, unsigned short [], unsigned short [], unsigned long []);
 XERXES_STATIC int XERXES_API dxp_do_readout(Board *, int *, unsigned short [], unsigned short [], unsigned long []);
-XERXES_STATIC FILE* XERXES_API dxp_find_file(const char *, const char *, char [MAXFILENAME_LEN]);
 
 XERXES_IMPORT int DXP_API dxp_init_dxp4c2x(Functions *funcs);
 XERXES_IMPORT int DXP_API dxp_init_dxp4c(Functions *funcs);
 XERXES_IMPORT int DXP_API dxp_init_dxpx10p(Functions *funcs);
+XERXES_IMPORT int DXP_API dxp_init_dgfg200(Functions *funcs);
 XERXES_IMPORT int MD_API dxp_md_init_util(Xia_Util_Functions *funcs, char *type);
 XERXES_IMPORT int MD_API dxp_md_init_io(Xia_Io_Functions *funcs, char *type);
+
+/* Routines contained in xia_common.c.  Routines that are used across libraries but not exported */
+static FILE* dxp_find_file(const char *, const char *, char [MAXFILENAME_LEN]);
+
+XERXES_SHARED void XERXES_API dxp_log(int level, char *routine, char *message, int error);
 
 #else									/* Begin old style C prototypes */
 /*
@@ -170,13 +179,16 @@ XERXES_IMPORT int MD_API dxp_md_init_io(Xia_Io_Functions *funcs, char *type);
  */
 XERXES_EXPORT int XERXES_API dxp_initialize();
 XERXES_EXPORT int XERXES_API dxp_init_ds();
+XERXES_EXPORT int XERXES_API dxp_enable_log();
+XERXES_EXPORT int XERXES_API dxp_suppress_log();
+XERXES_EXPORT int XERXES_API dxp_set_log_level();
+XERXES_EXPORT int XERXES_API dxp_set_log_output();
 XERXES_EXPORT int XERXES_API dxp_init_boards_ds();
 XERXES_EXPORT int XERXES_API dxp_init_library();
 XERXES_EXPORT int XERXES_API dxp_install_utils();
 XERXES_EXPORT int XERXES_API dxp_read_config();
 XERXES_EXPORT int XERXES_API dxp_add_system_item();
 XERXES_EXPORT int XERXES_API dxp_add_boards_item();
-XERXES_EXPORT int XERXES_API dxp_install_utils();
 XERXES_EXPORT int XERXES_API dxp_init_ds();
 XERXES_EXPORT int XERXES_API dxp_assign_channel();
 XERXES_EXPORT int XERXES_API dxp_user_setup();
@@ -197,6 +209,10 @@ XERXES_EXPORT int XERXES_API dxp_resume_one_run();
 XERXES_EXPORT int XERXES_API dxp_stop_one_run();
 XERXES_EXPORT int XERXES_API dxp_isrunning();
 XERXES_EXPORT int XERXES_API dxp_isrunning_any();
+XERXES_EXPORT int XERXES_API dxp_start_control_task();
+XERXES_EXPORT int XERXES_API dxp_stop_control_task();
+XERXES_EXPORT int XERXES_API dxp_control_task_info();
+XERXES_EXPORT int XERXES_API dxp_get_control_task_data();
 XERXES_EXPORT int XERXES_API dxp_readout_detector_run();
 XERXES_EXPORT int XERXES_API dxp_write_spectra();
 XERXES_EXPORT int XERXES_API dxp_dspconfig();
@@ -250,7 +266,6 @@ XERXES_EXPORT void XERXES_API dxp_version();
 XERXES_EXPORT int XERXES_API dxp_locate_system_files();
 XERXES_EXPORT int XERXES_API dxp_locate_channel_files();
 XERXES_EXPORT int XERXES_API dxp_lock_resource();
-XERXES_EXPORT int XERXES_API dxp_read_adc();
 
 XERXES_STATIC int XERXES_API dxp_get_btype();
 XERXES_STATIC int XERXES_API dxp_add_btype_library();
@@ -272,14 +287,18 @@ XERXES_STATIC int XERXES_API dxp_add_defaults();
 XERXES_STATIC int XERXES_API dxp_pick_filename();
 XERXES_STATIC int XERXES_API dxp_strnstrm();
 XERXES_STATIC int XERXES_API dxp_readout_run();
-XERXES_STATIC FILE* XERXES_API dxp_find_file();
 
 XERXES_IMPORT int DXP_API dxp_init_dxp4c2x();
 XERXES_IMPORT int DXP_API dxp_init_dxp4c();
 XERXES_IMPORT int DXP_API dxp_init_dxpx10p();
+XERXES_IMPORT int DXP_API dxp_init_dgfg200();
 XERXES_IMPORT int MD_API dxp_md_init_util();
 XERXES_IMPORT int MD_API dxp_md_init_io();
 
+/* Routines contained in xia_common.c.  Routines that are used across libraries but not exported */
+static FILE* dxp_find_file();
+
+XERXES_SHARED void XERXES_API dxp_log();
 #endif                                  /*   end if _XERXES_PROTO_ */
 
 /* If this is compiled by a C++ compiler, make it clear that these are C routines */
@@ -287,5 +306,48 @@ XERXES_IMPORT int MD_API dxp_md_init_io();
 }
 #endif
 
-#endif						/* Endif for XIA_XERXES_H */
+/* 
+ * Define the utility routines used throughout this library
+ */
 
+/* Added new logging routines 8/22/01 -- PJF */
+
+DXP_MD_ERROR_CONTROL dxp_md_error_control;
+DXP_MD_ERROR dxp_md_error;
+DXP_MD_WARNING dxp_md_warning;
+DXP_MD_INFO dxp_md_info;
+DXP_MD_DEBUG dxp_md_debug;
+DXP_MD_OUTPUT dxp_md_output;
+DXP_MD_SUPPRESS_LOG dxp_md_suppress_log;
+DXP_MD_ENABLE_LOG dxp_md_enable_log;
+DXP_MD_SET_LOG_LEVEL dxp_md_set_log_level;
+DXP_MD_LOG dxp_md_log;
+DXP_MD_ALLOC dxp_md_alloc;
+DXP_MD_FREE dxp_md_free;
+DXP_MD_PUTS dxp_md_puts;
+DXP_MD_WAIT dxp_md_wait;
+
+/* Here are the definitions for the exported variables that HanDeL needs */
+XERXES_EXPORT Interface    *iface_head;
+XERXES_EXPORT Utils        *utils;
+XERXES_EXPORT Board_Info   *btypes_head;
+XERXES_EXPORT Board        *system_head;
+XERXES_EXPORT System_Info  *info;
+XERXES_EXPORT Dsp_Info     *dsp_head;
+XERXES_EXPORT Fippi_Info   *fippi_head;
+XERXES_EXPORT Dsp_Defaults *defaults_head;
+
+/* Logging macro wrappers */
+#define dxp_log_error(x, y, z)	dxp_md_log(MD_ERROR, (x), (y), (z), __FILE__, __LINE__)
+#define dxp_log_warning(x, y)		dxp_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_info(x, y)			dxp_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_debug(x, y)		dxp_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
+/* Useful Macros */
+#define STREQ(x, y)		(strcmp((x), (y)) == 0)
+
+/* Boolean support */
+typedef unsigned char boolean;
+#define TRUE_	(1==1)
+#define FALSE_	(1==0)
+
+#endif						/* Endif for XIA_XERXES_H */

@@ -10,26 +10,31 @@
 #ifndef XIA_XERXES_STRUCTURES_H
 #define XIA_XERXES_STRUCTURES_H
 
-#ifndef XERXESDEF_H
 #include <xerxesdef.h>
-#endif
 
 /* 
  * Begin XerXes structures 
  */
 
+struct Parameter {
+/* parameter name */
+	char *pname;
+/* Address offset of the parameters, typically from Data memory start */
+	unsigned int address;
+/* parameter access mode 0=RO, 1=RW, 2=WO */
+	unsigned short access;
+/* parameter lower bound value */
+	unsigned short lbound;
+/* parameter upper bound value */
+	unsigned short ubound;
+};
+typedef struct Parameter Parameter;
 /*
  * Structure containing the DSP parameter names
  */
 struct Dsp_Params {
-/* parameter names */
-	char **pnames;
-/* parameter access mode 0=RO, 1=RW, 2=WO */
-	unsigned short *access;
-/* parameter lower bound value */
-	unsigned short *lbound;
-/* parameter upper bound value */
-	unsigned short *ubound;
+/* Array of nsymbol parameters */
+	struct Parameter *parameters;
 /* number of parameters */
 	unsigned short nsymbol;
 /* Need the maximum number of symbols for allocating memory */
@@ -121,6 +126,67 @@ struct Interface {
 };
 typedef struct Interface Interface;
 /*
+ *	Structure containing information about the state of each channel
+ */
+struct Chan_State {
+/* keep track of the DSP download state(2=needs update(DSP changed, but not redownloaded), 1=downloaded, 0=not)*/
+	short dspdownloaded;
+};
+typedef struct Chan_State Chan_State;
+/*
+ *	Define a system linked list for all boards in use
+ */
+struct Board {
+/* CAMAC IO channel*/
+	int ioChan;
+/* Bit packed integer of which channels are used */
+	unsigned short used;
+/* Detector channel ID numbers (defined in DXP_MODULE) */
+	int *detChan;
+/* Module ID number (start counting at 0) */
+	int mod;
+/* Total number of channels on this board */
+	unsigned int nchan;
+/* String passed to the interface library, used to identify the board
+ * or if need to restart the interface, for a typical CAMAC system contains
+ * the SCSI bus number, crate number and slot number.  */
+	char *iostring;
+/* Array to hold misc information about the board state 
+ * state[0] = run status (1=run started, 0=no run started)
+ * state[1] = gate used (1=ignore gate, 0=use gate)
+ * state[2] = lock value (1=locked, 0=free)
+ * state[3] = HanDeL update status (1=needs update, 0=up to date)
+ * state[4] = Type of control task running (values defined in xerxes_generic.h)
+ */
+	short state[5];
+/* State structure for each channel of the board
+ * chanstate[chan] is used like state[], but contains information about each channel*/
+	struct Chan_State *chanstate;
+/* Pointer to the IO interface library structure */
+	struct Interface *iface;
+/* Parameter Memory for these channels */
+	unsigned short **params;
+/* Pointer to the DSP Program file for each channel */
+	struct Dsp_Info **dsp;
+/* Pointer to the DSP Parameter Defaults for each channel */
+	struct Dsp_Defaults **defaults;
+/* Pointer to the FiPPi Program file for each channel */
+	struct Fippi_Info **fippi;
+/* Pointer to the MMU Program file for each channel */
+	struct Fippi_Info *mmu;
+/* Pointer to the User Defined FiPPi Program file for each channel */
+	struct Fippi_Info **user_fippi;
+/* Information about the Preamp associated with each channel */
+	struct Preamp_Info *preamp;
+/* Pointer to the structure of function calls */
+	struct Board_Info *btype;
+/* Pointer to the array of structures of Firmware Deifinitions */
+	struct FirmwareSet **firmware;
+/* Pointer to next board in the linked list */
+	struct Board *next;
+};
+typedef struct Board Board;
+/*
  *  Structure that points at the functions within a board type DLL
  */
 typedef int (*DXP_INIT_DRIVER)(Interface *);
@@ -130,35 +196,41 @@ typedef int (*DXP_GET_DSPINFO)(Dsp_Info *);
 typedef int (*DXP_GET_FIPINFO)(Fippi_Info *);
 typedef int (*DXP_GET_DEFAULTSINFO)(Dsp_Defaults *);
 typedef int (*DXP_GET_FIPCONFIG)(Fippi_Info *);
-typedef int (*DXP_DOWNLOAD_FIPCONFIG)(int *, int *, Fippi_Info *);
+typedef int (*DXP_DOWNLOAD_FIPCONFIG)(int *, int *, Board *);
 typedef int (*DXP_DOWNLOAD_FIPPI_DONE)(int *, int *, unsigned short *);
 typedef int (*DXP_GET_DSPDEFAULTS)(Dsp_Defaults *);
 typedef int (*DXP_DOWNLOAD_DSPCONFIG)(int *, int *, Dsp_Info *);
 typedef int (*DXP_DOWNLOAD_DSP_DONE)(int *, int *, int*, Dsp_Info *, unsigned short *, float *);
-typedef int (*DXP_CALIBRATE_CHANNEL)(int *, int *, unsigned short *, int *, Dsp_Info **);
-typedef int (*DXP_CALIBRATE_ASC)(int *, int *, unsigned short *, Dsp_Info **);
+typedef int (*DXP_CALIBRATE_CHANNEL)(int *, int *, unsigned short *, int *, Board *board);
+typedef int (*DXP_CALIBRATE_ASC)(int *, int *, unsigned short *, Board *board);
 typedef int (*DXP_LOOK_AT_ME)(int *, int *);
 typedef int (*DXP_IGNORE_ME)(int *, int *);
 typedef int (*DXP_CLEAR_LAM)(int *, int *);
 typedef int (*DXP_LOC)(char *, Dsp_Info *, unsigned short *);
 typedef int (*DXP_SYMBOLNAME)(unsigned short *, Dsp_Info *, char *);
-typedef int (*DXP_READ_SPECTRUM)(int *, int *, Dsp_Info *, unsigned short *, unsigned long *);
-typedef int (*DXP_TEST_SPECTRUM_MEMORY)(int *, int *, int *, Dsp_Info *, unsigned short *);
+typedef int (*DXP_READ_SPECTRUM)(int *, int *, Board *, unsigned long *);
+typedef int (*DXP_TEST_SPECTRUM_MEMORY)(int *, int *, int *, Board *);
 typedef unsigned int (*DXP_GET_SPECTRUM_LENGTH)(Dsp_Info *, unsigned short *);
-typedef int (*DXP_READ_BASELINE)(int *, int *, Dsp_Info *, unsigned short *, unsigned short *);
-typedef int (*DXP_TEST_BASELINE_MEMORY)(int *, int *, int *, Dsp_Info *, unsigned short *);
+typedef int (*DXP_READ_BASELINE)(int *, int *, Board *, unsigned short *);
+typedef int (*DXP_TEST_BASELINE_MEMORY)(int *, int *, int *, Board *);
 typedef unsigned int (*DXP_GET_BASELINE_LENGTH)(Dsp_Info *, unsigned short *);
-typedef int (*DXP_TEST_EVENT_MEMORY)(int *, int *, int *, Dsp_Info *, unsigned short *);
+typedef int (*DXP_TEST_EVENT_MEMORY)(int *, int *, int *, Board *);
 typedef unsigned int (*DXP_GET_EVENT_LENGTH)(Dsp_Info *, unsigned short *);
 typedef int (*DXP_WRITE_DSPPARAMS)(int *, int *, Dsp_Info *, unsigned short *);
-typedef int (*DXP_WRITE_DSP_PARAM_ADDR)(int *, int *, unsigned short *, unsigned short *);
+typedef int (*DXP_WRITE_DSP_PARAM_ADDR)(int *, int *, unsigned int *, unsigned short *);
 typedef int (*DXP_READ_DSPPARAMS)(int *, int *, Dsp_Info *, unsigned short *);
 typedef int (*DXP_READ_DSPSYMBOL)(int *, int *, char *, Dsp_Info *, unsigned long *);
 typedef int (*DXP_MODIFY_DSPSYMBOL)(int *, int *, char *, unsigned short *, Dsp_Info *);
 typedef int (*DXP_DSPPARAM_DUMP)(int *, int *, Dsp_Info *);
-typedef int (*DXP_BEGIN_RUN)(int *, int *, unsigned short *, unsigned short *);
-typedef int (*DXP_END_RUN)(int *, int *);
+typedef int (*DXP_BEGIN_RUN)(int *ioChan, int *modChan, unsigned short *gate, 
+							unsigned short *resume, Board *board);
+typedef int (*DXP_END_RUN)(int *ioChan, int *modChan);
 typedef int (*DXP_RUN_ACTIVE)(int *, int *, int *);
+typedef int (*DXP_BEGIN_CONTROL_TASK)(int *ioChan, int *modChan, short *type, unsigned int *length,
+									  int *info, Board *board);
+typedef int (*DXP_END_CONTROL_TASK)(int *ioChan, int *modChan, Board *board);
+typedef int (*DXP_CONTROL_TASK_PARAMS)(int *ioChan, int *modChan, short *type, Board *board, int *info);
+typedef int (*DXP_CONTROL_TASK_DATA)(int *ioChan, int *modChan, short *type, Board *board, long *data);
 typedef int (*DXP_GET_RUNSTATS)(unsigned short *, Dsp_Info *, unsigned int *, unsigned int *, 
 								unsigned int *, unsigned int *, unsigned int *, double *);
 typedef int (*DXP_DECODE_ERROR)(unsigned short *, Dsp_Info *, unsigned short *, unsigned short *);
@@ -167,8 +239,7 @@ typedef int (*DXP_CHANGE_GAINS)(int *, int *, int *, float *, Dsp_Info *);
 typedef int (*DXP_SETUP_ASC)(int *, int *, int *, float *, float *, unsigned short *, 
 								float *, float *, float *, Dsp_Info *);
 typedef int (*DXP_PREP_FOR_READOUT)(int *, int *);
-typedef int (*DXP_DONE_WITH_READOUT)(int *, int *, short [2]);
-typedef int (*DXP_GET_ADC)(int *ioChan, int *modChan, Dsp_Info *dsp, unsigned short *data); 
+typedef int (*DXP_DONE_WITH_READOUT)(int *, int *, Board *);
 
 struct Functions {
 	DXP_INIT_DRIVER dxp_init_driver;
@@ -210,6 +281,10 @@ struct Functions {
 	DXP_BEGIN_RUN dxp_begin_run;
 	DXP_END_RUN dxp_end_run;
 	DXP_RUN_ACTIVE dxp_run_active;
+	DXP_BEGIN_CONTROL_TASK dxp_begin_control_task;
+	DXP_END_CONTROL_TASK dxp_end_control_task;
+	DXP_CONTROL_TASK_PARAMS dxp_control_task_params;
+	DXP_CONTROL_TASK_DATA dxp_control_task_data;
 	DXP_DECODE_ERROR dxp_decode_error;
 	DXP_CLEAR_ERROR dxp_clear_error;
 	DXP_GET_RUNSTATS dxp_get_runstats;
@@ -218,8 +293,6 @@ struct Functions {
 
 	DXP_PREP_FOR_READOUT dxp_prep_for_readout;
 	DXP_DONE_WITH_READOUT dxp_done_with_readout;
-
-	DXP_GET_ADC dxp_get_adc;
 };
 typedef struct Functions Functions;
 /*
@@ -233,53 +306,6 @@ struct Board_Info {
 	struct Board_Info *next;
 };
 typedef struct Board_Info Board_Info;
-/*
- *	Define a system linked list for all boards in use
- */
-struct Board {
-/* CAMAC IO channel*/
-	int ioChan;
-/* Bit packed integer of which channels are used */
-	unsigned short used;
-/* Detector channel ID numbers (defined in DXP_MODULE) */
-	int *detChan;
-/* Module ID number (start counting at 0) */
-	int mod;
-/* Total number of channels on this board */
-	unsigned int nchan;
-/* String passed to the interface library, used to identify the board
- * or if need to restart the interface, for a typical CAMAC system contains
- * the SCSI bus number, crate number and slot number.  */
-	char *iostring;
-/* Array to hold misc information about the board state 
- * state[0] = run status (1=run started)
- * state[1] = gate used (1=ignore gate)
- * state[2] = lock value (1=locked, 0=free)
- * state[3] = HanDeL update status (1=needs update, 0=up to date)
- */
-	short state[4];
-/* Pointer to the IO interface library structure */
-	struct Interface *iface;
-/* Parameter Memory for these channels */
-	unsigned short **params;
-/* Pointer to the DSP Program file for each channel */
-	struct Dsp_Info **dsp;
-/* Pointer to the DSP Parameter Defaults for each channel */
-	struct Dsp_Defaults **defaults;
-/* Pointer to the FiPPi Program file for each channel */
-	struct Fippi_Info **fippi;
-/* Information about the Preamp associated with each channel */
-	struct Preamp_Info *preamp;
-/* Pointer to the structure of function calls */
-	struct Board_Info *btype;
-/* Pointer to the array of structures of DAQ information */
-	struct DaqValues *daq;
-/* Pointer to the array of structures of Firmware Deifinitions */
-	struct FirmwareSet **firmware;
-/* Pointer to next board in the linked list */
-	struct Board *next;
-};
-typedef struct Board Board;
 /* 
  * Define a struct to contain global information 
  */
@@ -302,113 +328,4 @@ struct System_Info {
 };
 typedef struct System_Info System_Info;
 
-/* Begin Structure definitions for HanDeL (Hardware Dependent Layer)
- * While these routines are incorporated into XerXes, they are treated
- * as semi-autonomous.
- */
-
-/*
- * Linked list containing the default DAQ settings
- * retained for the HanDeL library.  name-value pairs only.
- */
-struct XiaDefaults {
-/* Filename identifying this entry */
-	char *alias;
-/* Total number of entries in the arrays */
-	unsigned short n;
-/* Array containing the default DAQ settting names */
-	char **name;
-/* DAQ setting values array */
-	float *data;
-/* Pointer to the next entry */
-	struct XiaDefaults *next;
-};
-typedef struct XiaDefaults XiaDefaults;
-/* 
- * Define the linked list used to track peaking time ranges for firmware
- * definitions.  Peaking times are specified in nanoseconds. 
- */
-struct Firmware {
-/* Decimation */
-	unsigned short decimation;
-/* Min Peaking time */
-	float min_ptime;
-/* Max Peaking time */
-	float max_ptime;
-/* Point to the Fippi_Info for this definition */
-	struct Fippi_Info *fippi;
-/* Point to the Dsp_Info for this definition */
-	struct Dsp_Info *dsp;
-	struct Firmware *next;
-};
-typedef struct Firmware Firmware;
-/* 
- * Define a linked list of firmware sets.  These are 'sets' of peaking
- * time definitions that can be referenced within the board structure
- * to allow boards to have arbitrary firmware definitions for arbitrary 
- * board combinations.
- */
-struct FirmwareSet {
-/* Give this set a name as a reference */
-	char *alias;
-/* Point to a Firmware structure */
-	struct Firmware *firmware;
-/* Point to the next element of the linked list */
-	struct FirmwareSet *next;
-};
-typedef struct FirmwareSet FirmwareSet;
-/* 
- * Define a linked list of Detectors.
- */
-struct Detector {
-/* Give this set a name as a reference */
-	char *alias;
-/* Number of channels for this detector */
-	unsigned short nchan;
-/* Array of polarities for all channels
- * 1 = positive
- * 0 = negative 
- */
-	unsigned short *polarity;
-/* Array of preamp gains for the channels in 
- * mv/KeV.
- */
-	double *gain;
-	struct Detector *next;
-};
-typedef struct Detector Detector;
-/* 
- * Define a struct to contain acquisition values for each channel
- */
-struct DaqValues {
-/* Store the peaking time (in usec) */
-	float peak;
-/* Store the gap time (in usec) */
-	float gap;
-/* Store the trigger peaking time (in usec) */
-	float tpeak;
-/* Store the trigger gap time (in usec) */
-	float tgap;
-/* Store the trigger threshold (in eV) */
-	float thresh;
-/* Store the gain (in V/V) */
-	float gain;
-/* Store the binWidth (in eV) */
-	float binwidth;
-/* Store the number of MCA channels */
-	unsigned long nmca;
-/* Store the energy of the minimum MCA bin (in eV) */
-	float min_mca;
-/* Store the energy of the maximum MCA bin (in eV) */
-	float max_mca;
-/* Store the number of ROIs */
-	unsigned int nroi;
-/* Store the lower thresh for the ROIs (in eV) */
-	float *low_roi;
-/* Store the high thresh for the ROIs (in eV) */
-	float *hi_roi;
-};
-typedef struct DaqValues DaqValues;
-
 #endif						/* Endif for XIA_XERXES_STRUCTURES_H */
-

@@ -20,6 +20,7 @@
 
 #define XIA_MD_STATIC static
 
+#define XIA_MD_SHARED
 
 
 #ifdef XIA_MD_USE_DLL		/* Linking to a DLL libraries */
@@ -104,4 +105,3 @@
 #endif               /* end of _DXP_SWITCH_*/
 
 #endif				 /* Endif for XIA_MDDEF_H */
-
