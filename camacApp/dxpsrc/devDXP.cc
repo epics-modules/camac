@@ -9,6 +9,8 @@
     Modified:
     8-Feb-2002  MLR  Removed connectIO routine and modified sendFloat64Message
                      to call connectWait, which was recently added to DevMpf.
+    4-Apr-2002  MLR  In completeIO if udf==1 (first successful reply) set udf=2 
+                     so that we can take special action in dxpRecord.c.
 
 */
 
@@ -150,7 +152,7 @@ long DevDxpMpf::completeIO(dbCommon* pr,Message* m)
        memcpy(pdxp->pptr, params, nsymbols*sizeof(unsigned short));
        baseline = (unsigned short *)pam->value + nsymbols;
        memcpy(pdxp->bptr, baseline, nbase*sizeof(unsigned short));
-       pdxp->udf=0;
+       if (pdxp->udf==1) pdxp->udf=2;
        break;
 
     default:
