@@ -8,10 +8,15 @@ CAMAC modules will be supported in the future.
   Revisions:
   .01  5/15/00    mlr     Created from devScaler.c by Tim Mooney
 *******************************************************************************/
+#include        <vxWorks.h>
+#include        <vme.h>
+#include        <types.h>
+#include        <stdioLib.h>
 #include        <stdlib.h>
-#include        <stdio.h>
 #include        <string.h>
 #include        <math.h>
+#include        <iv.h>
+#include        <wdLib.h>
 
 #include        <devLib.h>
 #include        <alarm.h>
@@ -20,10 +25,6 @@ CAMAC modules will be supported in the future.
 #include        <dbCommon.h>
 #include        <dbScan.h>
 #include        <recSup.h>
-#include        <recGbl.h>
-#include        <callback.h>
-#include        <epicsTimer.h>
-#include        <epicsExport.h>
 #include        <devSup.h>
 #include        <drvSup.h>
 #include        <dbScan.h>
@@ -32,11 +33,6 @@ CAMAC modules will be supported in the future.
 #include        <camacLib.h>
 #include        "scalerRecord.h"
 #include        "devScaler.h"
-
-#ifndef vxWorks
-#define ERROR -1
-#define OK    0
-#endif
 
 /*** Debug support ***/
 #define STATIC static
@@ -77,7 +73,6 @@ SCALERDSET devScalerCamac = {
         scaler_arm,
         scaler_done
 };
-epicsExportAddress(SCALERDSET, devScalerCamac);
 
 STATIC int num_cards=0;
 struct scaler_state {

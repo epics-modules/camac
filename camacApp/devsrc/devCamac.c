@@ -190,18 +190,19 @@
 /*  Header Files							*/
 /************************************************************************/
 
+#include	<sys/types.h>	/* Standard Data Type Definitions	*/
+#include	<stdlib.h>	/* Standard C Routines			*/
 #include	<stdio.h>	/* Standard I/O Routines		*/
 #include	<string.h>	/* Standard String Handling Routines	*/
-#include	<stdlib.h>	/* Standard String Handling Routines	*/
 #include	<limits.h>	/* Architecture-dependant values	*/
 #include	<errno.h>	/* Standard Error Codes			*/
 
+#include	<vxWorks.h>	/* VxWorks Definitions & Routines	*/
+#include	<logLib.h>	/* VxWorks Message Logging Library	*/
+
 #include	<dbDefs.h>	/* EPICS Standard Definitions		*/
-#include        <dbAccess.h>
 #include	<dbScan.h>	/* EPICS Data Base Scan Definitions	*/
 #include        <recSup.h>	/* EPICS Record Support Definitions	*/
-#include        <recGbl.h>
-#include        <alarm.h>
 #include	<devSup.h>	/* EPICS Device Support Definitions	*/
 #include	<link.h>	/* EPICS db Link Field Definitions	*/
 
@@ -212,10 +213,6 @@
 /*  Local Constants							*/
 /************************************************************************/
 
-#ifndef vxWorks
-#define ERROR -1
-#define OK    0
-#endif
 /*---------------------
  * Conversion codes returned to record support layer
  */
