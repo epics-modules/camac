@@ -7,6 +7,9 @@ include $(TOP)/config/CONFIG_APP
 LIBNAME = dxpCamacLib
 USR_CFLAGS += -DEXCLUDE_DXPX10P
 USR_CFLAGS += -DXIA_SPECIAL_MEM
+#MN May 30-2002
+USR_CFLAGS += -DEXCLUDE_DGFG200
+USR_CFLAGS += -DEXCLUDE_UDXPS
 
 SRCS.c += ../dxp4c.c ../dxp4c2x.c ../xerxes.c ../xerxes_log.c
 SRCS.c += ../md_epics.c ../md_log_epics.c

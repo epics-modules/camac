@@ -1,4 +1,4 @@
-/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  *  xerxes_generic.h
@@ -85,8 +85,8 @@
 #define CT_DXP2X_CLOSE_INPUT_RELAY 213
 #define CT_DXP2X_OPEN_INPUT_RELAY  214
 #define CT_DXP2X_RC_BASELINE       215
-#define CT_DXP2X_RC_EVENT	       216
-#define CT_DXP2X_ADC			   217
+#define CT_DXP2X_RC_EVENT	   216
+#define CT_DXP2X_ADC		   217
 #define CT_DXP2X_BASELINE_HIST     218	/* Special run for Baseline History		*/
 #define CT_DXP2X_RESET             299
 
@@ -111,15 +111,16 @@
  * Definitions for DGFG200 configurations 
  */
 #define CT_DGFG200_SETDACS            400
-#define CT_DGFG200_CLOSE_INPUT_RELAY  401
-#define CT_DGFG200_OPEN_INPUT_RELAY   402
+#define CT_DGFG200_OPEN_INPUT_RELAY   401
+#define CT_DGFG200_CLOSE_INPUT_RELAY  402
 #define CT_DGFG200_RAMP_OFFSET_DAC    403
-#define CT_DGFG200_ADC		          404
+#define CT_DGFG200_ADC		      404
 #define CT_DGFG200_PROGRAM_FIPPI      405
 #define CT_DGFG200_READ_MEMORY_FIRST  409
 #define CT_DGFG200_READ_MEMORY_NEXT   410
 #define CT_DGFG200_WRITE_MEMORY_FIRST 411
 #define CT_DGFG200_WRITE_MEMORY_NEXT  412
+#define CT_DGFG200_ISOLATED_RAMP_OFFSET_DAC  413
 #define CT_DGFG200_MEASURE_NOISE      419
 #define CT_DGFG200_ADC_CALIB_FIRST    420
 #define CT_DGFG200_ADC_CALIB_NEXT     421

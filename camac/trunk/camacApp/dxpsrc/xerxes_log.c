@@ -1,4 +1,4 @@
-/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  * xerxes_log.c

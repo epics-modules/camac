@@ -1,4 +1,4 @@
-/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 //**********************************************************************
 //
@@ -132,3 +132,4 @@ BYTE SRB_TargStat;			// Target Status
 FARPROC SRB_PostProc;			// Post routine
 BYTE SRB_ResetRsvd2[34];		// Reserved, MUST = 0
 } SRB_BusDeviceReset;
+

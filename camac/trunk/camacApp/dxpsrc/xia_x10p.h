@@ -1,4 +1,4 @@
-/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  *  xia_dxp4c2x.h
@@ -146,6 +146,10 @@ XERXES_STATIC int XERXES_API dxp_setup_asc(int *, int *, int *, float *, float *
 XERXES_STATIC int XERXES_API dxp_calibrate_asc(int *, int *, unsigned short *, Board *);
 XERXES_STATIC int XERXES_API dxp_calibrate_channel(int *, int *, unsigned short *, int *, Board *);
 XERXES_STATIC int XERXES_API dxp_little_endian(void);
+
+  XERXES_STATIC int XERXES_API dxp_setup_cmd(Board *board, char *name, unsigned int *lenS,
+											 byte_t *send, unsigned int *lenR, byte_t *receive);
+
 XERXES_STATIC FILE* XERXES_API dxp_find_file(const char *, const char *);
 
 #else									/* Begin old style C prototypes */
@@ -222,6 +226,9 @@ XERXES_STATIC int XERXES_API dxp_calibrate_channel();
 XERXES_STATIC int XERXES_API dxp_read_long();
 XERXES_STATIC int XERXES_API dxp_write_long();
 XERXES_STATIC int XERXES_API dxp_little_endian();
+
+  XERXES_STATIC int XERXES_API dxp_setup_cmd();
+
 XERXES_STATIC FILE* XERXES_API dxp_find_file();
 
 #endif                                  /*   end if _XERXES_PROTO_ */
@@ -235,8 +242,10 @@ XERXES_STATIC FILE* XERXES_API dxp_find_file();
 #define dxp_log_warning(x, y)	x10p_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
 #define dxp_log_info(x, y)	x10p_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
 #define dxp_log_debug(x, y)	x10p_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
+
 /* Useful Macros */
 #define STREQ(x, y)		(strcmp((x), (y)) == 0)
+#define UNUSED(x)       ((x) = (x))
 
 /* Boolean support */
 typedef unsigned char boolean;

@@ -1,4 +1,4 @@
-/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+/*<Thu May 23 11:38:03 2002--ALPHA_FRINK--0.0.6--Do not remove--XIA>*/
 
 /*
  * g200.c
@@ -23,8 +23,38 @@
  *    Created		12-July-01 JW Copied to g200.c from X10P.c 
  *         
  *
- *   Copyright 1996 X-ray Instrumentation Associates
- *   All rights reserved
+ * Copyright (c) 2002, X-ray Instrumentation Associates
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted provided 
+ * that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the 
+ *     following disclaimer.
+ *   * Redistributions in binary form must reproduce the 
+ *     above copyright notice, this list of conditions and the 
+ *     following disclaimer in the documentation and/or other 
+ *     materials provided with the distribution.
+ *   * Neither the name of X-ray Instrumentation Associates 
+ *     nor the names of its contributors may be used to endorse 
+ *     or promote products derived from this software without 
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+ * IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE.
  *
  */
 
@@ -83,10 +113,10 @@ int dxp_init_dgfg200(Functions* funcs)
 	funcs->dxp_get_fipinfo = dxp_get_fipinfo;
 	funcs->dxp_get_defaultsinfo = dxp_get_defaultsinfo;
 	funcs->dxp_get_dspconfig = dxp_get_dspconfig;
-	funcs->dxp_get_fipconfig = dxp_get_fipconfig;
+	funcs->dxp_get_fpgaconfig = dxp_get_fpgaconfig;
 	funcs->dxp_get_dspdefaults = dxp_get_dspdefaults;
-	funcs->dxp_download_fipconfig = dxp_download_fipconfig;
-	funcs->dxp_download_fippi_done = dxp_download_fippi_done;
+	funcs->dxp_download_fpgaconfig = dxp_download_fpgaconfig;
+	funcs->dxp_download_fpga_done = dxp_download_fpga_done;
 	funcs->dxp_download_dspconfig = dxp_download_dspconfig;
 	funcs->dxp_download_dsp_done = dxp_download_dsp_done;
 	funcs->dxp_calibrate_channel = dxp_calibrate_channel;
@@ -128,6 +158,8 @@ int dxp_init_dgfg200(Functions* funcs)
 	funcs->dxp_get_runstats = dxp_get_runstats;
 	funcs->dxp_change_gains = dxp_change_gains;
 	funcs->dxp_setup_asc = dxp_setup_asc;
+
+	funcs->dxp_setup_cmd = dxp_setup_cmd;
 
 	return DXP_SUCCESS;
 }
@@ -290,8 +322,8 @@ static int dxp_read_csr(int* ioChan, unsigned short* data)
  *
  ******************************************************************************/
 static int dxp_write_wcr(int* ioChan, unsigned short* data)
-/* int *ioChan;						Input: I/O channel of G200 module      */
-/* unsigned short *data;			Input: address of data to write to WCR */
+/* int *ioChan;				Input: I/O channel of G200 module      */
+/* unsigned short *data;		Input: address of data to write to WCR */
 {
 	unsigned int f, a, len;
 	int status;
@@ -300,9 +332,9 @@ static int dxp_write_wcr(int* ioChan, unsigned short* data)
 /* write transfer start address register */
 	
 	saddr = G200_WCR_ADDRESS;
-	status = dxp_write_tsar(ioChan, &saddr);
+	status = dxp_write_tsar(ioChan, &saddr);		/* write CSR */
 	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_write_csr","Error writing TSAR",status);
+		dxp_log_error("dxp_write_wcr","Error writing TSAR",status);
 		return status;
 	}
 
@@ -311,10 +343,10 @@ static int dxp_write_wcr(int* ioChan, unsigned short* data)
 	f=G200_WCR_F_WRITE;
 	a=G200_WCR_A_WRITE;
 	len=1;
-	status=g200_md_io(ioChan,&f,&a,data,&len);					/* write CSR */
+	status=g200_md_io(ioChan,&f,&a,data,&len);
 	if (status!=DXP_SUCCESS){
 		status = DXP_WRITE_WCR;
-		dxp_log_error("dxp_write_csr","Error writing WCR",status);
+		dxp_log_error("dxp_write_wcr","Error writing WCR",status);
 	}
 	return status;
 }
@@ -327,8 +359,8 @@ static int dxp_write_wcr(int* ioChan, unsigned short* data)
  *
  ******************************************************************************/
 static int dxp_read_wcr(int* ioChan, unsigned short* data)
-/* int *ioChan;						Input: I/O channel of G200 module   */
-/* unsigned short *data;			Output: where to put data from WCR */
+/* int *ioChan;				Input: I/O channel of G200 module   */
+/* unsigned short *data;		Output: where to put data from WCR */
 {
 	unsigned int f, a, len;
 	int status;
@@ -337,9 +369,9 @@ static int dxp_read_wcr(int* ioChan, unsigned short* data)
 /* write transfer start address register */
 	
 	saddr = G200_WCR_ADDRESS;
-	status = dxp_write_tsar(ioChan, &saddr);
+	status = dxp_write_tsar(ioChan, &saddr);		/* write TSAR */
 	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_read_csr","Error writing TSAR",status);
+		dxp_log_error("dxp_read_wcr","Error writing TSAR",status);
 		return status;
 	}
 
@@ -348,10 +380,10 @@ static int dxp_read_wcr(int* ioChan, unsigned short* data)
 	f=G200_WCR_F_READ;
 	a=G200_WCR_A_READ;
 	len=1;
-	status=g200_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
+	status=g200_md_io(ioChan,&f,&a,data,&len);
 	if (status!=DXP_SUCCESS){
 		status = DXP_READ_WCR;
-		dxp_log_error("dxp_read_csr","Error reading CSR",status);
+		dxp_log_error("dxp_read_wcr","Error reading WCR",status);
 	}
 	return status;
 }
@@ -465,20 +497,22 @@ static int dxp_write_mmu(int* ioChan, unsigned short* data, unsigned int len)
 	
 	saddr = G200_MMU_ADDRESS;
 	status = dxp_write_tsar(ioChan, &saddr);
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_write_fippi","Error writing TSAR",status);
-		return status;
-	}
+	if (status!=DXP_SUCCESS)
+	  {
+	    dxp_log_error("dxp_write_fippi","Error writing TSAR",status);
+	    return status;
+	  }
 
 /* Write the FIPPI data */
 
 	f=G200_MMU_F_WRITE;
 	a=G200_MMU_A_WRITE;
 	status=g200_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
-	if (status!=DXP_SUCCESS){
-		status = DXP_WRITE_MMU;
-		dxp_log_error("dxp_write_fippi","Error writing to MMU configuration register",status);
-	}
+	if (status!=DXP_SUCCESS)
+	  {
+	    status = DXP_WRITE_MMU;
+	    dxp_log_error("dxp_write_fippi","Error writing to MMU configuration register",status);
+	  }
 	return status;
 }
 
@@ -500,16 +534,20 @@ static int dxp_look_at_me(int* ioChan, int* modChan)
 
 /* modify the LAM enable bit */
 	status = dxp_read_csr(ioChan, &data);
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_ignore_me","Error Reading the CSR",status);
-		return status;
-	}
-	data += MASK_LAM_ENABLE;
+	if (status!=DXP_SUCCESS)
+	  {
+	    dxp_log_error("dxp_ignore_me","Error Reading the CSR",status);
+	    return status;
+	  }
+
+	data |= MASK_LAM_ENABLE;
+
 	status = dxp_write_csr(ioChan, &data);
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_ignore_me","Error writing CSR",status);
-		return status;
-	}
+	if (status!=DXP_SUCCESS)
+	  {
+	    dxp_log_error("dxp_ignore_me","Error writing CSR",status);
+	    return status;
+	  }
 
 	return status;
 }
@@ -532,18 +570,20 @@ static int dxp_ignore_me(int* ioChan, int* modChan)
 
 /* modify the LAM enable bit */
 	status = dxp_read_csr(ioChan, &data);
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_ignore_me","Error Reading the CSR",status);
-		return status;
-	}
-	if (data&MASK_LAM_ENABLE) {
-		data -= MASK_LAM_ENABLE;
-		status = dxp_write_csr(ioChan, &data);
-		if (status!=DXP_SUCCESS){
-			dxp_log_error("dxp_ignore_me","Error writing CSR",status);
-			return status;
-		}
-	}
+	if (status!=DXP_SUCCESS)
+	  {
+	    dxp_log_error("dxp_ignore_me","Error Reading the CSR",status);
+	    return status;
+	  }
+
+	data &= ~MASK_LAM_ENABLE;
+
+	status = dxp_write_csr(ioChan, &data);
+	if (status!=DXP_SUCCESS)
+	  {
+	    dxp_log_error("dxp_ignore_me","Error writing CSR",status);
+	    return status;
+	  }
 
 	return status;
 }
@@ -820,140 +860,233 @@ static int dxp_write_block(int* ioChan, int* modChan, unsigned short* addr,
  * to the G200.
  *
  ******************************************************************************/
-static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
-/* int *ioChan;						Input: I/O channel of DXP module	*/
-/* int *modChan;					Input: DXP channels no (-1,0,1,2,3)	*/
-/* Board *board;					Input: Board data					*/
+static int dxp_download_fpgaconfig(int* ioChan, int* modChan, char *name, Board* board)
+/* int *ioChan;			Input: I/O channel of DXP module	*/
+/* int *modChan;		Input: DXP channels no (-1,0,1,2,3)	*/
+/* char *name;                  Input: type of fpga to download         */
+/* Board *board;		Input: Board data			*/
 {
 /*
  *   Download the appropriate Firmware configuration files to a G200
  */
-	int status;
-	char info_string[INFO_LEN];
-	unsigned short data;
-	unsigned int i, j,length,xlen,nxfers;
-	float wait;
-	unsigned int maxblk;
-	Fippi_Info *fippi=NULL;
+  int status;
+  char info_string[INFO_LEN];
+  unsigned int i;
+  
+  /* convert to lower case */
+  for (i=0; i<strlen(name); i++) name[i] = (char) tolower(name[i]);
 
-	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
-		sprintf(info_string,"X10P routine called with channel number %d",*modChan);
-		status = DXP_BAD_PARAM;
-		dxp_log_error("dxp_download_fipconfig",info_string,status);
-		return status;
+  sprintf(info_string,"name = %s, modChan = %i", name, *modChan);
+  dxp_log_debug("dxp_download_fpgaconfig", info_string);
+
+  /* Do the MMU first if requested */
+  if ((STREQ(name, "all")) || (STREQ(name, "mmu"))) 
+    {
+      status = dxp_download_mmuconfig(ioChan, modChan, board);
+      if (status != DXP_SUCCESS) 
+	{
+	  sprintf(info_string,"Unable to download the MMU to module %i", board->mod);
+	  dxp_log_error("dxp_download_fpgaconfig", info_string, status);
+	  return status;
 	}
+    }
+
+  /* Do the FIPPI now */
+  if ((STREQ(name, "all")) || (STREQ(name, "fippi"))) 
+    {
+      status = dxp_download_fippiconfig(ioChan, modChan, board);
+      if (status != DXP_SUCCESS) 
+	{
+	  sprintf(info_string,"Unable to download the FiPPi to module %i", board->mod);
+	  dxp_log_error("dxp_download_fpgaconfig", info_string, status);
+	  return status;
+	}
+    }
+
+  return DXP_SUCCESS;
+}
+
+/******************************************************************************
+ *
+ * This routine downloads the MMU (memory manager unit) to the G200.
+ *
+ ******************************************************************************/
+static int dxp_download_mmuconfig(int* ioChan, int* modChan, Board* board)
+/* int *ioChan;			Input: I/O channel of DXP module	*/
+/* int *modChan;		Input: DXP channels no (-1,0,1,2,3)	*/
+/* Board *board;		Input: Board data			*/
+{
+/*
+ *   Download the appropriate Firmware configuration files to a G200
+ */
+  int status;
+  char info_string[INFO_LEN];
+  unsigned short data;
+  unsigned int j,length,xlen,nxfers;
+  float wait;
+  unsigned int maxblk;
+  Fippi_Info *fippi=NULL;
+  
+  if((*modChan!=0)&&(*modChan!=ALLCHAN)){
+    sprintf(info_string,"G200 routine called with channel number %d",*modChan);
+    status = DXP_BAD_PARAM;
+    dxp_log_error("dxp_download_mmuconfig",info_string,status);
+    return status;
+  }
 
 /* Download the Memory manager */
-	fippi = board->mmu;
+  fippi = board->mmu;
 /* make sure a valid MMU was found */
-	if (fippi==NULL) {
-		sprintf(info_string,"There is no valid MMU defined for module %i",board->mod);
-        status = DXP_NOFIPPI;
-        dxp_log_error("dxp_download_fipconfig",info_string,status);
-		return status;
-	}
-
-	length = fippi->proglen;
+  if (fippi==NULL) {
+    sprintf(info_string,"There is no valid MMU defined for module %i",board->mod);
+    status = DXP_NOFIPPI;
+    dxp_log_error("dxp_download_mmuconfig",info_string,status);
+    return status;
+  }
+  
+  length = fippi->proglen;
 	
-/* Write to CSR to initiate download */
+/* RMW to CSR to initiate download */
 	
-	data=MASK_MMURESET;
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS){
+    dxp_log_error("dxp_download_mmuconfig","Error reading the CSR",status); 
+    return status;
+  }
 
-	status = dxp_write_csr(ioChan, &data);
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_download_fipconfig","Error writing CSR while reseting MMU",status); 
-		return status;
-	}
-
+  data |= MASK_MMURESET;
+  
+  status = dxp_write_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS){
+    dxp_log_error("dxp_download_mmuconfig","Error writing CSR while reseting MMU",status); 
+    return status;
+  }
+  
 /* wait 50ms, for LCA to be ready for next data */
 
-	wait = 0.050f;
-	status = g200_md_wait(&wait);
+  wait = 0.050f;
+  status = g200_md_wait(&wait);
 
 /* Retrieve MAXBLK and check if single transfer is needed */
-	maxblk = g200_md_get_maxblk();
-	if (maxblk <= 0) maxblk = length;
-
+  maxblk = g200_md_get_maxblk();
+  if (maxblk <= 0) maxblk = length;
+  
 /* prepare for the first pass thru loop */
-	nxfers = ((length-1)/maxblk) + 1;
-	xlen = ((maxblk>=length) ? length : maxblk);
-	j = 0;
-    do {
+  nxfers = ((length-1)/maxblk) + 1;
+  xlen = ((maxblk>=length) ? length : maxblk);
+  j = 0;
+  do {
 
 /* now write the data */
         
-		status = dxp_write_mmu(ioChan, &(fippi->data[j*maxblk]), xlen);
-		if (status!=DXP_SUCCESS){
-			status = DXP_WRITE_BLOCK;
-			sprintf(info_string,"Error in %dth (last) block transfer of MMU",j);
-			dxp_log_error("dxp_download_fipconfig",info_string,status);
-			return status;
-        }
+    status = dxp_write_mmu(ioChan, &(fippi->data[j*maxblk]), xlen);
+    if (status!=DXP_SUCCESS){
+      status = DXP_WRITE_BLOCK;
+      sprintf(info_string,"Error in %dth (last) block transfer of MMU",j);
+      dxp_log_error("dxp_download_mmuconfig",info_string,status);
+      return status;
+    }
 /* Next loop */
-		j++;
+    j++;
 /* On last pass thru loop transfer the remaining bytes */
-		if (j==(nxfers-1)) xlen=((length-1)%maxblk) + 1;
-	} while (j<nxfers);
-	
-/* Now proceed with the FIPPI download */
+    if (j==(nxfers-1)) xlen=((length-1)%maxblk) + 1;
+  } while (j<nxfers);
+  
+  return DXP_SUCCESS;
+}
+
+/******************************************************************************
+ * 
+ * This routine downloads Fippi programs to the G200.
+ *
+ ******************************************************************************/
+static int dxp_download_fippiconfig(int* ioChan, int* modChan, Board* board)
+/* int *ioChan;			Input: I/O channel of DXP module	*/
+/* int *modChan;		Input: DXP channels no (-1,0,1,2,3)	*/
+/* Board *board;		Input: Board data			*/
+{
+/*
+ *   Download the appropriate Firmware configuration files to a G200
+ */
+  int status;
+  char info_string[INFO_LEN];
+  unsigned short data;
+  unsigned int i, j,length,xlen,nxfers;
+  float wait;
+  unsigned int maxblk;
+  Fippi_Info *fippi=NULL;
+  
+  if((*modChan!=0)&&(*modChan!=ALLCHAN)){
+    sprintf(info_string,"G200 routine called with channel number %d",*modChan);
+    status = DXP_BAD_PARAM;
+    dxp_log_error("dxp_download_fippiconfig",info_string,status);
+    return status;
+  }
+
 /* If allchan chosen, then select the first valid fippi */
-	for (i=0;i<board->nchan;i++) {
-		if (((board->used)&(0x1<<i))!=0) {
-			fippi = board->fippi[i];
-			break;
-		}
-	}
+  for (i=0;i<board->nchan;i++) {
+    if (((board->used)&(0x1<<i))!=0) {
+      fippi = board->fippi[i];
+      break;
+    }
+  }
 /* make sure a valid Fippi was found */
-	if (fippi==NULL) {
-		sprintf(info_string,"There is no valid FiPPi defined for module %i",board->mod);
-        status = DXP_NOFIPPI;
-        dxp_log_error("dxp_download_fipconfig",info_string,status);
-		return status;
-	}
-
-	length = fippi->proglen;
+  if (fippi==NULL) {
+    sprintf(info_string,"There is no valid FiPPi defined for module %i",board->mod);
+    status = DXP_NOFIPPI;
+    dxp_log_error("dxp_download_fippiconfig",info_string,status);
+    return status;
+  }
+  
+  length = fippi->proglen;
 	
 /* Write to CSR to initiate download */
 	
-	data=MASK_FIPRESET;
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS){
+    dxp_log_error("dxp_download_fippiconfig","Error reading the CSR",status); 
+    return status;
+  }
 
-	status = dxp_write_csr(ioChan, &data);
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_download_fipconfig","Error writing CSR",status); 
-		return status;
-	}
+  data |= MASK_FIPRESET;
+  
+  status = dxp_write_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS){
+    dxp_log_error("dxp_download_fippiconfig","Error writing CSR while reseting the FiPPi", status);
+    return status;
+  }
 
 /* wait 50ms, for LCA to be ready for next data */
 
-	wait = 0.050f;
-	status = g200_md_wait(&wait);
-
+  wait = 0.050f;
+  status = g200_md_wait(&wait);
+  
 /* Retrieve MAXBLK and check if single transfer is needed */
-	maxblk=g200_md_get_maxblk();
-	if (maxblk <= 0) maxblk = length;
-
+  maxblk=g200_md_get_maxblk();
+  if (maxblk <= 0) maxblk = length;
+  
 /* prepare for the first pass thru loop */
-	nxfers = ((length-1)/maxblk) + 1;
-	xlen = ((maxblk>=length) ? length : maxblk);
-	j = 0;
-    do {
+  nxfers = ((length-1)/maxblk) + 1;
+  xlen = ((maxblk>=length) ? length : maxblk);
+  j = 0;
+  do {
 
 /* now write the data */
         
-		status = dxp_write_fippi(ioChan, &(fippi->data[j*maxblk]), xlen);
-		if (status!=DXP_SUCCESS){
-			status = DXP_WRITE_BLOCK;
-			sprintf(info_string,"Error in %dth (last) block transfer",j);
-			dxp_log_error("dxp_download_fipconfig",info_string,status);
-			return status;
-        }
+    status = dxp_write_fippi(ioChan, &(fippi->data[j*maxblk]), xlen);
+    if (status!=DXP_SUCCESS){
+      status = DXP_WRITE_BLOCK;
+      sprintf(info_string,"Error in %dth (last) block transfer",j);
+      dxp_log_error("dxp_download_fippiconfig",info_string,status);
+      return status;
+    }
 /* Next loop */
-		j++;
+    j++;
 /* On last pass thru loop transfer the remaining bytes */
-		if (j==(nxfers-1)) xlen=((length-1)%maxblk) + 1;
-	} while (j<nxfers);
-
-	return DXP_SUCCESS;
+    if (j==(nxfers-1)) xlen=((length-1)%maxblk) + 1;
+  } while (j<nxfers);
+  
+  return DXP_SUCCESS;
 }
 
 /******************************************************************************
@@ -963,8 +1096,8 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
  * the fipconfig global array at location determined by *dec_index.
  *
  ******************************************************************************/
-static int dxp_get_fipconfig(Fippi_Info* fippi)
-/* Fippi_Info *fippi;					I/O: structure of Fippi info */
+static int dxp_get_fpgaconfig(Fippi_Info* fippi)
+/* Fippi_Info *fippi;			I/O: structure of Fippi info */
 {
 	int status;
 	char info_string[INFO_LEN];
@@ -974,9 +1107,9 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 	
 	unsigned short temp=0, lowbyte=1;
 	
-	sprintf(info_string,"%s%s%s","Reading FiPPI file ",
+	sprintf(info_string,"%s%s%s","Reading FPGA file ",
 		fippi->filename,"...");
-	dxp_log_info("dxp_get_fipconfig",info_string);
+	dxp_log_info("dxp_get_fpgaconfig",info_string);
 
 	fippi->maxproglen = MAXFIP_LEN;
 
@@ -984,7 +1117,7 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 		status = DXP_NOMEM;
 		sprintf(info_string,"%s",
 			"Error allocating space for configuration");
-		dxp_log_error("dxp_get_fipconfig",info_string,status);
+		dxp_log_error("dxp_get_fpgaconfig",info_string,status);
 		return status;
 	}
 /*
@@ -993,9 +1126,9 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
  */
 	if((fp = dxp_find_file(fippi->filename,"r"))==NULL){
 		status = DXP_OPEN_FILE;
-		sprintf(info_string,"%s%s","Unable to open FiPPI configuration ",
+		sprintf(info_string,"%s%s","Unable to open FPGA configuration ",
 			fippi->filename);
-		dxp_log_error("dxp_get_fipconfig",info_string,status);
+		dxp_log_error("dxp_get_fpgaconfig",info_string,status);
 		return status;
 	}
 	
@@ -1024,45 +1157,154 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 	}
 	fippi->proglen = len;
 	fclose(fp);
-	dxp_log_info("dxp_get_fipconfig","...DONE!");
+	dxp_log_info("dxp_get_fpgaconfig","...DONE!");
 
 	return DXP_SUCCESS;
 }
 
 /******************************************************************************
  *
- * Routine to check that all the FiPPis downloaded successfully to
- * a single module.  If the routine returns DXP_SUCCESS, then the 
- * FiPPis are OK
+ * Routine to check that all the FPGAs downloaded successfully to
+ * a single module.  This routine will also update the DSP information about
+ * the FiPPi after the download is confirmed good.  If the routine returns 
+ * DXP_SUCCESS, then the FiPPis are OK and the DSP data is updated
  *
  ******************************************************************************/
-static int dxp_download_fippi_done(int* ioChan, int* mod, unsigned short* used)
-/* int *ioChan;					Input: I/O channel of the module		*/
-/* int *mod;					Input: Module number, for error reporting */
-/* unsigned short *used;		Input: What channels are in use?		*/
+static int dxp_download_fpga_done(int *modChan, char *name, Board *board)
+/* int *modChan;			Input: Module channel number              */
+/* char *name;                          Input: Type of FPGA to check the status of*/
+/* board *board;			Input: Board structure for this device 	  */
 {
 
-	int status;
-	char info_string[INFO_LEN];
-	unsigned short data;
+  int status = DXP_SUCCESS;
+  unsigned int i;
+
+  int ioChan;
+  unsigned short used;
+
+  char info_string[INFO_LEN];
+
+  /* variables associated with a control task */
+  short type;
+  unsigned int len;
+  int idata[2];
+  float timeout;
+  int mymodChan;
+
+  int idummy;
+
+  unsigned short data;
+
+  /* Satisfy the compiler */
+  idummy = *modChan;
+
+  /* Few assignements to make life easier */
+  ioChan = board->ioChan;
+  used = board->used;
+
+  /* convert the name to lower case */
+  for (i=0; i<strlen(name); i++) name[i] = (char) tolower(name[i]);
 	
 /* Read back the CSR to determine if the download was successfull.  */
-	
-	if((status=dxp_read_csr(ioChan,&data))!=DXP_SUCCESS){
-		sprintf(info_string," failed to read CSR for module %d",*mod);
-		dxp_log_error("dxp_download_fippi_done",info_string,status);
-		return status;
+  if((status=dxp_read_csr(&ioChan,&data))!=DXP_SUCCESS)
+    {
+      sprintf(info_string," failed to read CSR for module %d",board->mod);
+      dxp_log_error("dxp_download_fippi_done",info_string,status);
+      return status;
+    }
+
+  /* if not used, then we succeed */
+  if(used==0) return DXP_SUCCESS;
+
+  /* Check the CSR value versus the mask for each case */
+  if ((STREQ(name, "all")) || (STREQ(name, "mmu")))
+    {
+      if((data & MASK_MMU_DONE) != 0)
+	{
+	  sprintf(info_string,
+		  "MMU download error (CSR bits) for module %d", board->mod);
+	  status=DXP_FPGADOWNLOAD;
+	  dxp_log_error("dxp_download_fpga_done",info_string,status);
 	}
-	if(*used==0) return DXP_SUCCESS;		/* if not used, then we succeed */
-	if((data&MASK_FPGA_ERROR)!=0){
-		sprintf(info_string,
-			"FiPPI download error (CSR bits) for module %d",*mod);
-		status=DXP_FIPDOWNLOAD;
-		dxp_log_error("dxp_download_fippi_done",info_string,status);
-		return status;
+    }
+  if ((STREQ(name, "all")) || (STREQ(name, "fippi")))
+    {
+      if((data & MASK_FIPPI_DONE) != 0)
+	{
+	  sprintf(info_string,
+		  "FIPPI download error (CSR bits) for module %d", board->mod);
+	  status=DXP_FPGADOWNLOAD;
+	  dxp_log_error("dxp_download_fpga_done",info_string,status);
 	}
 
-	return DXP_SUCCESS;
+      /* Check to see if we have a DSP downloaded yet, iff we do, then force the DSP to 
+       * update the FiPPi.  Force the modChan to be 0, G200 are always single channel 
+       * devices. 
+       */
+      mymodChan = 0;
+      if (board->chanstate[mymodChan].dspdownloaded == 1) 
+	{
+
+	  /* If the request was to download all or fippi, then this is the right time to 
+	   * update the fippi register values in the DSP -> force a program_fippi
+	   * control task 
+	   */
+	  type = CT_DGFG200_PROGRAM_FIPPI;
+	  len = 2;
+	  idata[0] = 1;
+	  idata[1] = 1;
+	  timeout = 0.01f;
+	  /* Be careful not to perform control tasks on ALLCHAN.  For the G200, this is simple since
+	   * there is only 1 channel per module.  For other devices, we would need to loop over the
+	   * channels to update all DSPs.
+	   */
+	  if((status=dxp_do_control_task(&ioChan, &mymodChan, &type, board, &len, idata, 
+					 &timeout, NULL)) != DXP_SUCCESS)
+	    {
+	      sprintf(info_string,"Unable to execute the Program FiPPi control task for mod %i", board->mod);
+	      dxp_log_error("dxp_download_fippi_done",info_string,status);
+	      return status;
+	    }
+	  /* In addition, perform a set dacs task
+	   */
+	  type = CT_DGFG200_SETDACS;
+	  len = 2;
+	  idata[0] = 1;
+	  idata[1] = 1;
+	  timeout = 0.01f;
+	  /* Be careful not to perform control tasks on ALLCHAN.  For the G200, this is simple since
+	   * there is only 1 channel per module.  For other devices, we would need to loop over the
+	   * channels to update all DSPs.
+	   */
+	  if((status=dxp_do_control_task(&ioChan, &mymodChan, &type, board, &len, idata, 
+					 &timeout, NULL)) != DXP_SUCCESS)
+	    {
+	      sprintf(info_string,"Unable to execute the SETDACS control task for mod %i", board->mod);
+	      dxp_log_error("dxp_download_fippi_done",info_string,status);
+	      return status;
+	    }
+	  /* In addition, perform a set dacs task
+	   */
+	  type = CT_DGFG200_OPEN_INPUT_RELAY;
+	  len = 2;
+	  idata[0] = 1;
+	  idata[1] = 1;
+	  timeout = 0.01f;
+	  /* Be careful not to perform control tasks on ALLCHAN.  For the G200, this is simple since
+	   * there is only 1 channel per module.  For other devices, we would need to loop over the
+	   * channels to update all DSPs.
+	   */
+	  if((status=dxp_do_control_task(&ioChan, &mymodChan, &type, board, &len, idata, 
+					 &timeout, NULL)) != DXP_SUCCESS)
+	    {
+	      sprintf(info_string,"Unable to execute the SETDACS control task for mod %i", board->mod);
+	      dxp_log_error("dxp_download_fippi_done",info_string,status);
+	      return status;
+	    }
+	}
+    }
+
+  return status;
 }
 
 /******************************************************************************
@@ -1074,9 +1316,9 @@ static int dxp_download_fippi_done(int* ioChan, int* mod, unsigned short* used)
  *
  ******************************************************************************/
 static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
-/* int *ioChan;					Input: I/O channel of DXP module		*/
-/* int *modChan;				Input: DXP channel no (-1,0,1,2,3)	*/
-/* Dsp_Info *dsp;				Input: DSP structure					*/
+     /* int *ioChan;					Input: I/O channel of DXP module		*/
+     /* int *modChan;				Input: DXP channel no (-1,0,1,2,3)	*/
+     /* Dsp_Info *dsp;				Input: DSP structure					*/
 {
 /*
  *   Download the DSP configuration file to a single channel or all channels 
@@ -1084,32 +1326,39 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
  *
  */
 
-	int status;
-	char info_string[INFO_LEN];
-	unsigned short data;
-	unsigned int length;
-	unsigned short start_addr;
-	unsigned int j,nxfers,xlen;
-	unsigned int maxblk;
-	float onesec = (float) 1.0, fiftyms = (float) 0.05;
+  int status;
+  char info_string[INFO_LEN];
+  unsigned short data;
+  unsigned int length;
+  unsigned short start_addr;
+  unsigned int j,nxfers,xlen;
+  unsigned int maxblk;
+  float onesec = (float) 1.0, fiftyms = (float) 0.05;
 	
 
-	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
-		sprintf(info_string,"G200 called with channel number %d",*modChan);
-		status = DXP_BAD_PARAM;
-		dxp_log_error("dxp_download_dspconfig",info_string,status);
-	}
-	
-/* Write to CSR to initiate download */
-	
-	data = MASK_DSPRESET;
-   
-	status = dxp_write_csr(ioChan, &data);
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_download_dspconfig","Error writing CSR",status);
-		return status;
-	}
-
+  if((*modChan!=0)&&(*modChan!=ALLCHAN)){
+    sprintf(info_string,"G200 called with channel number %d",*modChan);
+    status = DXP_BAD_PARAM;
+    dxp_log_error("dxp_download_dspconfig",info_string,status);
+  }
+  
+  status = dxp_read_csr(ioChan, &data);
+  if (status != DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_download_dspconfig", "Error reading the CSR", status);
+      return status;
+    }
+  
+  /* Write to CSR to initiate download */
+  
+  data |= MASK_DSPRESET;
+  
+  status = dxp_write_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS){
+    dxp_log_error("dxp_download_dspconfig","Error writing CSR",status);
+    return status;
+  }
+  
 /* Delay to let the DSP reset */
 
 	g200_md_wait(&fiftyms);
@@ -1154,7 +1403,7 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
 /* Delay to let the DSP finish initializations */
 
 	g200_md_wait(&onesec);
-    
+
 /*
  * All done, clear the LAM on this module 
  */
@@ -2054,93 +2303,93 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
  *
  ******************************************************************************/
 static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name, 
-								unsigned short* value, Dsp_Info* dsp)
-/* int *ioChan;					Input: IO channel to write to				*/
-/* int *modChan;				Input: Module channel number to write to	*/
-/* char *name;					Input: user passed name of symbol			*/
-/* unsigned short *value;		Input: Value to set the symbol to			*/
-/* Dsp_Info *dsp;				Input: Relavent DSP info					*/
+				unsigned short* value, Dsp_Info* dsp)
+/* int *ioChan;			Input: IO channel to write to			*/
+/* int *modChan;		Input: Module channel number to write to	*/
+/* char *name;			Input: user passed name of symbol		*/
+/* unsigned short *value;	Input: Value to set the symbol to	        */
+/* Dsp_Info *dsp;		Input: Relavent DSP info			*/
 {
 
-	int status=DXP_SUCCESS;
-	char info_string[INFO_LEN];
-	unsigned int i;
-	unsigned short addr;		/* address of the symbol in DSP memory			*/
-	char uname[20]="";			/* Upper case version of the user supplied name */
+  int status=DXP_SUCCESS;
+  char info_string[INFO_LEN];
+  unsigned int i;
+  unsigned short addr;		/* address of the symbol in DSP memory		*/
+  char uname[20]="";		/* Upper case version of the user supplied name */
 	
 /* Change uname to upper case */
-	
-	if (strlen(name)>dsp->params->maxsymlen) {
-		status = DXP_NOSYMBOL;
-		sprintf(info_string, "Symbol name must be <%d characters", dsp->params->maxsymlen);
-		dxp_log_error("dxp_modify_dspsymbol", info_string, status);
-		return status;
-	}
-	for (i = 0; i < strlen(name); i++) 
-		uname[i] = (char) toupper(name[i]); 
-
+  
+  if (strlen(name)>dsp->params->maxsymlen) {
+    status = DXP_NOSYMBOL;
+    sprintf(info_string, "Symbol name must be <%d characters", dsp->params->maxsymlen);
+    dxp_log_error("dxp_modify_dspsymbol", info_string, status);
+    return status;
+  }
+  for (i = 0; i < strlen(name); i++) 
+    uname[i] = (char) toupper(name[i]); 
+  
 /* Be paranoid and check if the DSP configuration is downloaded.  If not, do it */
 	
-	if ((dsp->proglen)<=0) {
-		status = DXP_DSPLOAD;
-		sprintf(info_string, "Must Load DSP code before modifying %s", name);
-		dxp_log_error("dxp_modify_dspsymbol", info_string, status);
-		return status;
-	}
+  if ((dsp->proglen)<=0) {
+    status = DXP_DSPLOAD;
+    sprintf(info_string, "Must Load DSP code before modifying %s", name);
+    dxp_log_error("dxp_modify_dspsymbol", info_string, status);
+    return status;
+  }
    
 /* First find the location of the symbol in DSP memory. */
-
-	if ((status=dxp_loc(uname, dsp, &addr))!=DXP_SUCCESS) {
-		sprintf(info_string, "Failed to find symbol %s in DSP memory", uname);
-		dxp_log_error("dxp_modify_dspsymbol", info_string, status);
-		return status;
-	}
+  
+  if ((status=dxp_loc(uname, dsp, &addr))!=DXP_SUCCESS) {
+    sprintf(info_string, "Failed to find symbol %s in DSP memory", uname);
+    dxp_log_error("dxp_modify_dspsymbol", info_string, status);
+    return status;
+  }
 
 /* Check the access type for this parameter.  Only allow writing to r/w and wo 
  * parameters.
  */
 
-	if (dsp->params->parameters[addr].access==0) {
-		sprintf(info_string, "Parameter %s is Read-Only.  No writing allowed.", uname);
-		status = DXP_DSPACCESS;
-		dxp_log_error("dxp_modify_dspsymbol", info_string, status);
-		return status;
-	}
+  if (dsp->params->parameters[addr].access==0) {
+    sprintf(info_string, "Parameter %s is Read-Only.  No writing allowed.", uname);
+    status = DXP_DSPACCESS;
+    dxp_log_error("dxp_modify_dspsymbol", info_string, status);
+    return status;
+  }
 
 /* Check the bounds, set to min or max if out of bounds. */
 
 /* Check if there are any bounds defined first */
-	if ((dsp->params->parameters[addr].lbound!=0)||(dsp->params->parameters[addr].ubound!=0)) {
+  if ((dsp->params->parameters[addr].lbound!=0)||(dsp->params->parameters[addr].ubound!=0)) {
 /* Check the lower bound */
-		if (*value<dsp->params->parameters[addr].lbound) {
-			sprintf(info_string, "Value is below the lower acceptable bound %i<%i. Changing to lower bound.", 
-				*value, dsp->params->parameters[addr].lbound);
-			status = DXP_DSPPARAMBOUNDS;
-			dxp_log_error("dxp_modify_dspsymbol", info_string, status);
+    if (*value<dsp->params->parameters[addr].lbound) {
+      sprintf(info_string, "Value is below the lower acceptable bound %i<%i. Changing to lower bound.", 
+	      *value, dsp->params->parameters[addr].lbound);
+      status = DXP_DSPPARAMBOUNDS;
+      dxp_log_error("dxp_modify_dspsymbol", info_string, status);
 /* Set to the lower bound */
-			*value = dsp->params->parameters[addr].lbound;
-		}
+      *value = dsp->params->parameters[addr].lbound;
+    }
 /* Check the upper bound */
-		if (*value>dsp->params->parameters[addr].ubound) {
-			sprintf(info_string, "Value is above the upper acceptable bound %i<%i. Changing to upper bound.", 
-				*value, dsp->params->parameters[addr].ubound);
-			status = DXP_DSPPARAMBOUNDS;
-			dxp_log_error("dxp_modify_dspsymbol", info_string, status);
+    if (*value>dsp->params->parameters[addr].ubound) {
+      sprintf(info_string, "Value is above the upper acceptable bound %i<%i. Changing to upper bound.", 
+	      *value, dsp->params->parameters[addr].ubound);
+      status = DXP_DSPPARAMBOUNDS;
+      dxp_log_error("dxp_modify_dspsymbol", info_string, status);
 /* Set to the upper bound */
-			*value = dsp->params->parameters[addr].ubound;
-		}
-	}
+      *value = dsp->params->parameters[addr].ubound;
+    }
+  }
 
 /* Write the value of the symbol into DSP memory */
 	
-	if((status=dxp_write_dsp_param_addr(ioChan,modChan,&(dsp->params->parameters[addr].address),
-										value))!=DXP_SUCCESS){
-		sprintf(info_string, "Error writing parameter %s", uname);
-		dxp_log_error("dxp_modify_dspsymbol",info_string,status);
-		return status;
-	}
-
-	return status;
+  if((status=dxp_write_dsp_param_addr(ioChan,modChan,&(dsp->params->parameters[addr].address),
+				      value))!=DXP_SUCCESS){
+    sprintf(info_string, "Error writing parameter %s", uname);
+    dxp_log_error("dxp_modify_dspsymbol",info_string,status);
+    return status;
+  }
+  
+  return status;
 }
 
 /******************************************************************************
@@ -2150,9 +2399,9 @@ static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name,
  *
  ******************************************************************************/
 static int dxp_write_dsp_param_addr(int* ioChan, int* modChan, 
-									unsigned int* addr, unsigned short* value)
-/* int *ioChan;						Input: IO channel to write to				*/
-/* int *modChan;					Input: Module channel number to write to		*/
+				    unsigned int* addr, unsigned short* value)
+/* int *ioChan;					Input: IO channel to write to				*/
+/* int *modChan;				Input: Module channel number to write to		*/
 /* unsigned int *addr;				Input: address to write in DSP memory		*/
 /* unsigned short *value;			Input: Value to set the symbol to			*/
 {
@@ -2196,145 +2445,144 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
 /* unsigned long *value;		Output: Value to set the symbol to			*/
 {
 
-	int status=DXP_SUCCESS;
-	char info_string[INFO_LEN];
-	unsigned int i;
-	unsigned short nword = 1;   /* How many words does this symbol contain?		*/
-	unsigned short addr=0;		/* address of the symbol in DSP memory			*/
-	unsigned short addr1=0;		/* address of the 2nd word in DSP memory		*/
-	unsigned short addr2=0;		/* address of the 3rd word (REALTIME/LIVETIME)	*/
-	char uname[30]="", tempchar[30]="";	/* Upper case version of the user supplied name */
-	unsigned short stemp;		/* Temp location to store word read from DSP	*/
-	unsigned long ltemp, ltemp1;/* Long versions for the temporary variable		*/
+  int status=DXP_SUCCESS;
+  char info_string[INFO_LEN];
+  unsigned int i;
+  unsigned short nword = 1;   /* How many words does this symbol contain?		*/
+  unsigned short addr=0;		/* address of the symbol in DSP memory			*/
+  unsigned short addr1=0;		/* address of the 2nd word in DSP memory		*/
+  unsigned short addr2=0;		/* address of the 3rd word (REALTIME/LIVETIME)	*/
+  char uname[30]="", tempchar[30]="";	/* Upper case version of the user supplied name */
+  unsigned short stemp;		/* Temp location to store word read from DSP	*/
+  unsigned long ltemp, ltemp1;/* Long versions for the temporary variable		*/
 
 /* Check that the length of the name is less than maximum allowed length */
 
-	if (strlen(name)>(dsp->params->maxsymlen)) {
-		status = DXP_NOSYMBOL;
-        sprintf(info_string, "Symbol Name must be <%i characters", dsp->params->maxsymlen);
-		dxp_log_error("dxp_read_dspsymbol", info_string, status);
-		return status;
-	}
+  if (strlen(name)>(dsp->params->maxsymlen)) {
+    status = DXP_NOSYMBOL;
+    sprintf(info_string, "Symbol Name must be <%i characters", dsp->params->maxsymlen);
+    dxp_log_error("dxp_read_dspsymbol", info_string, status);
+    return status;
+  }
 
 /* Convert the name to upper case for comparison */
-
-	for (i = 0; i < strlen(name); i++) 
-		uname[i] = (char) toupper(name[i]); 
-
+  
+  for (i = 0; i < strlen(name); i++) 
+    uname[i] = (char) toupper(name[i]); 
+  
 /* Be paranoid and check if the DSP configuration is downloaded.  If not, warn the user */
 	
-	if ((dsp->proglen)<=0) {
-        status = DXP_DSPLOAD;
-        sprintf(info_string, "Must Load DSP code before reading %s", name);
-        dxp_log_error("dxp_read_dspsymbol",info_string,status);
-		return status;
-	}
+  if ((dsp->proglen)<=0) {
+    status = DXP_DSPLOAD;
+    sprintf(info_string, "Must Load DSP code before reading %s", name);
+    dxp_log_error("dxp_read_dspsymbol",info_string,status);
+    return status;
+  }
     
 /* First find the location of the symbol in DSP memory. */
 
-	if ((status  = dxp_loc(uname, dsp, &addr))!=DXP_SUCCESS) {
+  if ((status  = dxp_loc(uname, dsp, &addr))!=DXP_SUCCESS) {
 /* Failed to find the name directly, add 0 to the name and search again */
-		strcpy(tempchar, uname);
-		sprintf(tempchar, "%sA0",uname);
-		nword = 2;
-		if ((status  = dxp_loc(tempchar, dsp, &addr))!=DXP_SUCCESS) {
+    strcpy(tempchar, uname);
+    sprintf(tempchar, "%sA0",uname);
+    nword = 2;
+    if ((status  = dxp_loc(tempchar, dsp, &addr))!=DXP_SUCCESS) {
 /* Failed to find the name with A0 attached, check for symbol without the trailing 0 */
-			strcpy(tempchar, uname);
-			sprintf(tempchar, "%sA",uname);
-			if ((status  = dxp_loc(tempchar, dsp, &addr))!=DXP_SUCCESS) {
+      strcpy(tempchar, uname);
+      sprintf(tempchar, "%sA",uname);
+      if ((status  = dxp_loc(tempchar, dsp, &addr))!=DXP_SUCCESS) {
 /* Failed to find the name with A0 attached, check for symbol without the trailing 0 */
-				sprintf(info_string, "Failed to find symbol %s in DSP memory", name);
-				dxp_log_error("dxp_read_dspsymbol", info_string, status);
-				return status;
-			} else {
+	sprintf(info_string, "Failed to find symbol %s in DSP memory", name);
+	dxp_log_error("dxp_read_dspsymbol", info_string, status);
+	return status;
+      } else {
 /* Search for the 2nd entry now */
-				sprintf(tempchar, "%sB",uname);
-				if ((status  = dxp_loc(tempchar, dsp, &addr1))!=DXP_SUCCESS) {
+	sprintf(tempchar, "%sB",uname);
+	if ((status  = dxp_loc(tempchar, dsp, &addr1))!=DXP_SUCCESS) {
 /* Failed to find the name with 1 attached, this symbol doesnt exist */
-					sprintf(info_string, "Failed to find symbol %s+1 in DSP memory", name);
-					dxp_log_error("dxp_read_dspsymbol", info_string, status);
-					return status;
-				}
-/* Check for 48 bit numbers */
-				sprintf(tempchar, "%sC",uname);
-				if ((status  = dxp_loc(tempchar, dsp, &addr2))==DXP_SUCCESS) {
-					nword = 3;
-				}
-			}
-		} else {
-/* Search for the 2nd entry now */
-			sprintf(tempchar, "%sB0",uname);
-			if ((status  = dxp_loc(tempchar, dsp, &addr1))!=DXP_SUCCESS) {
-/* Failed to find the name with 1 attached, this symbol doesnt exist */
-				sprintf(info_string, "Failed to find symbol %s+1 in DSP memory", name);
-				dxp_log_error("dxp_read_dspsymbol", info_string, status);
-				return status;
-			}
-/* Check for 48 bit numbers */
-			sprintf(tempchar, "%sC0",uname);
-			if ((status  = dxp_loc(tempchar, dsp, &addr2))==DXP_SUCCESS) {
-				nword = 3;
-			}
-		}
+	  sprintf(info_string, "Failed to find symbol %s+1 in DSP memory", name);
+	  dxp_log_error("dxp_read_dspsymbol", info_string, status);
+	  return status;
 	}
+/* Check for 48 bit numbers */
+	sprintf(tempchar, "%sC",uname);
+	if ((status  = dxp_loc(tempchar, dsp, &addr2))==DXP_SUCCESS) {
+	  nword = 3;
+	}
+      }
+    } else {
+/* Search for the 2nd entry now */
+      sprintf(tempchar, "%sB0",uname);
+      if ((status  = dxp_loc(tempchar, dsp, &addr1))!=DXP_SUCCESS) {
+/* Failed to find the name with 1 attached, this symbol doesnt exist */
+	sprintf(info_string, "Failed to find symbol %s+1 in DSP memory", name);
+	dxp_log_error("dxp_read_dspsymbol", info_string, status);
+	return status;
+      }
+/* Check for 48 bit numbers */
+      sprintf(tempchar, "%sC0",uname);
+      if ((status  = dxp_loc(tempchar, dsp, &addr2))==DXP_SUCCESS) {
+	nword = 3;
+      }
+    }
+  }
 
 /* Check the access type for this parameter.  Only allow reading from r/w and ro 
  * parameters.
  */
-
-	if (dsp->params->parameters[addr].access==2) {
-		sprintf(info_string, "Parameter %s is Write-Only.  No peeking allowed.", name);
-		status = DXP_DSPACCESS;
-		dxp_log_error("dxp_read_dspsymbol", info_string, status);
-		return status;
-	}
+  
+  if (dsp->params->parameters[addr].access==2) {
+    sprintf(info_string, "Parameter %s is Write-Only.  No peeking allowed.", name);
+    status = DXP_DSPACCESS;
+    dxp_log_error("dxp_read_dspsymbol", info_string, status);
+    return status;
+  }
 
 /* Read the value of the symbol from DSP memory */
 
-	addr = (unsigned short) (dsp->params->parameters[addr].address + startp);
-	if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
-		sprintf(info_string, "Error writing parameter %s", name);
-		dxp_log_error("dxp_read_dspsymbol",info_string,status);
-		return status;
-	}
-	ltemp = (unsigned long) stemp;
-
+  addr = (unsigned short) (dsp->params->parameters[addr].address + startp);
+  if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
+    sprintf(info_string, "Error writing parameter %s", name);
+    dxp_log_error("dxp_read_dspsymbol",info_string,status);
+    return status;
+  }
+  ltemp = (unsigned long) stemp;
+  
 /* If there is a second word, read it in */
-	if (nword==1) {
+  if (nword==1) {
 /* For single word values, assign it for the user */
-		*value = ltemp;
-	} else if (nword==2) {
-		addr = (unsigned short) (dsp->params->parameters[addr1].address + startp);
-		if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
-			sprintf(info_string, "Error writing parameter %s+1", name);
-			dxp_log_error("dxp_read_dspsymbol",info_string,status);
-			return status;
-		}
-		ltemp1 = (unsigned long) stemp;
+    *value = ltemp;
+  } else if (nword==2) {
+    addr = (unsigned short) (dsp->params->parameters[addr1].address + startp);
+    if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
+      sprintf(info_string, "Error writing parameter %s+1", name);
+      dxp_log_error("dxp_read_dspsymbol",info_string,status);
+      return status;
+    }
+    ltemp1 = (unsigned long) stemp;
 /* For 2 words, create the proper 32 bit number */
-		*value = ltemp*65536 + ltemp1;
-	} else if (nword==3) {
+    *value = ltemp*65536 + ltemp1;
+  } else if (nword==3) {
 /* Special case of 48 Bit numbers */
-		addr = (unsigned short) (dsp->params->parameters[addr1].address + startp);
-		if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
-			sprintf(info_string, "Error writing parameter %s+1", name);
-			dxp_log_error("dxp_read_dspsymbol",info_string,status);
-			return status;
-		}
-		ltemp1 = (unsigned long) stemp;
+    addr = (unsigned short) (dsp->params->parameters[addr1].address + startp);
+    if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
+      sprintf(info_string, "Error writing parameter %s+1", name);
+      dxp_log_error("dxp_read_dspsymbol",info_string,status);
+      return status;
+    }
+    ltemp1 = (unsigned long) stemp;
 /* now read 3rd number */
-		addr = (unsigned short) (dsp->params->parameters[addr2].address + startp);
-		if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
-			sprintf(info_string, "Error writing parameter %s+2", name);
-			dxp_log_error("dxp_read_dspsymbol",info_string,status);
-			return status;
-		}
+    addr = (unsigned short) (dsp->params->parameters[addr2].address + startp);
+    if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
+      sprintf(info_string, "Error writing parameter %s+2", name);
+      dxp_log_error("dxp_read_dspsymbol",info_string,status);
+      return status;
+    }
 /* For 3 words, create the proper 48 bit number */
-		*value = ltemp*65536*65536 + ltemp1*65536 + ((unsigned long) stemp);
-	}
-	
-	return status;
-
+    *value = ltemp*65536*65536 + ltemp1*65536 + ((unsigned long) stemp);
+  }
+  
+  return status;
 }
 
 /******************************************************************************
@@ -2421,27 +2669,30 @@ static int dxp_write_dspparams(int* ioChan, int* modChan, Dsp_Info* dsp,
  * For 4C boards, it is fixed.
  * 
  ******************************************************************************/
-static unsigned int dxp_get_spectrum_length(Dsp_Info* dsp, 
-											unsigned short* params)
-/* Dsp_Info *dsp;					Input: Relavent DSP info			*/
-/* unsigned short *params;			Input: Array of DSP parameters	*/
+static unsigned int dxp_get_spectrum_length(Dsp_Info* dsp, unsigned short* params)
+/* Dsp_Info *dsp;                          Input: Relavent DSP info	*/
+/* unsigned short *params;	                Input: Array of DSP parameters	*/
 {
-	int status;
-
-	unsigned short addr;
-	unsigned int binfact, nspec;
-
+  int status;
+  
+  unsigned short addr;
+  unsigned int binfact, nspec;
+  
 /* Get the binning factor for the G200 */
-	if((status=dxp_loc("LOG2EBIN0", dsp, &addr))!=DXP_SUCCESS) {
-		status = DXP_NOSYMBOL;
-		dxp_log_error("dxp_get_spectrum_length","Unable to find LOG2EBIN0 symbol",status);
-		return 0;
-	}
-	binfact = (int) pow(2.,(double) ((65536-params[addr])&0xFFFF));
-	
-	nspec = 65536/binfact;
-
-	return nspec;
+  if((status=dxp_loc("LOG2EBIN0", dsp, &addr))!=DXP_SUCCESS) {
+    status = DXP_NOSYMBOL;
+    dxp_log_error("dxp_get_spectrum_length","Unable to find LOG2EBIN0 symbol",status);
+    return 0;
+  }
+  /* Check for special case of 0 */
+  if (params[addr] == 0) {
+    nspec = 65536;
+  } else {
+    binfact = (int) pow(2.,(double) ((65536-params[addr])&0xFFFF));
+    nspec = 65536/binfact;
+  }
+  
+  return nspec;
 }
 
 /******************************************************************************
@@ -2451,10 +2702,9 @@ static unsigned int dxp_get_spectrum_length(Dsp_Info* dsp,
  * For 4C boards, it is fixed.
  * 
  ******************************************************************************/
-static unsigned int dxp_get_baseline_length(Dsp_Info* dsp, 
-											unsigned short* params)
-/* Dsp_Info *dsp;					Input: Relavent DSP info			*/
-/* unsigned short *params;			Input: Array of DSP parameters	*/
+static unsigned int dxp_get_baseline_length(Dsp_Info* dsp, unsigned short* params)
+/* Dsp_Info *dsp;                     Input: Relavent DSP info		*/
+/* unsigned short *params;            Input: Array of DSP parameters	*/
 {
 	unsigned short ustemp;
 	Dsp_Info *dsptemp;
@@ -2476,16 +2726,17 @@ static unsigned int dxp_get_event_length(Dsp_Info* dsp, unsigned short* params)
 /* Dsp_Info *dsp;					Input: Relavent DSP info			*/
 /* unsigned short *params;			Input: Array of DSP parameters	*/
 {
-	int status;
-	unsigned short addr;
-
-	if((status=dxp_loc("LOUTBUFFER", dsp, &addr))!=DXP_SUCCESS){
-		dxp_log_error("dxp_get_event_length",
-			"Unable to find LOUTBUFFER symbol",status);
-		return 0;
-	}
-
-	return ((unsigned int) params[addr]);
+  int status;
+  unsigned short addr;
+  
+  if((status=dxp_loc("LOUTBUFFER", dsp, &addr)) != DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_get_event_length",
+		    "Unable to find LOUTBUFFER symbol",status);
+      return 0;
+    }
+  
+  return ((unsigned int) params[addr]);
 
 }
 
@@ -2497,28 +2748,28 @@ static unsigned int dxp_get_event_length(Dsp_Info* dsp, unsigned short* params)
  *
  ******************************************************************************/
 static int dxp_read_spectrum(int* ioChan, int* modChan, Board* board, 
-							 unsigned long* spectrum)
-/* int *ioChan;					Input: I/O channel of DSP		*/
-/* int *modChan;				Input: module channel of DSP	*/
-/* Board *board;				Input: Relevent Board info		*/
+			     unsigned long* spectrum)
+/* int *ioChan;				Input: I/O channel of DSP	*/
+/* int *modChan;			Input: module channel of DSP	*/
+/* Board *board;			Input: Relevent Board info	*/
 /* unsigned short *params;		Input: Array of DSP parameters	*/
 /* unsigned long *spectrum;		Output: array of spectrum values*/
 {
 
-	int status;
-	unsigned int i;
-	unsigned int slen, ct_len;				/* number of short words in spectrum and buffer	*/
-/* current position of writing data to the spectrum array */
-	unsigned int cur_pos=0, copy_end;
-	short type;
-	unsigned int ilen;
-
-	long *ct_data;
-	float timeout;
-	
-	int info[20];
-
-	slen = dxp_get_spectrum_length(board->dsp[*modChan], board->params[*modChan]);
+  int status;
+  unsigned int i;
+  unsigned int slen, ct_len;		/* number of short words in spectrum and buffer	*/
+  /* current position of writing data to the spectrum array */
+  unsigned int cur_pos=0, copy_end;
+  short type;
+  unsigned int ilen;
+  
+  long *ct_data;
+  float timeout;
+  
+  int info[20];
+  
+  slen = dxp_get_spectrum_length(board->dsp[*modChan], board->params[*modChan]);
 /* 
  * To read the spectrum from a G200, one must perform 8 control tasks and 
  * read the data from the ouptut buffer in DSP memory. 
@@ -2538,8 +2789,9 @@ static int dxp_read_spectrum(int* ioChan, int* modChan, Board* board,
 /* Set the timeout for the control task to 1.0 seconds */
 		timeout = 1.0;
 /* Pass only one value, the number of loops, to the routine */
-		ilen = 1;
-		info[0]=1;
+		ilen = 2;
+		info[0] = 1;
+		info[1] = 1;
 		if((status=dxp_do_control_task(ioChan,modChan,&type,board,&ilen,info,
 										&timeout,ct_data))!=DXP_SUCCESS){
 			dxp_log_error("dxp_read_spectrum","Error performing control task",status);
@@ -2556,8 +2808,8 @@ static int dxp_read_spectrum(int* ioChan, int* modChan, Board* board,
 			copy_end = slen;
 		}
 		for (i=cur_pos;i<copy_end;i++) {
-			spectrum[i] = (unsigned long) ((ct_data[2*(i-cur_pos)]&0xFF)<<16);
-			spectrum[i] += ((unsigned long) (ct_data[2*(i-cur_pos)+1]&0xFFFF));
+			spectrum[i] = (unsigned long) ((ct_data[2*(i-cur_pos)+1]&0xFF)<<16);
+			spectrum[i] += ((unsigned long) (ct_data[2*(i-cur_pos)]&0xFFFF));
 		}
 
 /* Done with the array, free the memory */
@@ -2607,38 +2859,37 @@ static int dxp_read_baseline(int* ioChan, int* modChan, Board* board,
  * modChan.  It returns the array to the caller.
  *
  ******************************************************************************/
-static int dxp_read_event(int* ioChan, int* modChan, Board* board, 
-						  unsigned short* event)
-/* int *ioChan;						Input: I/O channel of DSP					*/
-/* int *modChan;					Input: module channel of DSP				*/
-/* Board *board;					Input: Relevent Board info		*/
-/* unsigned short *params;			Input: Array of DSP parameters				*/
-/* unsigned short *event;			Output: array of history buffervalues		*/
+static int dxp_read_event(int* ioChan, int* modChan, Board* board, unsigned short* event)
+/* int *ioChan;				Input: I/O channel of DSP		*/
+/* int *modChan;			Input: module channel of DSP		*/
+/* Board *board;			Input: Relevent Board info		*/
+/* unsigned short *params;		Input: Array of DSP parameters		*/
+/* unsigned short *event;		Output: array of history buffervalues	*/
 {
 
-	int status;
-	unsigned short addr, start;
-	unsigned int len;					/* number of short words in spectrum	*/
+  int status;
+  unsigned short addr, start;
+  unsigned int len;					/* number of short words in spectrum	*/
+  
+  if((status=dxp_loc("AOUTBUFFER", board->dsp[*modChan], &addr))!=DXP_SUCCESS) 
+    {
+      status = DXP_NOSYMBOL;
+      dxp_log_error("dxp_read_event","Unable to find EVTBSTART symbol",status);
+      return status;
+    }
+  start = (unsigned short) (board->params[*modChan][addr]);
+  len = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
 
-	if((status=dxp_loc("AOUTBUFFER", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
-		status = DXP_NOSYMBOL;
-		dxp_log_error("dxp_read_event","Unable to find EVTBSTART symbol",status);
-		return status;
-	}
-	start = (unsigned short) (board->params[*modChan][addr]);
-	len = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
-
-	
 /* Read out the basline histogram. */
-	
-	if((status=dxp_read_block(ioChan,modChan,&start,&len,event))!=DXP_SUCCESS){
-		dxp_log_error("dxp_read_event","Error reading out event buffer",status);
-		return status;
-	}
+  if((status=dxp_read_block(ioChan,modChan,&start,&len,event)) != DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_read_event","Error reading out event buffer",status);
+      return status;
+    }
 
-	return status;
+  return status;
 }
-	
+
 /******************************************************************************
  * Routine to readout the event buffer from a single DSP.
  * 
@@ -2661,7 +2912,7 @@ static int dxp_write_event(int* ioChan, int* modChan, Board* board,
 
 	if((status=dxp_loc("AOUTBUFFER", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
 		status = DXP_NOSYMBOL;
-		dxp_log_error("dxp_read_event","Unable to find EVTBSTART symbol",status);
+		dxp_log_error("dxp_write_event","Unable to find EVTBSTART symbol",status);
 		return status;
 	}
 	start = (unsigned short) (board->params[*modChan][addr]);
@@ -2669,7 +2920,7 @@ static int dxp_write_event(int* ioChan, int* modChan, Board* board,
 /* Read out the basline histogram. */
 
 	if((status=dxp_write_block(ioChan,modChan,&start,len,event))!=DXP_SUCCESS){
-		dxp_log_error("dxp_read_event","Error reading out event buffer",status);
+		dxp_log_error("dxp_write_event","Error reading out event buffer",status);
 		return status;
 	}
 
@@ -2686,73 +2937,106 @@ static int dxp_write_event(int* ioChan, int* modChan, Board* board,
  *
  ******************************************************************************/
 static int dxp_do_control_task(int *ioChan, int *modChan, short *type,
-							   Board *board, unsigned int *len,
-							   int *idata, float *timeout, long *odata)
-/* int *ioChan;					Input: I/O channel of DSP							*/
-/* int *modChan;				Input: module channel of DSP						*/
-/* short *type;					Input: type of control task to perform				*/
-/* Board *board;				Input: Relavent Board info							*/
-/* unsigned int *ilen;			Input: Length of the input array					*/
-/* int *idata;					Input: Array of input data							*/
-/* float *timeout;				Input: Timeout to wait for control task to end		*/
-/* long *odata;					Output: array of control task output data			*/
+			       Board *board, unsigned int *len,
+			       int *idata, float *timeout, long *odata)
+     /* int *ioChan;			Input: I/O channel of DSP	*/
+     /* int *modChan;			Input: module channel of DSP	*/
+     /* short *type;			Input: type of control task to perform	*/
+     /* Board *board;			Input: Relavent Board info		*/
+     /* unsigned int *ilen;		Input: Length of the input array	*/
+     /* int *idata;			Input: Array of input data		*/
+     /* float *timeout;			Input: Timeout to wait for control task to end	*/
+     /* long *odata;			Output: array of control task output data	*/
 {
-	int status = DXP_SUCCESS;
-	char info_string[INFO_LEN];
-	int i;
-	float wait, poll, curtime;
-	unsigned short csr;
-	unsigned int true_len;
+  int status = DXP_SUCCESS;
+  char info_string[INFO_LEN];
+  int i;
+  float wait, poll, curtime;
+  unsigned short csr;
+  unsigned int true_len;
+  
+  int info[20];
+  
+  if (*modChan == ALLCHAN) 
+    {
+      dxp_log_error("dxp_do_control_task","Currently Control Tasks on ALLCHAN is not supported",status);
+      return status;
+    }
 
-	int info[20];
+  sprintf(info_string, "iochan = %i, modChan = %i, type = %i, len = %i, timeout = %f, idata = %i %i", 
+	  *ioChan, *modChan, *type, *len, *timeout, idata[0],idata[1]);
+  dxp_log_debug("dxp_do_control_task", info_string);
 
-	for (i=0;i<idata[0];i++) {
-		if((status=dxp_control_task_params(ioChan,modChan,type,board,info))!=DXP_SUCCESS){
-			dxp_log_error("dxp_do_control_task","Error retrieving control task information",status);
-			return status;
-		}
-		poll = (float) (((double) info[2])/1000.);
-/* Because of the way polling is performed, more convenient to calculate wait this way */
-		wait = ((float) (((double) info[1])/1000.)) - poll;
-
-/* Start the control task */
-		true_len = *len-1;
-		if((status=dxp_begin_control_task(ioChan,modChan,type,&true_len,idata+1,board))!=DXP_SUCCESS){
-			dxp_log_error("dxp_do_control_task","Error starting control task",status);
-			return status;
-		}
-
-/* Wait for the control task to end by checking the RUN_ACTIVE bit of the CSR */
-		g200_md_wait(&wait);
-		curtime = wait;
-		do {
-			g200_md_wait(&poll);
-			curtime += poll;
-			if (curtime>*timeout) {
-				sprintf(info_string,"Control task took more than %f seconds to finish",*timeout);
-				dxp_log_error("dxp_do_control_task",info_string,status);
-				return status;
-			}
-			if((status=dxp_read_csr(ioChan,&csr))!=DXP_SUCCESS){
-				dxp_log_error("dxp_do_control_task","Error reading the CSR active bit",status);
-				return status;
-			}
-		} while (csr & MASK_RUN_ACTIVE);
-
-/* Stop the control task after the G200 ends control task */
-		if((status=dxp_end_control_task(ioChan,modChan,board))!=DXP_SUCCESS){
-			dxp_log_error("dxp_do_control_task","Error ending control task",status);
-			return status;
-		}
-
-/* Readout data from the results of the control task */
-		if((status=dxp_control_task_data(ioChan,modChan,type,board,odata))!=DXP_SUCCESS){
-			dxp_log_error("dxp_do_control_task","Error reading data from control task",status);
-			return status;
-		}
-	}
-
+  for (i=0;i<idata[0];i++) {
+    if((status=dxp_control_task_params(ioChan,modChan,type,board,info))!=DXP_SUCCESS)
+      {
+	dxp_log_error("dxp_do_control_task","Error retrieving control task information",status);
 	return status;
+      }
+
+    poll = (float) (((double) info[2])/1000.);
+    /* Because of the way polling is performed, more convenient to calculate wait this way */
+    wait = ((float) (((double) info[1])/1000.)) - poll;
+
+  sprintf(info_string, "iochan = %i, modChan = %i, type = %i, len = %i, timeout = %f, idata = %i %i", 
+	  *ioChan, *modChan, *type, *len, *timeout, idata[0],idata[1]);
+  dxp_log_debug("dxp_do_control_task", info_string);
+
+    /* Start the control task */
+    true_len = *len-1;
+    if((status=dxp_begin_control_task(ioChan,modChan,type,&true_len,idata+1,board))!=DXP_SUCCESS){
+      dxp_log_error("dxp_do_control_task","Error starting control task",status);
+			return status;
+    }
+    
+  sprintf(info_string, "iochan = %i, modChan = %i, type = %i, len = %i, timeout = %f, idata = %i %i", 
+	  *ioChan, *modChan, *type, *len, *timeout, idata[0],idata[1]);
+  dxp_log_debug("dxp_do_control_task", info_string);
+
+    /* Wait for the control task to end by checking the RUN_ACTIVE bit of the CSR */
+    g200_md_wait(&wait);
+    curtime = wait;
+    do {
+      g200_md_wait(&poll);
+      curtime += poll;
+      if (curtime>*timeout) {
+	status = DXP_DSPTIMEOUT;
+	sprintf(info_string,"Control task took more than %f seconds to finish",*timeout);
+	dxp_log_error("dxp_do_control_task",info_string,status);
+	return status;
+      }
+      if((status=dxp_read_csr(ioChan,&csr))!=DXP_SUCCESS){
+	dxp_log_error("dxp_do_control_task","Error reading the CSR active bit",status);
+	return status;
+      }
+  sprintf(info_string, "csr = 0x%x", csr);
+  dxp_log_debug("dxp_do_control_task", info_string);
+    } while ((csr & MASK_RUN_ACTIVE) != 0);
+    
+  sprintf(info_string, "iochan = %i, modChan = %i, type = %i, len = %i, timeout = %f, idata = %i %i", 
+	  *ioChan, *modChan, *type, *len, *timeout, idata[0],idata[1]);
+  dxp_log_debug("dxp_do_control_task", info_string);
+
+    /* Stop the control task after the G200 ends control task */
+    if((status=dxp_end_control_task(ioChan,modChan,board))!=DXP_SUCCESS)
+      {
+	dxp_log_error("dxp_do_control_task","Error ending control task",status);
+	return status;
+      }
+    
+  sprintf(info_string, "iochan = %i, modChan = %i, type = %i, len = %i, timeout = %f, idata = %i %i", 
+	  *ioChan, *modChan, *type, *len, *timeout, idata[0],idata[1]);
+  dxp_log_debug("dxp_do_control_task", info_string);
+
+    /* Readout data from the results of the control task */
+    if((status=dxp_control_task_data(ioChan,modChan,type,board,odata))!=DXP_SUCCESS)
+      {
+	dxp_log_error("dxp_do_control_task","Error reading data from control task",status);
+	return status;
+      }
+  }
+  
+  return status;
 
 }
 /******************************************************************************
@@ -2829,37 +3113,54 @@ static int dxp_begin_run(int* ioChan, int* modChan, unsigned short* gate,
 	int status;
 	unsigned short data;
 	unsigned long chancsr;
+	char info_string[INFO_LEN];
 
 /* Set the parameter that controls if the gate input is used to veto
  * signals */
 	if((status=dxp_read_dspsymbol(ioChan, modChan, "CHANCSRA0", board->dsp[*modChan], 
-															&chancsr))!=DXP_SUCCESS) {
-		status = DXP_NOSYMBOL;
-		dxp_log_error("dxp_begin_run","Unable to read CHANCSRA0 symbol",status);
-		return status;
+				      &chancsr))!=DXP_SUCCESS) {
+	  status = DXP_NOSYMBOL;
+	  dxp_log_error("dxp_begin_run","Unable to read CHANCSRA0 symbol",status);
+	  return status;
 	}
 	if (*gate==IGNOREGATE)  {
-		if ((chancsr & CCSRA_GATE)!=0) data = (unsigned short) (chancsr - CCSRA_GATE);
+	  if ((chancsr & CCSRA_GATE)!=0) data = (unsigned short) (chancsr & ~CCSRA_GATE);
 	} else {
-		data = (unsigned short) (chancsr | CCSRA_GATE);
+	  data = (unsigned short) (chancsr | CCSRA_GATE);
 	}
 	if((status=dxp_modify_dspsymbol(ioChan, modChan, "CHANCSRA0", &data, 
-											board->dsp[*modChan]))!=DXP_SUCCESS) {
-		status = DXP_NOSYMBOL;
-		dxp_log_error("dxp_begin_run","Unable to write CHANCSRA0 symbol",status);
-		return status;
+					board->dsp[*modChan]))!=DXP_SUCCESS) {
+	  status = DXP_NOSYMBOL;
+	  dxp_log_error("dxp_begin_run","Unable to write CHANCSRA0 symbol",status);
+	  return status;
 	}
 
-/* write to CSR to start data run */
+	/* RMW the CSR to start data run */
+	status = dxp_read_csr(ioChan, &data);
+	if (status!=DXP_SUCCESS)
+	  {
+	    dxp_log_error("dxp_begin_run","Error reading the CSR",status);
+	    return status;
+	  }
 
-	data=MASK_RUNENABLE;
-	if(*resume==CLEARMCA)data|=MASK_RESETMCA;
+	data |= MASK_RUNENABLE;
+	if (*resume==CLEARMCA) 
+	  {
+	    data |= MASK_RESETMCA;
+	  } else {
+	    data &= ~MASK_RESETMCA;
+	  }
 
-	status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
-	if (status!=DXP_SUCCESS){
-		dxp_log_error("dxp_begin_run","Error writing CSR",status);
-		return status;
-	}
+	sprintf(info_string, "Writing 0x%x to the CSR", data);
+	dxp_log_debug("dxp_begin_run", info_string);
+	
+	/* write the CSR back */
+	status = dxp_write_csr(ioChan, &data);
+	if (status!=DXP_SUCCESS)
+	  {
+	    dxp_log_error("dxp_begin_run","Error writing CSR",status);
+	    return status;
+	  }
 
 	return DXP_SUCCESS;
 }
@@ -2877,27 +3178,30 @@ static int dxp_end_run(int* ioChan, int* modChan)
 /*
  *   Terminate a data taking for all channels of a single DXP module. 
  */
-	int status;
-	unsigned short data;
-
-	status = dxp_read_csr(ioChan, &data);                    /* read from CSR */
-	if (status!=DXP_SUCCESS) {
-		dxp_log_error("dxp_end_run","Error reading CSR",status);
-	}
-
-	data &= ~MASK_RUNENABLE;
-	
-	status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
-	if (status!=DXP_SUCCESS) {
-		dxp_log_error("dxp_end_run","Error writing CSR",status);
-	}
-	
-	if((status=dxp_clear_LAM(ioChan, modChan))!=DXP_SUCCESS) {
-		dxp_log_error("dxp_end_run"," ",status);
-		return status;
-	}
-	
-	return DXP_SUCCESS;    
+  int status;
+  unsigned short data;
+  
+  status = dxp_read_csr(ioChan, &data);                    /* read from CSR */
+  if (status!=DXP_SUCCESS) 
+    {
+      dxp_log_error("dxp_end_run", "Error reading CSR", status);
+    }
+  
+  data &= ~MASK_RUNENABLE;
+  
+  status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
+  if (status!=DXP_SUCCESS) 
+    {
+      dxp_log_error("dxp_end_run","Error writing CSR",status);
+    }
+  
+  if((status=dxp_clear_LAM(ioChan, modChan))!=DXP_SUCCESS) 
+    {
+      dxp_log_error("dxp_end_run"," ",status);
+      return status;
+    }
+  
+  return DXP_SUCCESS;    
 }
 
 /******************************************************************************
@@ -2935,137 +3239,205 @@ static int dxp_run_active(int* ioChan, int* modChan, int* active)
  * 
  ******************************************************************************/
 static int dxp_begin_control_task(int* ioChan, int* modChan, short *type, 
-								  unsigned int *length, int *info, Board *board)
-/* int *ioChan;						Input: I/O channel of DXP module			*/
-/* int *modChan;					Input: module channel number of DXP module	*/
-/* short *type;						Input: type of control task to perfomr		*/
-/* int *length;						Input: Length of the config info array		*/
-/* int *info;						Input: Configuration info for the task		*/
-/* Board *board;					Input: Board data							*/
+				  unsigned int *length, int *info, Board *board)
+     /* int *ioChan;		Input: I/O channel of DXP module		*/
+     /* int *modChan;		Input: module channel number of DXP module	*/
+     /* short *type;		Input: type of control task to perfomr		*/
+     /* int *length;		Input: Length of the config info array		*/
+     /* int *info;		Input: Configuration info for the task		*/
+     /* Board *board;		Input: Board data				*/
 {
-	int status = DXP_SUCCESS;
-	char info_string[INFO_LEN];
-	
-	unsigned int i;
+  int status = DXP_SUCCESS;
+  char info_string[INFO_LEN];
+  
+  unsigned int i;
+  
+  /* Variables for parameters to be read/written from/to the DSP */
+  unsigned short runtask, controltask, xwait, unuseda, blcut, threshold;
+  
+  unsigned short *ustemp;
+  unsigned short zero=0;
 
-/* Variables for parameters to be read/written from/to the DSP */
-	unsigned short runtask, controltask, tracewait;
+  unsigned long ultemp;
+  
+  /* Check that the length of allocated memory is greater than 0 */
+  if (*length==0) {
+    status = DXP_ALLOCMEM;
+    sprintf(info_string,
+	    "Must pass an array of at least length 1 containing LOOPCOUNT for module %d chan %d",
+	    board->mod,*modChan);
+    dxp_log_error("dxp_begin_control_task",info_string,status);
+    return status;
+  }
 
-	unsigned short *ustemp;
-	unsigned short zero=0;
-
-/* Check that the length of allocated memory is greater than 0 */
-	if (*length==0) {
-		status = DXP_ALLOCMEM;
-		sprintf(info_string,
-			"Must pass an array of at least length 1 containing LOOPCOUNT for module %d chan %d",
-			board->mod,*modChan);
-		dxp_log_error("dxp_begin_control_task",info_string,status);
-        return status;
-	}
-
-	printf("dsp param = %s\n", board->dsp[*modChan]->params->parameters[106].pname);
-	printf("dsp param addr = %i\n", board->dsp[*modChan]->params->parameters[106].address);
-	printf("dsp param access = %i\n", board->dsp[*modChan]->params->parameters[106].access);
-
-/* Write the RUNTASK parameter */
-	runtask = CONTROL_TASK_RUN;
-/* write */
-	if((status=dxp_modify_dspsymbol(ioChan,modChan,
-							"RUNTASK",&runtask,board->dsp[*modChan]))!=DXP_SUCCESS){
-		sprintf(info_string,
-			"Error writing RUNTASK from module %d chan %d",board->mod,*modChan);
-		dxp_log_error("dxp_begin_control_task",info_string,status);
-        return status;
+  printf("dsp param = %s\n", board->dsp[*modChan]->params->parameters[106].pname);
+  printf("dsp param addr = %i\n", board->dsp[*modChan]->params->parameters[106].address);
+  printf("dsp param access = %i\n", board->dsp[*modChan]->params->parameters[106].access);
+  
+  /* Retrieve the current value of RUNTASK and store it in the chanstate array, 
+   * we will use the value when the control task is ended */
+  if((status = dxp_read_dspsymbol(ioChan,modChan,
+				  "RUNTASK",board->dsp[*modChan],&ultemp)) != DXP_SUCCESS)
+    {
+      sprintf(info_string,
+	      "Error reading RUNTASK from module %d chan %d",board->mod,*modChan);
+      dxp_log_error("dxp_begin_control_task",info_string,status);
+      return status;
     }
+  /* Now store the value */
+  board->chanstate[*modChan].parameterTemp = (unsigned short) ultemp;
 
-/* First check if the control task is the ADC readout */
-	if (*type==CT_DGFG200_SETDACS) {
-		controltask = CONTROLTASK_SETDACS;
-	} else if (*type==CT_DGFG200_CLOSE_INPUT_RELAY) {
-		controltask = CONTROLTASK_CLOSE_INPUT_RELAY;
-	} else if (*type==CT_DGFG200_OPEN_INPUT_RELAY) {
-		controltask = CONTROLTASK_OPEN_INPUT_RELAY;
-	} else if (*type==CT_DGFG200_RAMP_OFFSET_DAC) {
-		controltask = CONTROLTASK_RAMP_OFFSET_DAC;
-	} else if ((*type==CT_ADC) || (*type==CT_DGFG200_ADC)) {
-		controltask = CONTROLTASK_ADC_TRACE;
-/* Make sure at least the user thinks there is allocated memory */
-		if (*length>1) {
-/* write TRACEWAIT */
-			tracewait = (unsigned short) info[1];
-			if((status=dxp_modify_dspsymbol(ioChan,modChan,
-									"XWAIT0",&tracewait,board->dsp[*modChan]))!=DXP_SUCCESS){
-				sprintf(info_string,
-					"Error writing XWAIT0 to module %d chan %d",board->mod,*modChan);
-				dxp_log_error("dxp_begin_control_task",info_string,status);
-				return status;
-			}
-		} else {
-			status = DXP_ALLOCMEM;
-			sprintf(info_string,
-				"This control task requires at least 2 parameters for mod %d chan %d",board->mod,*modChan);
-			dxp_log_error("dxp_begin_control_task",info_string,status);
-			return status;
-		}
-	} else if (*type==CT_DGFG200_PROGRAM_FIPPI) {
-		controltask = CONTROLTASK_PROGRAM_FIPPI;
-	} else if (*type==CT_DGFG200_READ_MEMORY_FIRST) {
-		controltask = CONTROLTASK_READ_MEMORY_FIRST;
-	} else if (*type==CT_DGFG200_READ_MEMORY_NEXT) {
-		controltask = CONTROLTASK_READ_MEMORY_NEXT;
-	} else if ((*type==CT_DGFG200_WRITE_MEMORY_FIRST)||(*type==CT_DGFG200_WRITE_MEMORY_NEXT)) {
-		if (*type==CT_DGFG200_WRITE_MEMORY_FIRST) {
-			controltask = CONTROLTASK_WRITE_MEMORY_FIRST;
-		} else {
-			controltask = CONTROLTASK_WRITE_MEMORY_NEXT;
-		}
-/* convert the info array to unsigned short */
-		ustemp = (unsigned short *) g200_md_alloc(*length*sizeof(unsigned short));
-		for (i=1;i<(unsigned int)(*length+1);i++) ustemp[i] = (unsigned short)info[i];
-/* Write the event buffer */
-		if((status=dxp_write_event(ioChan,modChan,board,length,ustemp))!=DXP_SUCCESS){
-			sprintf(info_string,
-				"Error writing the event buffer to module %d chan %d",board->mod,*modChan);
-			dxp_log_error("dxp_begin_control_task",info_string,status);
-			g200_md_free(ustemp);
-			return status;
-		}
-		g200_md_free(ustemp);
-	} else if (*type==CT_DGFG200_MEASURE_NOISE) {
-		controltask = CONTROLTASK_MEASURE_NOISE;
-	} else if (*type==CT_DGFG200_ADC_CALIB_FIRST) {
-		controltask = CONTROLTASK_ADC_CALIB_FIRST;
-	} else if (*type==CT_DGFG200_ADC_CALIB_NEXT) {
-		controltask = CONTROLTASK_ADC_CALIB_NEXT;
-	} else {
-		status=DXP_NOCONTROLTYPE;
-		sprintf(info_string,
-			"Unknown control type %d for this DXP4C2X module",*type);
-		dxp_log_error("dxp_begin_control_task",info_string,status);
-		return status;
+  /* Write the RUNTASK parameter */
+  runtask = CONTROL_TASK_RUN;
+  /* write */
+  if((status=dxp_modify_dspsymbol(ioChan,modChan,
+				  "RUNTASK",&runtask,board->dsp[*modChan]))!=DXP_SUCCESS){
+    sprintf(info_string,
+	    "Error writing RUNTASK from module %d chan %d",board->mod,*modChan);
+    dxp_log_error("dxp_begin_control_task",info_string,status);
+    return status;
+  }
+
+  /* First check if the control task is the ADC readout */
+  if (*type==CT_DGFG200_SETDACS) {
+    controltask = CONTROLTASK_SETDACS;
+  } else if (*type==CT_DGFG200_CLOSE_INPUT_RELAY) {
+    controltask = CONTROLTASK_CLOSE_INPUT_RELAY;
+  } else if (*type==CT_DGFG200_OPEN_INPUT_RELAY) {
+    controltask = CONTROLTASK_OPEN_INPUT_RELAY;
+  } else if ((*type==CT_DGFG200_RAMP_OFFSET_DAC) || (*type==CT_DGFG200_ISOLATED_RAMP_OFFSET_DAC)) {
+    if (*type == CT_DGFG200_RAMP_OFFSET_DAC) 
+      {
+	controltask = CONTROLTASK_RAMP_OFFSET_DAC;
+      } else {
+	controltask = CONTROLTASK_ISOLATED_RAMP_OFFSET_DAC;
+      }
+
+    
+    /* Set a couple parameters important for ramping the offset DAC
+     * these parameters are overwritten, higher level routines must
+     * restore these values (because of the begin-end sequence needed
+     * here */
+    /* Max the threshold */
+    threshold = TRIGGER_THRESHOLD_MAX;
+    if((status=dxp_modify_dspsymbol(ioChan,modChan, "FASTTHRESH0", &threshold,
+				    board->dsp[*modChan])) != DXP_SUCCESS)
+      {
+	sprintf(info_string,
+		"Error writing FASTTHRESH0 to module %d chan %d",board->mod,*modChan);
+	dxp_log_error("dxp_begin_control_task",info_string,status);
+	return status;
+      }
+
+    /* Disable the Baseline cut routine */
+    blcut = 0;
+    if((status=dxp_modify_dspsymbol(ioChan,modChan, "BLCUT0", &blcut,
+				    board->dsp[*modChan])) != DXP_SUCCESS)
+      {
+	sprintf(info_string,
+		"Error writing BLCUT0 to module %d chan %d",board->mod,*modChan);
+	dxp_log_error("dxp_begin_control_task",info_string,status);
+	return status;
+      }
+
+  } else if ((*type==CT_ADC) || (*type==CT_DGFG200_ADC)) {
+    controltask = CONTROLTASK_ADC_TRACE;
+    /* Make sure at least the user thinks there is allocated memory */
+    if (*length>1) {
+      /* write XWAIT */
+      xwait = (unsigned short) info[1];
+      /* do a little extra bounds checking and calculate unusedA */
+      unuseda = 65535;
+      if (xwait <= 3) 
+	{
+	  xwait = 3;
+	} else if (xwait > 10) { 
+	  xwait = (unsigned short) (4 * floor((xwait - 3) / 4) + 3);
+	  unuseda = (unsigned short) floor(65536 / ((xwait - 3) / 4));
 	}
+      /* Let the user know the new value */
+      info[1] = (int) xwait;
 
-/* write CONTROLTASK */
-	if((status=dxp_modify_dspsymbol(ioChan,modChan,
-							"CONTROLTASK",&controltask,board->dsp[*modChan]))!=DXP_SUCCESS){
-		sprintf(info_string,
-			"Error writing CONTROLTASK to module %d chan %d",board->mod,*modChan);
-		dxp_log_error("dxp_begin_control_task",info_string,status);
-		return status;
+      /* set the values on the board */
+      if((status=dxp_modify_dspsymbol(ioChan,modChan, "XWAIT0",&xwait,
+				      board->dsp[*modChan]))!=DXP_SUCCESS){
+	sprintf(info_string,
+		"Error writing XWAIT0 to module %d chan %d",board->mod,*modChan);
+	dxp_log_error("dxp_begin_control_task",info_string,status);
+	return status;
+      }
+      if((status=dxp_modify_dspsymbol(ioChan,modChan, "UNUSEDA0",&unuseda,
+				      board->dsp[*modChan]))!=DXP_SUCCESS){
+	sprintf(info_string,
+		"Error writing UNUSEDA to module %d chan %d",board->mod,*modChan);
+	dxp_log_error("dxp_begin_control_task",info_string,status);
+	return status;
+      }
+    } else {
+      status = DXP_ALLOCMEM;
+      sprintf(info_string,
+	      "This control task requires at least 2 parameters for mod %d chan %d",board->mod,*modChan);
+      dxp_log_error("dxp_begin_control_task",info_string,status);
+      return status;
     }
+  } else if (*type==CT_DGFG200_PROGRAM_FIPPI) {
+    controltask = CONTROLTASK_PROGRAM_FIPPI;
+  } else if (*type==CT_DGFG200_READ_MEMORY_FIRST) {
+    controltask = CONTROLTASK_READ_MEMORY_FIRST;
+  } else if (*type==CT_DGFG200_READ_MEMORY_NEXT) {
+    controltask = CONTROLTASK_READ_MEMORY_NEXT;
+  } else if ((*type==CT_DGFG200_WRITE_MEMORY_FIRST)||(*type==CT_DGFG200_WRITE_MEMORY_NEXT)) {
+    if (*type==CT_DGFG200_WRITE_MEMORY_FIRST) {
+      controltask = CONTROLTASK_WRITE_MEMORY_FIRST;
+    } else {
+      controltask = CONTROLTASK_WRITE_MEMORY_NEXT;
+    }
+    /* convert the info array to unsigned short */
+    ustemp = (unsigned short *) g200_md_alloc(*length*sizeof(unsigned short));
+    for (i=1;i<(unsigned int)(*length+1);i++) ustemp[i] = (unsigned short)info[i];
+    /* Write the event buffer */
+    if((status=dxp_write_event(ioChan,modChan,board,length,ustemp))!=DXP_SUCCESS){
+      sprintf(info_string,
+	      "Error writing the event buffer to module %d chan %d",board->mod,*modChan);
+      dxp_log_error("dxp_begin_control_task",info_string,status);
+      g200_md_free(ustemp);
+      return status;
+    }
+    g200_md_free(ustemp);
+  } else if (*type==CT_DGFG200_MEASURE_NOISE) {
+    controltask = CONTROLTASK_MEASURE_NOISE;
+  } else if (*type==CT_DGFG200_ADC_CALIB_FIRST) {
+    controltask = CONTROLTASK_ADC_CALIB_FIRST;
+  } else if (*type==CT_DGFG200_ADC_CALIB_NEXT) {
+    controltask = CONTROLTASK_ADC_CALIB_NEXT;
+  } else {
+    status=DXP_NOCONTROLTYPE;
+    sprintf(info_string,
+	    "Unknown control type %d for this DGFG200 module",*type);
+    dxp_log_error("dxp_begin_control_task",info_string,status);
+    return status;
+  }
+  
+  /* write CONTROLTASK */
+  if((status=dxp_modify_dspsymbol(ioChan,modChan,
+				  "CONTROLTASK",&controltask,board->dsp[*modChan]))!=DXP_SUCCESS){
+    sprintf(info_string,
+	    "Error writing CONTROLTASK to module %d chan %d",board->mod,*modChan);
+    dxp_log_error("dxp_begin_control_task",info_string,status);
+    return status;
+  }
 
-/* start the control run */
-	if((status=dxp_begin_run(ioChan,modChan,&zero,&zero,board))!=DXP_SUCCESS){
-		sprintf(info_string,
-			"Error starting control run on module %d chan %d",board->mod,*modChan);
-		dxp_log_error("dxp_begin_control_task",info_string,status);
-		return status;
-	}
+  /* start the control run */
+  if((status=dxp_begin_run(ioChan,modChan,&zero,&zero,board))!=DXP_SUCCESS){
+    sprintf(info_string,
+	    "Error starting control run on module %d chan %d",board->mod,*modChan);
+    dxp_log_error("dxp_begin_control_task",info_string,status);
+    return status;
+  }
 
-	return DXP_SUCCESS;
-
+  return DXP_SUCCESS;
 }
+
 /******************************************************************************
  *
  * Routine to end a control task routine.
@@ -3076,43 +3448,45 @@ static int dxp_end_control_task(int* ioChan, int* modChan, Board *board)
 /* int *modChan;					Input: module channel number of DXP module	*/
 /* Board *board;					Input: Board data							*/
 {
-	int status = DXP_SUCCESS;
-	char info_string[INFO_LEN];
-	unsigned long temp;
-	unsigned short runtask;
-
-	if((status=dxp_end_run(ioChan,modChan))!=DXP_SUCCESS){
-		sprintf(info_string,
-			"Error ending control task run for chan %d",*modChan);
-		dxp_log_error("dxp_end_control_task",info_string,status);
-        return status;
+  int status = DXP_SUCCESS;
+  char info_string[INFO_LEN];
+  unsigned long temp;
+  unsigned short runtask;
+  
+  if ((status = dxp_end_run(ioChan,modChan)) != DXP_SUCCESS)
+    {
+      sprintf(info_string,
+	      "Error ending control task run for chan %d",*modChan);
+      dxp_log_error("dxp_end_control_task",info_string,status);
+      return status;
     }
 
 /* Read/Modify/Write the RUNTASK parameter */
 /* read */
-	if((status=dxp_read_dspsymbol(ioChan,modChan,
-							"RUNTASK",board->dsp[*modChan],&temp))!=DXP_SUCCESS){
-		sprintf(info_string,
-			"Error reading RUNTASK from module %d chan %d",board->mod,*modChan);
-		dxp_log_error("dxp_end_control_task",info_string,status);
-        return status;
+  if((status = dxp_read_dspsymbol(ioChan,modChan,
+				"RUNTASK",board->dsp[*modChan],&temp)) != DXP_SUCCESS)
+    {
+      sprintf(info_string,
+	      "Error reading RUNTASK from module %d chan %d",board->mod,*modChan);
+      dxp_log_error("dxp_end_control_task",info_string,status);
+      return status;
     }
 
-	if (temp==CONTROL_TASK_RUN) {
-/* modify */
-		runtask = MCA_RUN;
-/* write */
-		if((status=dxp_modify_dspsymbol(ioChan,modChan,
-								"RUNTASK",&runtask,board->dsp[*modChan]))!=DXP_SUCCESS){
-			sprintf(info_string,
-				"Error writing RUNTASK from module %d chan %d",board->mod,*modChan);
-			dxp_log_error("dxp_end_control_task",info_string,status);
-	        return status;
-		}
-	}
-
+  if (temp==CONTROL_TASK_RUN) 
+    {
+      /* Set the RUNTASK parameter back to the value it had before the control task was executed */
+      runtask = board->chanstate[*modChan].parameterTemp;
+      /* write */
+      if((status = dxp_modify_dspsymbol(ioChan,modChan,	"RUNTASK",
+					&runtask,board->dsp[*modChan])) != DXP_SUCCESS){
+	sprintf(info_string,
+		"Error writing RUNTASK from module %d chan %d",board->mod,*modChan);
+	dxp_log_error("dxp_end_control_task",info_string,status);
 	return status;
-
+      }
+    }
+  
+  return status;
 }
 
 /******************************************************************************
@@ -3121,82 +3495,92 @@ static int dxp_end_control_task(int* ioChan, int* modChan, Board *board)
  *
  ******************************************************************************/
 static int dxp_control_task_params(int* ioChan, int* modChan, short *type,
-								   Board *board, int *info)
-/* int *ioChan;						Input: I/O channel of DXP module			*/
-/* int *modChan;					Input: module channel number of DXP module	*/
-/* short *type;						Input: type of control task to perfomr		*/
-/* Board *board;					Input: Board data							*/
-/* int info[20];					Output: Configuration info for the task		*/
+				   Board *board, int *info)
+/* int *ioChan;			Input: I/O channel of DXP module		*/
+/* int *modChan;		Input: module channel number of DXP module	*/
+/* short *type;			Input: type of control task to perfomr		*/
+/* Board *board;		Input: Board data				*/
+/* int info[20];		Output: Configuration info for the task		*/
 {
-	int status = DXP_SUCCESS;
-	char info_string[INFO_LEN];
-
+  int status = DXP_SUCCESS;
+  char info_string[INFO_LEN];
+  
 /* Keep the compiler happy. Complains about ioChan not being used. */
-	int z = *ioChan;
-	z++; 
+  int idummy;
+  idummy = *ioChan;
 
 /* Default values */
 /* nothing to readout here */
-	info[0] = 0;
-/* stop when user is ready */
-	info[1] = 0;
-/* stop when user is ready */
-	info[2] = 0;
+  info[0] = 0;
+/* set a minimal wait and delay */
+  info[1] = 1;
+  info[2] = 1;
 
-/* Check the control task type */
-	if (*type==CT_DGFG200_SETDACS) {
-	} else if (*type==CT_DGFG200_CLOSE_INPUT_RELAY) {
-	} else if (*type==CT_DGFG200_OPEN_INPUT_RELAY) {
-	} else if (*type==CT_DGFG200_RAMP_OFFSET_DAC) {
-	} else if ((*type==CT_ADC) || (*type==CT_DGFG200_ADC)) {
-/* length=spectrum length*/
-		info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
-/* Recommend waiting 4ms initially, 400ns*spectrum length */
-		info[1] = 4;
-/* Recomment 1ms polling after initial wait */
-		info[2] = 1;
-	} else if (*type==CT_DGFG200_PROGRAM_FIPPI) {
-	} else if (*type==CT_DGFG200_READ_MEMORY_FIRST) {
-/* length=event buffer length */
-		info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
-/* Recommend waiting 4ms initially, 400ns*event buffer length*/
-		info[1] = (int) (.0005*info[0]);
-/* Recomment 1ms polling after initial wait */
-		info[2] = 1;
-	} else if (*type==CT_DGFG200_READ_MEMORY_NEXT) {
-/* length=event buffer length */
-		info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
-/* Recommend waiting 4ms initially, 400ns*event buffer length*/
-		info[1] = (int) (.0005*info[0]);
-/* Recomment 1ms polling after initial wait */
-		info[2] = 1;
-	} else if (*type==CT_DGFG200_WRITE_MEMORY_FIRST) {
-/* length=event buffer length */
-		info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
-/* Recommend waiting 4ms initially, 400ns*event buffer length*/
-		info[1] = (int) (.0005*info[0]);
-/* Recomment 1ms polling after initial wait */
-		info[2] = 1;
-	} else if (*type==CT_DGFG200_WRITE_MEMORY_NEXT) {
-/* length=event buffer length */
-		info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
-/* Recommend waiting 4ms initially, 400ns*event buffer length*/
-		info[1] = (int) (.0005*info[0]);
-/* Recomment 1ms polling after initial wait */
-		info[2] = 1;
-	} else if (*type==CT_DGFG200_MEASURE_NOISE) {
-	} else if (*type==CT_DGFG200_ADC_CALIB_FIRST) {
-	} else if (*type==CT_DGFG200_ADC_CALIB_NEXT) {
-	} else {
-		status=DXP_NOCONTROLTYPE;
-		sprintf(info_string,
-			"Unknown control type %d for this G200 module",*type);
-		dxp_log_error("dxp_control_task_params",info_string,status);
-		return status;
-	}
-	
-	return status;
-
+  /* Check the control task type */
+  if (*type==CT_DGFG200_SETDACS) 
+    {
+    } else if (*type==CT_DGFG200_CLOSE_INPUT_RELAY) {
+    } else if (*type==CT_DGFG200_OPEN_INPUT_RELAY) {
+    } else if ((*type==CT_DGFG200_RAMP_OFFSET_DAC) || (*type==CT_DGFG200_ISOLATED_RAMP_OFFSET_DAC)) {
+      /* length=event buffer length*/
+      /*      info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);*/
+      info[0] = 2048;
+      /* Recommend waiting 166ms initially */
+      info[1] = 166;
+      /* Recomment 166ms polling after initial wait */
+      info[2] = 166;
+    } else if ((*type==CT_ADC) || (*type==CT_DGFG200_ADC)) {
+      /* length=spectrum length*/
+      info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
+      /* Recommend waiting 4ms initially, 400ns*spectrum length */
+      info[1] = 4;
+      /* Recomment 1ms polling after initial wait */
+      info[2] = 1;
+    } else if (*type==CT_DGFG200_PROGRAM_FIPPI) {
+      /* No information is returned, set a 1ms wait and poll times */
+      info[0] = 0;
+      info[1] = 1;
+      info[2] = 1;
+    } else if (*type==CT_DGFG200_READ_MEMORY_FIRST) {
+      /* length=event buffer length */
+      info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
+      /* Recommend waiting 4ms initially, 400ns*event buffer length*/
+      info[1] = (int) (.0005*info[0]);
+      /* Recomment 1ms polling after initial wait */
+      info[2] = 1;
+    } else if (*type==CT_DGFG200_READ_MEMORY_NEXT) {
+      /* length=event buffer length */
+      info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
+      /* Recommend waiting 4ms initially, 400ns*event buffer length*/
+      info[1] = (int) (.0005*info[0]);
+      /* Recomment 1ms polling after initial wait */
+      info[2] = 1;
+    } else if (*type==CT_DGFG200_WRITE_MEMORY_FIRST) {
+      /* length=event buffer length */
+      info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
+      /* Recommend waiting 4ms initially, 400ns*event buffer length*/
+      info[1] = (int) (.0005*info[0]);
+      /* Recomment 1ms polling after initial wait */
+      info[2] = 1;
+    } else if (*type==CT_DGFG200_WRITE_MEMORY_NEXT) {
+      /* length=event buffer length */
+      info[0] = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
+      /* Recommend waiting 4ms initially, 400ns*event buffer length*/
+      info[1] = (int) (.0005*info[0]);
+      /* Recomment 1ms polling after initial wait */
+      info[2] = 1;
+    } else if (*type==CT_DGFG200_MEASURE_NOISE) {
+    } else if (*type==CT_DGFG200_ADC_CALIB_FIRST) {
+    } else if (*type==CT_DGFG200_ADC_CALIB_NEXT) {
+    } else {
+      status=DXP_NOCONTROLTYPE;
+      sprintf(info_string,
+	      "Unknown control type %d for this G200 module",*type);
+      dxp_log_error("dxp_control_task_params",info_string,status);
+      return status;
+    }
+  
+  return status;
 }
 
 /******************************************************************************
@@ -3205,70 +3589,79 @@ static int dxp_control_task_params(int* ioChan, int* modChan, short *type,
  * 
  ******************************************************************************/
 static int dxp_control_task_data(int* ioChan, int* modChan, short *type, 
-								   Board *board, void *data)
-/* int *ioChan;						Input: I/O channel of DXP module			*/
-/* int *modChan;					Input: module channel number of DXP module	*/
-/* short *type;						Input: type of control task to perfomr		*/
-/* Board *board;					Input: Board data							*/
-/* void *data;						Output: Data read after the control task	*/
+				 Board *board, void *data)
+/* int *ioChan;				Input: I/O channel of DXP module		*/
+/* int *modChan;			Input: module channel number of DXP module	*/
+/* short *type;				Input: type of control task to perfomr		*/
+/* Board *board;			Input: Board data				*/
+/* void *data;				Output: Data read after the control task	*/
 {
-	int status = DXP_SUCCESS;
-	char info_string[INFO_LEN];
-
-	unsigned int i, lene;
-	unsigned short *stemp;
-	unsigned long *ltemp;
-	
+  int status = DXP_SUCCESS;
+  char info_string[INFO_LEN];
+  
+  unsigned int i, lene;
+  unsigned short *stemp;
+  unsigned short *stemp2048;
+  unsigned long *ltemp;
+  
 /* Check the control task type */
-	if (*type==CT_DGFG200_SETDACS) {
-	} else if (*type==CT_DGFG200_CLOSE_INPUT_RELAY) {
-	} else if (*type==CT_DGFG200_OPEN_INPUT_RELAY) {
-	} else if (*type==CT_DGFG200_RAMP_OFFSET_DAC) {
-	} else if ((*type==CT_ADC) || (*type==CT_DGFG200_ADC) ||
-			   (*type==CT_DGFG200_READ_MEMORY_FIRST) || (*type==CT_DGFG200_READ_MEMORY_NEXT)) {
-/* allocate memory */
-		lene = dxp_get_event_length(board->dsp[*modChan],board->params[*modChan]);
-		stemp = (unsigned short *) g200_md_alloc(lene*sizeof(unsigned short));
-		if (stemp==NULL) {
-			status = DXP_NOMEM;
-			sprintf(info_string,
-				"Not enough memory to allocate temporary array of length %d",lene);
-			dxp_log_error("dxp_control_task_data",info_string,status);
-			return status;
-		}
-
-		if((status=dxp_read_event(ioChan, modChan, board, stemp))!=DXP_SUCCESS){
-			g200_md_free(stemp);
-			sprintf(info_string,
-				"Error ending control task run for chan %d",*modChan);
-			dxp_log_error("dxp_control_task_data",info_string,status);
-			return status;
-	    }
-
-/* Assign the void *data to a local unsigned long * array for assignment purposes.  Just easier to read than
- * casting the void * on the left hand side */
-		ltemp = (unsigned long *) data;
-		for (i=0;i<lene;i++) ltemp[i] = (long) stemp[i];
-
-/* Free memory */
-		g200_md_free(stemp);
-
-	} else if (*type==CT_DGFG200_PROGRAM_FIPPI) {
-	} else if (*type==CT_DGFG200_MEASURE_NOISE) {
-	} else if (*type==CT_DGFG200_WRITE_MEMORY_FIRST) {
-	} else if (*type==CT_DGFG200_WRITE_MEMORY_NEXT) {
-	} else if (*type==CT_DGFG200_ADC_CALIB_FIRST) {
-	} else if (*type==CT_DGFG200_ADC_CALIB_NEXT) {
-	} else {
-		status=DXP_NOCONTROLTYPE;
-		sprintf(info_string,
-			"Unknown control type %d for this DGFG200 module",*type);
-		dxp_log_error("dxp_control_task_data",info_string,status);
-		return status;
+  if (*type==CT_DGFG200_SETDACS) 
+    {
+    } else if (*type==CT_DGFG200_CLOSE_INPUT_RELAY) {
+    } else if (*type==CT_DGFG200_OPEN_INPUT_RELAY) {
+    } else if ((*type==CT_ADC) || (*type==CT_DGFG200_ADC) ||
+	       (*type==CT_DGFG200_READ_MEMORY_FIRST) || (*type==CT_DGFG200_READ_MEMORY_NEXT) ||
+	       (*type==CT_DGFG200_RAMP_OFFSET_DAC) || (*type==CT_DGFG200_ISOLATED_RAMP_OFFSET_DAC)) 
+      {
+	/* allocate memory */
+	lene = dxp_get_event_length(board->dsp[*modChan],board->params[*modChan]);
+	stemp = (unsigned short *) g200_md_alloc(lene * sizeof(unsigned short));
+	if (stemp == NULL) {
+	  status = DXP_NOMEM;
+	  sprintf(info_string,
+		  "Not enough memory to allocate temporary array of length %d", lene);
+	  dxp_log_error("dxp_control_task_data", info_string, status);
+	  return status;
 	}
 	
-	return status;    
-
+	if((status = dxp_read_event(ioChan, modChan, board, stemp)) != DXP_SUCCESS)
+	  {
+	    g200_md_free(stemp);
+	    sprintf(info_string,
+		    "Error ending control task run for chan %d", *modChan);
+	    dxp_log_error("dxp_control_task_data", info_string, status);
+	    return status;
+	  }
+      
+	/* Only want the first 2048 entries for the RAMP OFFSET DAC task */
+	if ((*type != CT_DGFG200_RAMP_OFFSET_DAC) || (*type==CT_DGFG200_ISOLATED_RAMP_OFFSET_DAC))
+	  {
+	    /* Assign the void *data to a local unsigned long * array for assignment purposes.  Just easier to read than
+	     * casting the void * on the left hand side */
+	    ltemp = (unsigned long *) data;
+	    for (i=0;i<lene;i++) ltemp[i] = (long) stemp[i];
+	  } else {
+	    stemp2048 = (unsigned short *) data;
+	    for (i=0; i < 2048; i++) stemp2048[i] = stemp[i];
+	  }
+	/* Free memory */
+	g200_md_free(stemp);
+	
+    } else if (*type==CT_DGFG200_PROGRAM_FIPPI) {
+    } else if (*type==CT_DGFG200_MEASURE_NOISE) {
+    } else if (*type==CT_DGFG200_WRITE_MEMORY_FIRST) {
+    } else if (*type==CT_DGFG200_WRITE_MEMORY_NEXT) {
+    } else if (*type==CT_DGFG200_ADC_CALIB_FIRST) {
+    } else if (*type==CT_DGFG200_ADC_CALIB_NEXT) {
+    } else {
+      status=DXP_NOCONTROLTYPE;
+      sprintf(info_string,
+	      "Unknown control type %d for this DGFG200 module",*type);
+      dxp_log_error("dxp_control_task_data",info_string,status);
+      return status;
+    }
+  
+  return status;    
 }
 
 /******************************************************************************
@@ -3422,24 +3815,23 @@ static int dxp_clear_error(int* ioChan, int* modChan, Dsp_Info* dsp)
  *
  ******************************************************************************/
 static int dxp_check_calibration(int* calibtest, unsigned short* params, Dsp_Info* dsp)
-/* int *calibtest;					Input: Calibration test performed	*/
-/* unsigned short *params;			Input: parameters read from the DSP	*/
-/* Dsp_Info *dsp;					Input: Relavent DSP info				*/
+/* int *calibtest;		Input: Calibration test performed	*/
+/* unsigned short *params;	Input: parameters read from the DSP	*/
+/* Dsp_Info *dsp;		Input: Relavent DSP info		*/
 {
-
-    int status = DXP_SUCCESS;
-	int *itemp;
-	unsigned short *stemp;
-	Dsp_Info *dtemp;
+  int status = DXP_SUCCESS;
+  int *itemp;
+  unsigned short *stemp;
+  Dsp_Info *dtemp;
 
 /* Assign input parameters to avoid compiler warnings */
-	itemp = calibtest;
-	stemp = params;
-	dtemp = dsp;
+  itemp = calibtest;
+  stemp = params;
+  dtemp = dsp;
 
 /* No checking is currently performed. */
 
-	return status;
+  return status;
 }
 
 /******************************************************************************
@@ -3449,80 +3841,76 @@ static int dxp_check_calibration(int* calibtest, unsigned short* params, Dsp_Inf
  *
  ******************************************************************************/
 static int dxp_get_runstats(unsigned short array[], Dsp_Info* dsp, 
-							unsigned int* evts, unsigned int* under, 
-							unsigned int* over, unsigned int* fast, 
-							unsigned int* base, double* live)
-/* unsigned short array[];			Input: array from parameter block   */
-/* Dsp_Info *dsp;					Input: Relavent DSP info					*/
-/* unsigned int *evts;				Output: number of events in spectrum*/
-/* unsigned int *under;				Output: number of underflows        */
-/* unsigned int *over;				Output: number of overflows         */
-/* unsigned int *fast;				Output: number of fast filter events*/
-/* unsigned int *base;				Output: number of baseline events   */
-/* double *live;					Output: livetime in seconds         */
+			    unsigned int* evts, unsigned int* under, 
+			    unsigned int* over, unsigned int* fast, 
+			    unsigned int* base, double* live)
+/* unsigned short array[];	Input: array from parameter block   */
+/* Dsp_Info *dsp;		Input: Relavent DSP info	    */
+/* unsigned int *evts;		Output: number of events in spectrum*/
+/* unsigned int *under;		Output: number of underflows        */
+/* unsigned int *over;		Output: number of overflows         */
+/* unsigned int *fast;		Output: number of fast filter events*/
+/* unsigned int *base;		Output: number of baseline events   */
+/* double *live;		Output: livetime in seconds         */
 {
 
-    unsigned short addr[3]={USHRT_MAX, USHRT_MAX, USHRT_MAX};
-	int status=DXP_SUCCESS;
+  unsigned short addr[3]={USHRT_MAX, USHRT_MAX, USHRT_MAX};
+  int status=DXP_SUCCESS;
 
 /* Use unsigned long temp variables since we will be bit shifting 
  * by more than an unsigned short or int in the routine */
-	unsigned long temp0, temp1, temp2;
+  unsigned long temp0, temp1, temp2;
 
 /* Now retrieve the location of DSP parameters and fill variables */
 
 /* Events in the run */
-	status += dxp_loc("EVTSINRUN0", dsp, &addr[0]);
-	status += dxp_loc("EVTSINRUN1", dsp, &addr[1]);
-	temp0 = (unsigned long) array[addr[1]];
-	temp1 = (unsigned long) array[addr[0]];
-	*evts = (unsigned int) (temp0 + temp1*pow(2,16));
+  status += dxp_loc("NUMEVENTSA", dsp, &addr[0]);
+  status += dxp_loc("NUMEVENTSB", dsp, &addr[1]);
+  temp0 = (unsigned long) array[addr[1]];
+  temp1 = (unsigned long) array[addr[0]];
+  *evts = (unsigned int) (temp0 + temp1*pow(2,16));
 
 /* Underflows in the run */
-	status += dxp_loc("UNDRFLOWS0", dsp, &addr[0]);
-	status += dxp_loc("UNDRFLOWS1", dsp, &addr[1]);
-	temp0 = (unsigned long) array[addr[1]];
-	temp1 = (unsigned long) array[addr[0]];
-	*under = (unsigned int) (temp0 + temp1*pow(2,16));
+  status += dxp_loc("UNDRFLOWA0", dsp, &addr[0]);
+  status += dxp_loc("UNDRFLOWB0", dsp, &addr[1]);
+  temp0 = (unsigned long) array[addr[1]];
+  temp1 = (unsigned long) array[addr[0]];
+  *under = (unsigned int) (temp0 + temp1*pow(2,16));
 
 /* Overflows in the run */
-	status += dxp_loc("OVERFLOWS0", dsp, &addr[0]);
-	status += dxp_loc("OVERFLOWS1", dsp, &addr[1]);
-	temp0 = (unsigned long) array[addr[1]];
-	temp1 = (unsigned long) array[addr[0]];
-	*over = (unsigned int) (temp0 + temp1*pow(2,16));
+  status += dxp_loc("OVERFLOWA0", dsp, &addr[0]);
+  status += dxp_loc("OVERFLOWB0", dsp, &addr[1]);
+  temp0 = (unsigned long) array[addr[1]];
+  temp1 = (unsigned long) array[addr[0]];
+  *over = (unsigned int) (temp0 + temp1*pow(2,16));
 
 /* Fast Peaks in the run */
-	status += dxp_loc("FASTPEAKS0", dsp, &addr[0]);
-	status += dxp_loc("FASTPEAKS1", dsp, &addr[1]);
-	temp0 = (unsigned long) array[addr[1]];
-	temp1 = (unsigned long) array[addr[0]];
-	*fast = (unsigned int) (temp0 + temp1*pow(2,16));
+  status += dxp_loc("FASTPEAKSA0", dsp, &addr[0]);
+  status += dxp_loc("FASTPEAKSB0", dsp, &addr[1]);
+  temp0 = (unsigned long) array[addr[1]];
+  temp1 = (unsigned long) array[addr[0]];
+  *fast = (unsigned int) (temp0 + temp1*pow(2,16));
 
 /* Baseline Events in the run */
-	status += dxp_loc("BASEEVTS0", dsp, &addr[0]);
-	status += dxp_loc("BASEEVTS1", dsp, &addr[1]);
-	temp0 = (unsigned long) array[addr[1]];
-	temp1 = (unsigned long) array[addr[0]];
-	*base = (unsigned int) (temp0 + temp1*pow(2,16));
+  *base = 0;
 
 /* Livetime for the run */
-	status += dxp_loc("LIVETIME0", dsp, &addr[0]);
-	status += dxp_loc("LIVETIME1", dsp, &addr[1]);
-	status += dxp_loc("LIVETIME2", dsp, &addr[2]);
-	temp0 = (unsigned long) array[addr[1]];
-	temp1 = (unsigned long) array[addr[0]];
-	temp2 = (unsigned long) array[addr[2]];
-	*live = ((double) (temp0 + temp1*pow(2,16) + temp2*pow(2,32))) * LIVECLOCK_TICK_TIME;
+  status += dxp_loc("LIVETIMEA0", dsp, &addr[0]);
+  status += dxp_loc("LIVETIMEB0", dsp, &addr[1]);
+  status += dxp_loc("LIVETIMEC0", dsp, &addr[2]);
+  temp0 = (unsigned long) array[addr[2]];
+  temp1 = (unsigned long) array[addr[1]];
+  temp2 = (unsigned long) array[addr[0]];
+  *live = ((double) (temp0 + temp1*pow(2,16) + temp2*pow(2,32))) * LIVECLOCK_TICK_TIME;
 
-	if(status!=DXP_SUCCESS){
-		status = DXP_NOSYMBOL;
-		dxp_log_error("dxp_get_runstats",
-			"Unable to find 1 or more parameters",status);
-		return status;
-	}
-
-    return DXP_SUCCESS;
+  if(status!=DXP_SUCCESS){
+    status = DXP_NOSYMBOL;
+    dxp_log_error("dxp_get_runstats",
+		  "Unable to find 1 or more parameters",status);
+    return status;
+  }
+  
+  return DXP_SUCCESS;
 }
 
 /******************************************************************************
@@ -4076,4 +4464,20 @@ static FILE *dxp_find_file(const char* filename, const char* mode)
 	return NULL;
 }
 
+
+/**********
+ * This routine does nothing for this product.
+ **********/
+static int dxp_setup_cmd(Board *board, char *name, unsigned int *lenS,
+						 byte_t *send, unsigned int *lenR, byte_t *receive)
+{
+  UNUSED(board);
+  UNUSED(name);
+  UNUSED(lenS);
+  UNUSED(send);
+  UNUSED(lenR);
+  UNUSED(receive);
+
+  return DXP_SUCCESS;
+}
 
