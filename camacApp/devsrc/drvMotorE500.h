@@ -36,7 +36,7 @@
 
 struct E500controller
 {
-    SEM_ID E500Lock;
+    epicsMutexId E500Lock;
     int branch;
     int crate;
     int slot;

@@ -32,6 +32,10 @@
 #include	<mbboRecord.h>		/* EPICS MBBO Record Definitions */
 #include	<waveformRecord.h>	/* EPICS WF Record Definitions */
 
+#ifndef vxWorks
+typedef int STATUS;
+#endif
+
 /************************************************************************/
 /*  Global Structure Definitions					*/
 /************************************************************************/

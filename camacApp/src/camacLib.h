@@ -357,8 +357,16 @@
 /*  Header Files							*/
 /************************************************************************/
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef EPICS
 #include "errMdef.h"		/* EPICS Module Code definitions	*/
+#endif
+
+#ifndef vxWorks
+typedef int (*FUNCPTR) ();     /* ptr to function returning int */
 #endif
 
 /************************************************************************/
@@ -624,3 +632,7 @@ struct lamParams {
 #define TMOD_QSTP 1	/* Q-stop transfer	 */
 #define TMOD_QRPT 2	/* Q-repeat transfer	 */
 #define TMOD_QSCN 3	/* Q-scan transfer	 */
+
+#ifdef __cplusplus
+}
+#endif

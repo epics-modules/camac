@@ -45,6 +45,8 @@
 #include        <devSup.h>
 #include        <errMdef.h>
 #include        <recSup.h>
+#include        <recGbl.h>
+#include        <epicsExport.h>
 #include 	<camacLib.h>
 #define GEN_SIZE_OFFSET
 #include        <camacRecord.h>
@@ -98,6 +100,7 @@ struct rset camacRSET={
 	get_graphic_double,
 	get_control_double,
 	get_alarm_double };
+epicsExportAddress(rset, camacRSET);
 
 struct prev_values {
 	int	q;
