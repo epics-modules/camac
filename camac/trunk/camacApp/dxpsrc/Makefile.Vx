@@ -8,13 +8,13 @@ LIBNAME = dxpCamacLib
 USR_CFLAGS += -DEXCLUDE_DXPX10P
 USR_CFLAGS += -DXIA_SPECIAL_MEM
 
-SRCS.c += ../dxp4c.c ../dxp4c2x.c ../x10p.c ../g200.c ../xerxes.c ../xerxes_log.c
+SRCS.c += ../dxp4c.c ../dxp4c2x.c ../xerxes.c ../xerxes_log.c
 SRCS.c += ../md_epics.c ../md_log_epics.c
 SRCS.c += ../dxpRecord.c
 SRCS.cc += ../mcaDXPServer.cc
 SRCS.cc += ../devDXP.cc
 
-LIBOBJS += dxp4c.o dxp4c2x.o x10p.o g200.o xerxes.o xerxes_log.o
+LIBOBJS += dxp4c.o dxp4c2x.o xerxes.o xerxes_log.o
 LIBOBJS += md_epics.o md_log_epics.o
 LIBOBJS += dxpRecord.o
 LIBOBJS += mcaDXPServer.o

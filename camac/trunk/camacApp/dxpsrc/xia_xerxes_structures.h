@@ -1,14 +1,46 @@
-/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
 
 /*
  *  xia_xerxes_structures.h
  *
  *  Created 3-17-00:  JW: File to contain Data Structures for DXP drivers.
  *
- *  Copyright 2000 X-ray Instrumentation Associates
- *  All rights reserved
+ * Copyright (c) 2002, X-ray Instrumentation Associates
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted provided 
+ * that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the 
+ *     following disclaimer.
+ *   * Redistributions in binary form must reproduce the 
+ *     above copyright notice, this list of conditions and the 
+ *     following disclaimer in the documentation and/or other 
+ *     materials provided with the distribution.
+ *   * Neither the name of X-ray Instrumentation Associates 
+ *     nor the names of its contributors may be used to endorse 
+ *     or promote products derived from this software without 
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+ * IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE.
  *
  */
+
+
 #ifndef XIA_XERXES_STRUCTURES_H
 #define XIA_XERXES_STRUCTURES_H
 
@@ -197,9 +229,9 @@ typedef int (*DXP_GET_DSPCONFIG)(Dsp_Info *);
 typedef int (*DXP_GET_DSPINFO)(Dsp_Info *);
 typedef int (*DXP_GET_FIPINFO)(Fippi_Info *);
 typedef int (*DXP_GET_DEFAULTSINFO)(Dsp_Defaults *);
-typedef int (*DXP_GET_FIPCONFIG)(Fippi_Info *);
-typedef int (*DXP_DOWNLOAD_FIPCONFIG)(int *, int *, Board *);
-typedef int (*DXP_DOWNLOAD_FIPPI_DONE)(int *, int *, unsigned short *);
+typedef int (*DXP_GET_FPGACONFIG)(Fippi_Info *);
+typedef int (*DXP_DOWNLOAD_FPGACONFIG)(int *ioChan, int *modChan, char *name, Board *board);
+typedef int (*DXP_DOWNLOAD_FPGA_DONE)(int *modChan, char *name, Board *board);
 typedef int (*DXP_GET_DSPDEFAULTS)(Dsp_Defaults *);
 typedef int (*DXP_DOWNLOAD_DSPCONFIG)(int *, int *, Dsp_Info *);
 typedef int (*DXP_DOWNLOAD_DSP_DONE)(int *, int *, int*, Dsp_Info *, unsigned short *, float *);
@@ -250,10 +282,10 @@ struct Functions {
 	DXP_GET_FIPINFO dxp_get_fipinfo;
 	DXP_GET_DEFAULTSINFO dxp_get_defaultsinfo;
 	DXP_GET_DSPCONFIG dxp_get_dspconfig;
-	DXP_GET_FIPCONFIG dxp_get_fipconfig;
+	DXP_GET_FPGACONFIG dxp_get_fpgaconfig;
 	DXP_GET_DSPDEFAULTS dxp_get_dspdefaults;
-	DXP_DOWNLOAD_FIPCONFIG dxp_download_fipconfig;
-	DXP_DOWNLOAD_FIPPI_DONE dxp_download_fippi_done;
+	DXP_DOWNLOAD_FPGACONFIG dxp_download_fpgaconfig;
+	DXP_DOWNLOAD_FPGA_DONE dxp_download_fpga_done;
 	DXP_DOWNLOAD_DSPCONFIG dxp_download_dspconfig;
 	DXP_DOWNLOAD_DSP_DONE dxp_download_dsp_done;
 	DXP_CALIBRATE_CHANNEL dxp_calibrate_channel;
@@ -331,3 +363,4 @@ struct System_Info {
 typedef struct System_Info System_Info;
 
 #endif						/* Endif for XIA_XERXES_STRUCTURES_H */
+
