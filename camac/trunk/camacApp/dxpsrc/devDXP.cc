@@ -169,7 +169,8 @@ long DevDxpMpf::completeIO(dbCommon* pr,Message* m)
 long DevDxpMpf::init_record(void* v)
 {
     dxpRecord* pdxp = (dxpRecord*)v;
-    new DevDxpMpf((dbCommon*)pdxp,&(pdxp->inp));
+    DevDxpMpf *pDevDxpMpf = new DevDxpMpf((dbCommon*)pdxp,&(pdxp->inp));
+    pDevDxpMpf->bind();
     return(0);
 }
 
