@@ -1,4 +1,4 @@
-/* recdxp.c - Record Support Routines for DXP record
+/* dxpRecord.c - Record Support Routines for DXP record
  *
  * This record works with both the DXP4C and the DXP2X modules.
  *
@@ -10,6 +10,14 @@
  * 06/27/98     mlr    Minor fixes for compiler warnings
  * 06/01/01     mlr    Complete rewrite for Xerxes version of XIA software and
  *                     to use MPF server
+ * 02/09/02     mlr    Download all parameters in init_record, now that MPF
+ *                     allows sending messages at that time. Only do this if
+ *                     the PINI field is YES, so that it is possible to turn
+ *                     off downloading parameters at boot time, since sending
+ *                     bad parameters can cause crashes.
+ * 02/13/02     mlr    Update run task menus based on readback of RUNTASKS.
+ *                     Moved building peaking time strings to separate function.
+ *                     Added debugging statements.
  */
 
 #include        <stdlib.h>
@@ -60,6 +68,7 @@ static long get_control_double();
 static long monitor(struct dxpRecord *pdxp);
 static void setDxpTasks(struct dxpRecord *pdxp);
 static void setPeakingTime(struct dxpRecord *pdxp);
+static void setPeakingTimeStrings(struct dxpRecord *pdxp);
 
 struct rset dxpRSET={
         RSETNUMBER,
@@ -168,7 +177,7 @@ typedef struct  {
 #define NUM_READONLY_PARAMS 15 /* The number of short READ-ONLY parameters 
                                 * described above in the record */
 #define NUM_DXP_LONG_PARAMS 14 /* The number of long (32 bit) statistics 
-                                * parametersdescribed above in the record. 
+                                * parameters described above in the record. 
                                 * These are also read-only */
 #define NUM_TASK_PARAMS     10 /* The number of task parameters described above
                                 *  in the record. */
@@ -229,6 +238,7 @@ static long init_record(struct dxpRecord *pdxp, int pass)
     MODULE_INFO *minfo;
     unsigned short offset;
     int status;
+    int download;
     char boardString[MAXBOARDNAME_LEN];
 
 
@@ -288,14 +298,22 @@ static long init_record(struct dxpRecord *pdxp, int pass)
                                minfo->ubound);
     }
 
+    /* Download the short parameter fields if 
+        * 1) pini is true and 
+        * 2) d01v field is non-zero.  This is a sanity check that
+        *    save-restore has restored reasonable values to the record */
+    download = (pdxp->pini && pdxp->d01v);
     /* Look up the address of each parameter */
     /* Address of first short parameter */
     short_param = (DXP_SHORT_PARAM *)&pdxp->a01v;
     for (i=0; i<NUM_SHORT_READ_PARAMS; i++) {
        if (strcmp(short_param[i].label, "Unused") == 0)
           offset=-1;
-       else
+       else {
           dxp_get_symbol_index(&module, short_param[i].label, &offset);
+          if (download) status = (*pdset->send_msg)
+                   (pdxp,  MSG_DXP_SET_SHORT_PARAM, offset, short_param[i].val);
+       }
        short_param[i].offset = offset;
     }
     /* Address of first long parameter */
@@ -335,15 +353,11 @@ static long init_record(struct dxpRecord *pdxp, int pass)
     pdxp->pkl = (char *)calloc(DXP_STRING_SIZE * MAX_PEAKING_TIMES, 
                                sizeof(char));
 
-    /* Note, the following 2 calls don't work yet, because the MPF server 
-     * will not yet be running when init_record is run.  
-     * This is a serious problem. */
-
+    /* Create the peaking time strings */
+    setPeakingTimeStrings(pdxp);
+    
     /* Initialize the tasks */
     setDxpTasks(pdxp);
-
-    /* Call process().  This will update read-only fields */
-    process(pdxp);
 
     Debug(5, "(init_record): exit\n");
     return(0);
@@ -410,6 +424,7 @@ static long process(pdxp)
     int status;
 
     Debug(5, "dxpRecord(process): entry\n");
+    Debug(5,"  enter process a01v=%d\n",pdxp->a01v);
 
     /*** Check existence of device support ***/
     if ( (pdset==NULL) || (pdset->read_array==NULL) ) {
@@ -428,6 +443,7 @@ static long process(pdxp)
     recGblFwdLink(pdxp);
     pdxp->pact=FALSE;
 
+    Debug(5,"  exit process a01v=%d\n",pdxp->a01v);
     Debug(5, "dxpRecord(process): exit\n");
     return(0);
 }
@@ -439,11 +455,14 @@ static long monitor(struct dxpRecord *pdxp)
    int offset;
    DXP_SHORT_PARAM *short_param;
    DXP_LONG_PARAM *long_param;
+   DXP_TASK_PARAM *task_param;
    unsigned short short_val;
+   unsigned short runtasks;
    long long_val;
    unsigned short monitor_mask = recGblResetAlarms(pdxp) | DBE_VALUE | DBE_LOG;
    MODULE_INFO *minfo = &moduleInfo[pdxp->mtyp];
 
+    Debug(5, "dxpRecord(monitor): entry\n");
    /* Get the value of each parameter, post monitor if it is different
     * from current value */
    /* Address of first short parameter */
@@ -462,15 +481,7 @@ static long monitor(struct dxpRecord *pdxp)
          /* Check for changes to parameters we need to handle in the record */
          if (offset == minfo->offsets.decimation) {
             /* Decimation has changed, construct peaking time strings */
-            double peakingTime;
-            int decimation = pdxp->pptr[offset];
-            for (i=0; i < MAX_PEAKING_TIMES; i++) {
-               peakingTime = peakingTimes[i] * minfo->clock * (1<<decimation);
-               /* Minimum peaking time on the DXP4C of .5 microsecond */
-               if ((pdxp->mtyp == DXP4C) && (peakingTime < 0.5)) 
-                  peakingTime = 0.5;
-               sprintf(pdxp->pkl+DXP_STRING_SIZE*i, "%.2f us", peakingTime);
-            }
+            setPeakingTimeStrings(pdxp);
          }
          db_post_events(pdxp,&short_param[i].val, monitor_mask);
       }
@@ -491,12 +502,29 @@ static long monitor(struct dxpRecord *pdxp)
       }
    }
 
+   /* Set the task menus based on the value of runtasks readback */
+   task_param = (DXP_TASK_PARAM *)&pdxp->t01v;
+   runtasks = pdxp->pptr[minfo->offsets.runtasks];
+   for (i=0; i<NUM_TASK_PARAMS; i++) {
+      short_val = ((runtasks & (1 << i)) != 0);
+      Debug(5,"dxpRecord: short_val=%d\n", short_val);
+      if (task_param[i].val != short_val) {
+         Debug(5,"dxpRecord: New value of task parameter %s\n",
+            task_param[i].label);
+         Debug(5,"  old (record)=%d", task_param[i].val)
+         Debug(5,"  new (dxp)=%d\n", short_val);
+         task_param[i].val = short_val;
+         db_post_events(pdxp,&task_param[i].val, monitor_mask);
+      }
+   }
+
    /* If rcal==1 then clear it, since the calibration is done */
    if (pdxp->rcal) {
       pdxp->rcal=0;
       db_post_events(pdxp,&pdxp->rcal, monitor_mask);
    }
 
+   Debug(5, "dxpRecord(monitor): exit\n");
    return(0);
 }
 
@@ -603,20 +631,37 @@ static void setDxpTasks(struct dxpRecord *pdxp)
    Debug(5, "dxpRecord(setDxpTasks): entry\n");
    if (pdxp->rcal) {
       if (pdxp->calr == dxpCAL_TRACKRST) cal=2; else cal=1;
+      Debug(5, "dxpRecord(setDxpTasks): running calibration=%d\n", cal);
       status = (*pdset->send_msg) (pdxp, MSG_DXP_CALIBRATE, cal, NULL);
    } else {
       task_param = (DXP_TASK_PARAM *)&pdxp->t01v;
       runtasks = 0;
-       for (i=0; i<NUM_TASK_PARAMS; i++) {
-          if (strcmp(task_param[i].label, "Unused") == 0) continue;
-          if (task_param[i].val) runtasks |= (1 << i);
-       }
-       status = (*pdset->send_msg)
+      for (i=0; i<NUM_TASK_PARAMS; i++) {
+         if (strcmp(task_param[i].label, "Unused") == 0) continue;
+         if (task_param[i].val) runtasks |= (1 << i);
+      }
+      Debug(5, "dxpRecord(setDxpTasks): runtasks=%d, offset=%d\n", 
+         runtasks, minfo->offsets.runtasks);
+      status = (*pdset->send_msg)
          (pdxp,  MSG_DXP_SET_SHORT_PARAM, minfo->offsets.runtasks, runtasks);
    }
    Debug(5, "dxpRecord(setDxpTasks): exit\n");
 }
 
+static void setPeakingTimeStrings(struct dxpRecord *pdxp)
+{
+   double peakingTime;
+   MODULE_INFO *minfo = &moduleInfo[pdxp->mtyp];
+   int decimation = pdxp->pptr[minfo->offsets.decimation];
+   int i;
+   
+   for (i=0; i < MAX_PEAKING_TIMES; i++) {
+      peakingTime = peakingTimes[i] * minfo->clock * (1<<decimation);
+      /* Minimum peaking time on the DXP4C of .5 microsecond */
+      if ((pdxp->mtyp == DXP4C) && (peakingTime < 0.5)) peakingTime = 0.5;
+      sprintf(pdxp->pkl+DXP_STRING_SIZE*i, "%.2f us", peakingTime);
+   }
+}
 
 static void setPeakingTime(struct dxpRecord *pdxp)
 {
