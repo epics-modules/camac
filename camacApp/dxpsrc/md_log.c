@@ -89,7 +89,6 @@ XIA_MD_SHARED void XIA_MD_API dxp_md_log(int level, char *routine, char *message
 /* char *message;						Input: Log message to send to output */
 /* int error;							Input: Only used if this is an ERROR */
 {
-	char info_string[INFO_LEN];
 
 /* If logging is disabled or we aren't set
  * to log this message level then return gracefully, NOW! 
@@ -98,11 +97,6 @@ XIA_MD_SHARED void XIA_MD_API dxp_md_log(int level, char *routine, char *message
 		return;
 	}
 	
-	sprintf(info_string, "&out_stream = %#p", out_stream);
-	dxp_md_debug("dxp_md_output", info_string, __FILE__, __LINE__);
-	sprintf(info_string, "&stdout = %#p", stdout);
-	dxp_md_debug("dxp_md_output", info_string, __FILE__, __LINE__);
-
 /* Validate level */
 	if ((level > MD_DEBUG) || (level < MD_ERROR)) {
 /* Don't log the message */
