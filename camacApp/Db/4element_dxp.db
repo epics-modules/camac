@@ -89,7 +89,7 @@ grecord(ddfanout,"$(P)AcquireDone") {
 }
 
 grecord(calcout,"$(P)ElapsedReal") {
-        field(CALC, "A)")
+        field(CALC, "A")
         field(INPA,"$(P)mca2.ERTM  CP MS")
         field(PREC, "2")
 }
