@@ -1364,6 +1364,7 @@ recordtype(dxp) {
                 prompt("FiPPI")
                 asl(ASL0)
                 special(SPC_MOD)
+                initial(1)
         }
 	field(PKRL,DBF_NOACCESS) {
 		prompt("Peak range pointer")
