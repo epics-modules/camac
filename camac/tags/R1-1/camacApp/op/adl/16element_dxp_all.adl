@@ -1,0 +1,2870 @@
+
+file {
+	name="C:\Program Files\EPICS\op\adl\camacApp\16element_dxp_all.adl"
+	version=020306
+}
+display {
+	object {
+		x=153
+		y=130
+		width=730
+		height=560
+	}
+	clr=14
+	bclr=4
+	cmap=""
+	gridSpacing=5
+	gridOn=0
+	snapToGrid=0
+}
+"color map" {
+	ncolors=65
+	colors {
+		ffffff,
+		ececec,
+		dadada,
+		c8c8c8,
+		bbbbbb,
+		aeaeae,
+		9e9e9e,
+		919191,
+		858585,
+		787878,
+		696969,
+		5a5a5a,
+		464646,
+		2d2d2d,
+		000000,
+		00d800,
+		1ebb00,
+		339900,
+		2d7f00,
+		216c00,
+		fd0000,
+		de1309,
+		be190b,
+		a01207,
+		820400,
+		5893ff,
+		597ee1,
+		4b6ec7,
+		3a5eab,
+		27548d,
+		fbf34a,
+		f9da3c,
+		eeb62b,
+		e19015,
+		cd6100,
+		ffb0ff,
+		d67fe2,
+		ae4ebc,
+		8b1a96,
+		610a75,
+		a4aaff,
+		8793e2,
+		6a73c1,
+		4d52a4,
+		343386,
+		c7bb6d,
+		b79d5c,
+		a47e3c,
+		7d5627,
+		58340f,
+		99ffff,
+		73dfff,
+		4ea5f9,
+		2a63e4,
+		0a00b8,
+		ebf1b5,
+		d4db9d,
+		bbc187,
+		a6a462,
+		8b8239,
+		73ff6b,
+		52da3b,
+		3cb420,
+		289315,
+		1a7309,
+	}
+}
+rectangle {
+	object {
+		x=178
+		y=9
+		width=375
+		height=25
+	}
+	"basic attribute" {
+		clr=54
+	}
+}
+text {
+	object {
+		x=275
+		y=10
+		width=180
+		height=25
+	}
+	"basic attribute" {
+		clr=0
+	}
+	textix="16 Element DXPs"
+}
+text {
+	object {
+		x=9
+		y=54
+		width=28
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+		fill="outline"
+	}
+	textix="Det."
+	align="horiz. centered"
+}
+text {
+	object {
+		x=84
+		y=54
+		width=51
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Coarse Gain"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=240
+		y=54
+		width=51
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Fine Gain"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=498
+		y=40
+		width=49
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Run"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=511
+		y=54
+		width=28
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Error"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=577
+		y=40
+		width=49
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Peaking"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=576
+		y=54
+		width=56
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Time"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=391
+		y=54
+		width=51
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Superfine Gain"
+	align="horiz. centered"
+}
+text {
+	object {
+		x=668
+		y=54
+		width=28
+		height=14
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="More"
+	align="horiz. centered"
+}
+composite {
+	object {
+		x=22
+		y=72
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=83
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="1"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=72
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)1.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=83
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)1.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=77
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)1.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=72
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)1.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=72
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)1.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=77
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=1"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=77
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)1.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=77
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)1.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=77
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)1.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=102
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=113
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="2"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=102
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)2.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=113
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)2.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=107
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)2.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=102
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)2.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=102
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)2.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=107
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=2"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=107
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)2.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=107
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)2.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=107
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)2.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=132
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=143
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="3"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=132
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)3.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=143
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)3.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=137
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)3.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=132
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)3.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=132
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)3.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=137
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=3"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=137
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)3.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=137
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)3.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=137
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)3.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=162
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=173
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="4"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=162
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)4.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=173
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)4.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=167
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)4.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=162
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)4.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=162
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)4.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=167
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=4"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=167
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)4.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=167
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)4.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=167
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)4.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=192
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=203
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="5"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=192
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)5.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=203
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)5.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=197
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)5.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=192
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)5.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=192
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)5.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=197
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=5"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=197
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)5.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=197
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)5.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=197
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)5.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=222
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=233
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="6"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=222
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)6.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=233
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)6.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=227
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)6.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=222
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)6.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=222
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)6.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=227
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=6"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=227
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)6.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=227
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)6.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=227
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)6.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=252
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=263
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="7"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=252
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)7.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=263
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)7.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=257
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)7.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=252
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)7.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=252
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)7.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=257
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=7"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=257
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)7.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=257
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)7.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=257
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)7.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=282
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=293
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="8"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=282
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)8.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=293
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)8.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=287
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)8.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=282
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)8.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=282
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)8.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=287
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=8"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=287
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)8.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=287
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)8.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=287
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)8.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=312
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=323
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="9"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=312
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)9.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=323
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)9.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=317
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)9.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=312
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)9.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=312
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)9.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=317
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=9"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=317
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)9.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=317
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)9.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=317
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)9.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=342
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=353
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="10"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=342
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)10.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=353
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)10.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=347
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)10.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=342
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)10.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=342
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)10.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=347
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=10"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=347
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)10.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=347
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)10.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=347
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)10.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=372
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=383
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="11"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=372
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)11.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=383
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)11.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=377
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)11.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=372
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)11.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=372
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)11.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=377
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=11"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=377
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)11.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=377
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)11.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=377
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)11.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=402
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=413
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="12"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=402
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)12.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=413
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)12.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=407
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)12.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=402
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)12.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=402
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)12.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=407
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=12"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=407
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)12.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=407
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)12.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=407
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)12.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=432
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=443
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="13"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=432
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)13.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=443
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)13.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=437
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)13.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=432
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)13.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=432
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)13.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=437
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=13"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=437
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)13.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=437
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)13.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=437
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)13.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=462
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=473
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="14"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=462
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)14.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=473
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)14.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=467
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)14.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=462
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)14.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=462
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)14.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=467
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=14"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=467
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)14.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=467
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)14.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=467
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)14.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=492
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=503
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="15"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=492
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)15.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=503
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)15.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=497
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)15.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=492
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)15.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=492
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)15.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=497
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=15"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=497
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)15.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=497
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)15.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=497
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)15.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
+composite {
+	object {
+		x=22
+		y=522
+		width=689
+		height=25
+	}
+	"composite name"=""
+	children {
+		text {
+			object {
+				x=22
+				y=533
+				width=7
+				height=14
+			}
+			"basic attribute" {
+				clr=14
+				fill="outline"
+			}
+			textix="16"
+			align="horiz. centered"
+		}
+		valuator {
+			object {
+				x=118
+				y=522
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)16.A01V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"text update" {
+			object {
+				x=495
+				y=533
+				width=60
+				height=14
+			}
+			monitor {
+				chan="$(P)16.R03V"
+				clr=14
+				bclr=2
+			}
+			align="horiz. centered"
+			limits {
+			}
+		}
+		menu {
+			object {
+				x=563
+				y=527
+				width=90
+				height=20
+			}
+			control {
+				chan="$(P)16.PKTM"
+				clr=14
+				bclr=51
+			}
+		}
+		valuator {
+			object {
+				x=270
+				y=522
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)16.A02V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		valuator {
+			object {
+				x=422
+				y=522
+				width=65
+				height=25
+			}
+			control {
+				chan="$(P)16.A03V"
+				clr=14
+				bclr=51
+			}
+			label="outline"
+			dPrecision=1.000000
+			limits {
+			}
+		}
+		"related display" {
+			object {
+				x=661
+				y=527
+				width=50
+				height=20
+			}
+			display[0] {
+				label="DXP"
+				name="dxp.adl"
+				args="P=$(P), R=16"
+			}
+			clr=14
+			bclr=4
+		}
+		"text entry" {
+			object {
+				x=39
+				y=527
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)16.A01V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=191
+				y=527
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)16.A02V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+		"text entry" {
+			object {
+				x=343
+				y=527
+				width=74
+				height=20
+			}
+			control {
+				chan="$(P)16.A03V"
+				clr=14
+				bclr=51
+			}
+			limits {
+			}
+		}
+	}
+}
