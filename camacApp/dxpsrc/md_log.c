@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  * md_log.c
  *
@@ -96,7 +98,7 @@ XIA_MD_SHARED void XIA_MD_API dxp_md_log(int level, char *routine, char *message
 	if (isSuppressed || (level > logLevel)) {
 		return;
 	}
-	
+
 /* Validate level */
 	if ((level > MD_DEBUG) || (level < MD_ERROR)) {
 /* Don't log the message */
@@ -155,10 +157,10 @@ XIA_MD_SHARED void dxp_md_error(char* routine, char* message, int* error_code, c
 	struct tm *localTime = localtime(&current);
 	char logTimeFormat[20];
 
-	strftime(logTimeFormat, 20, "%C", localTime);
+	strftime(logTimeFormat, 20, "%c", localTime);
 
 /*	printf("%s [ERROR] [%d] %s: %s\n", logTimeFormat, *error_code, routine, message); */
-	fprintf(out_stream, "%s [ERROR] [%d] %s, line = %d, %s: %s\n", logTimeFormat, *error_code, file, line, routine, message);
+	fprintf(out_stream, "[ERROR] [%d] %s %s, line = %d, %s: %s\n", *error_code, logTimeFormat, file, line, routine, message);
 	fflush(out_stream);
 }
 
@@ -177,9 +179,9 @@ XIA_MD_SHARED void dxp_md_warning(char *routine, char *message, char *file, int 
 	struct tm *localTime = localtime(&current);
 	char logTimeFormat[20];
 
-	strftime(logTimeFormat, 20, "%C", localTime);
+	strftime(logTimeFormat, 20, "%c", localTime);
 
-	fprintf(out_stream, "%s [WARN] %s, line = %d, %s: %s\n", logTimeFormat, file, line, routine, message);
+	fprintf(out_stream, "[WARN] %s %s, line = %d, %s: %s\n", logTimeFormat, file, line, routine, message);
 	fflush(out_stream);
 }
 
@@ -228,10 +230,6 @@ XIA_MD_SHARED void dxp_md_output(char *filename)
 	unsigned int i;
 	char info_string[INFO_LEN];
 
-
-	sprintf(info_string, "filename = %s", filename);
-	dxp_md_log_debug("dxp_md_output", info_string);
-
 /* First close the currently opened stream, iff it is a file */
 	if ((out_stream!=stdout) && (out_stream!=stderr)) {
 /* close the stream */
@@ -264,9 +262,6 @@ XIA_MD_SHARED void dxp_md_output(char *filename)
 /* The filename must be for a "real" file */
 	out_stream = fopen(filename,"w");
 
-	sprintf(info_string, "&out_stream = #%p", out_stream);
-	dxp_md_log_debug("dxp_md_output", info_string);
-
 	if (out_stream==NULL) {
 		status = DXP_MDFILEIO;
 		sprintf(info_string,"Unable to open filename: %s, no action performed",filename);
@@ -278,3 +273,4 @@ XIA_MD_SHARED void dxp_md_output(char *filename)
 	return;
 
 }
+

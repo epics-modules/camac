@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  *  g200.h
  *
@@ -95,7 +97,7 @@
 #define MASK_LAM_ENABLE   0x0008
 #define MASK_DSPRESET     0x0010
 #define MASK_FIPRESET     0x0020
-#define MASK_UNUSED6      0x0040
+#define MASK_MMURESET     0x0040
 #define MASK_SYNCH_FLAG   0x0080
 #define MASK_FPGA_ERROR   0x0100
 #define MASK_UNUSED9      0x0200
@@ -150,10 +152,13 @@
 #define G200_WCR_A_WRITE          0
 #define G200_FIPPI_F_WRITE        1
 #define G200_FIPPI_A_WRITE        0
+#define G200_MMU_F_WRITE        1
+#define G200_MMU_A_WRITE        0
 
 /* Now define the addresses */
 #define G200_CSR_ADDRESS     0x8000
 #define G200_FIPPI_ADDRESS   0x8003
 #define G200_WCR_ADDRESS     0x8004
+#define G200_MMU_ADDRESS     0x8006
 
 #endif						/* Endif for X10P_H */

@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  *  xerxes_errors.h
  *
@@ -45,6 +47,7 @@
 #define DXP_WRITE_GCR        117
 #define DXP_WRITE_WCR        118
 #define DXP_READ_WCR         119
+#define DXP_WRITE_MMU        120
 /*  DSP/FIPPI level error codes 201-300  */
 #define DXP_MEMERROR         201
 #define DXP_DSPRUNERROR      202

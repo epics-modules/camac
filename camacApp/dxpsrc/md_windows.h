@@ -1,3 +1,5 @@
+/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+
 /*
  *  machine_dependant.h
  *
@@ -34,9 +36,13 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_initialize(unsigned int *, char *);
 XIA_MD_STATIC int XIA_MD_API dxp_md_open(char *, int *);
 XIA_MD_STATIC int XIA_MD_API dxp_md_open_bcn(int *, int *, int *, int *);
 XIA_MD_STATIC int XIA_MD_API dxp_md_io(int *,unsigned int *,unsigned int *,unsigned short *,unsigned int *);
+
+#ifndef EXCLUDE_DXPX10P
 XIA_MD_STATIC int XIA_MD_API dxp_md_epp_initialize(unsigned int *, char *);
 XIA_MD_STATIC int XIA_MD_API dxp_md_epp_open(char *, int *);
 XIA_MD_STATIC int XIA_MD_API dxp_md_epp_io(int *,unsigned int *,unsigned int *,unsigned short *,unsigned int *);
+#endif /* EXCLUDE_DXPX10P */
+
 XIA_MD_STATIC int XIA_MD_API dxp_md_lock_resource(int *ioChan, int *modChan, short *lock);
 XIA_MD_STATIC int XIA_MD_API dxp_md_wait(float *);
 XIA_MD_STATIC void XIA_MD_API dxp_md_error_control(char *,int *);
@@ -47,6 +53,7 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_puts(char *);
 XIA_MD_IMPORT int XIA_MD_API xia_camxfr(short *camadr, short func, long nbytes, short mode, short *buf);
 XIA_MD_IMPORT int XIA_MD_API xia_caminit(short *buf);
 
+#ifndef EXCLUDE_DXPX10P
 XIA_MD_IMPORT int XIA_MD_API DxpInitEPP(int );
 XIA_MD_IMPORT int XIA_MD_API DxpWriteWord(unsigned short,unsigned short);
 XIA_MD_IMPORT int XIA_MD_API DxpWriteBlock(unsigned short,unsigned short *,int);
@@ -59,6 +66,7 @@ XIA_MD_IMPORT int XIA_MD_API DxpReadBlocklongd(unsigned short, double *,int);
 XIA_MD_IMPORT void XIA_MD_API DxpSetID(unsigned short id);
 XIA_MD_IMPORT int XIA_MD_API DxpWritePort(unsigned short port, unsigned short data);
 XIA_MD_IMPORT int XIA_MD_API DxpReadPort(unsigned short port, unsigned short *data);
+#endif /* EXCLUDE_DXPX10P */
 
 
 #else									/* old style prototypes */
@@ -67,9 +75,13 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_initialize();
 XIA_MD_STATIC int XIA_MD_API dxp_md_open();
 XIA_MD_STATIC int XIA_MD_API dxp_md_open_bcn();
 XIA_MD_STATIC int XIA_MD_API dxp_md_io();
+
+#ifndef EXCLUDE_DXPX10P
 XIA_MD_STATIC int XIA_MD_API dxp_md_epp_initialize();
 XIA_MD_STATIC int XIA_MD_API dxp_md_epp_open();
 XIA_MD_STATIC int XIA_MD_API dxp_md_epp_io();
+#endif /* EXCLUDE_DXPX10P */
+
 XIA_MD_STATIC int XIA_MD_API dxp_md_lock_resource();
 XIA_MD_STATIC int XIA_MD_API dxp_md_wait();
 XIA_MD_STATIC void XIA_MD_API dxp_md_error_control();
@@ -82,6 +94,7 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_puts();
 XIA_MD_IMPORT int XIA_MD_API xia_camxfr();
 XIA_MD_IMPORT int XIA_MD_API xia_caminit();
 
+#ifndef EXCLUDE_DXPX10P
 XIA_MD_IMPORT int XIA_MD_API DxpInitEPP();
 XIA_MD_IMPORT int XIA_MD_API DxpWriteWord();
 XIA_MD_IMPORT int XIA_MD_API DxpWriteBlock();
@@ -94,6 +107,8 @@ XIA_MD_IMPORT int XIA_MD_API DxpReadBlocklongd();
 XIA_MD_IMPORT void XIA_MD_API DxpSetID();
 XIA_MD_IMPORT int XIA_MD_API DxpWritePort();
 XIA_MD_IMPORT int XIA_MD_API DxpReadPort();
+#endif /* EXCLUDE_DXPX10P */
+
 #endif
 #ifdef __cplusplus
 }
