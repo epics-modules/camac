@@ -2,8 +2,13 @@
 # Change the following environment variable to point to the desired
 # system configuration file
 putenv("XIA_CONFIG=xiasystem.cfg")
-# Only log errors
-dxp_md_set_log_level(1)
+# Set environment variables for the FiPPI files
+putenv("FIPPI0=f01x2p0g.fip")
+putenv("FIPPI1=f01x2p2g.fip")
+putenv("FIPPI2=f01x2p4g.fip")
+putenv("FIPPI3=f01x2p6g.fip")
+# Set logging level (1=ERROR, 2=WARNING, 3=XXX, 4=DEBUG)
+dxp_md_set_log_level(4)
 dxp_initialize
 
 # DXPConfig(serverName, detChan1, detChan2, detChan3, detChan4, queueSize)
