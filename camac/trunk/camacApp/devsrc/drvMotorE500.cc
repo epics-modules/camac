@@ -551,9 +551,9 @@ STATIC int motor_init()
     free_list.tail = (struct mess_node *) NULL;
 
     Debug(1, "E500:motor_init: spawning E500_motor task\n");
-    epicsThreadCreate((char *) "E500_motor", 64,
-    epicsThreadGetStackSize(epicsThreadStackSmall), (EPICSTHREADFUNC) motor_task,
- (void *) &targs);
+    epicsThreadCreate((char *) "E500_motor", epicsThreadPriorityMedium,
+                       epicsThreadGetStackSize(epicsThreadStackSmall), 
+                       (EPICSTHREADFUNC) motor_task, (void *) &targs);
 
     Debug(1, "E500:motor_init: returning\n");
     return (OK);
