@@ -35,7 +35,6 @@ devCamacApp_OBJS += $(EPICS_BASE_BIN)/vxComLibrary
 devCamacApp_LIBS += devCamac
 devCamacApp_LIBS += camac
 devCamacApp_LIBS += std calc sscan
-devCamacApp_LIBS += mpf 
 devCamacApp_LIBS += motor softMotor
 devCamacApp_LIBS += $(EPICS_BASE_IOC_LIBS)
 
