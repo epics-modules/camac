@@ -1,4 +1,4 @@
-/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
 
 /*
  *  xia_dxp4c2x.h
@@ -6,12 +6,43 @@
  *  Created 11/30/99 JEW: internal include file.  define here, what we
  *						don't want the user to see.
  *
- *  Copyright 1999 X-ray Instrumentation Associates
- *  All rights reserved
+ * Copyright (c) 2002, X-ray Instrumentation Associates
+ * All rights reserved.
  *
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted provided 
+ * that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the 
+ *     following disclaimer.
+ *   * Redistributions in binary form must reproduce the 
+ *     above copyright notice, this list of conditions and the 
+ *     following disclaimer in the documentation and/or other 
+ *     materials provided with the distribution.
+ *   * Neither the name of X-ray Instrumentation Associates 
+ *     nor the names of its contributors may be used to endorse 
+ *     or promote products derived from this software without 
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+ * IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE.
  *
  *    Following are prototypes for dxp4c2x.c and xerxes.c routines
  */
+
+
 #ifndef XIA_DXP4C2X_H
 #define XIA_DXP4C2X_H
 
@@ -38,14 +69,17 @@ XERXES_STATIC int XERXES_API dxp_read_data(int *, unsigned short *, unsigned int
 XERXES_STATIC int XERXES_API dxp_write_fippi(int *, unsigned short *, unsigned int);
 XERXES_STATIC int XERXES_API dxp_read_word(int *,int *,unsigned short *,unsigned short *);
 XERXES_STATIC int XERXES_API dxp_write_word(int *,int *,unsigned short *,unsigned short *);
-XERXES_STATIC int XERXES_API dxp_read_block(int *,int *,unsigned short *,unsigned int *,unsigned short *);
-XERXES_STATIC int XERXES_API dxp_write_block(int *,int *, unsigned short *,unsigned int *,unsigned short *);
+XERXES_STATIC int XERXES_API dxp_read_block(int *,int *,unsigned short *,unsigned int *,
+											unsigned short *);
+XERXES_STATIC int XERXES_API dxp_write_block(int *,int *, unsigned short *,unsigned int *,
+											 unsigned short *);
 XERXES_STATIC int XERXES_API dxp_look_at_me(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_ignore_me(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_clear_LAM(int *ioChan, int *modChan);
 XERXES_STATIC int XERXES_API dxp_prep_for_readout(int *, int *);
 XERXES_STATIC int XERXES_API dxp_done_with_readout(int *, int *, Board *board);
-XERXES_STATIC int XERXES_API dxp_begin_run(int *, int *,unsigned short *,unsigned short *, Board *board);
+XERXES_STATIC int XERXES_API dxp_begin_run(int *, int *,unsigned short *,unsigned short *, 
+										   Board *board);
 XERXES_STATIC int XERXES_API dxp_end_run(int *, int *);
 XERXES_STATIC int XERXES_API dxp_run_active(int *, int *, int*);
 XERXES_STATIC int XERXES_API dxp_begin_control_task(int* ioChan, int* modChan, short *type, 
@@ -66,23 +100,27 @@ XERXES_STATIC int XERXES_API dxp_test_event_memory(int *,int *,int *, Board *boa
 XERXES_STATIC int XERXES_API dxp_get_dspinfo(Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_get_fipinfo(Fippi_Info *);
 XERXES_STATIC int XERXES_API dxp_get_defaultsinfo(Dsp_Defaults *);
-XERXES_STATIC int XERXES_API dxp_get_fipconfig(Fippi_Info *);
-XERXES_STATIC int XERXES_API dxp_download_fippi_done(int *, int *, unsigned short *);
-XERXES_STATIC int XERXES_API dxp_download_fipconfig(int *,int *,Board *);
+XERXES_STATIC int XERXES_API dxp_get_fpgaconfig(Fippi_Info *);
+XERXES_STATIC int XERXES_API dxp_download_fpga_done(int *modChan, char *name, Board *board);
+XERXES_STATIC int XERXES_API dxp_download_fpgaconfig(int *ioChan, int *modChan, char *name, 
+						     Board *board);
 
 XERXES_STATIC int XERXES_API dxp_download_dspconfig(int *,int *, Dsp_Info *);
-XERXES_STATIC int XERXES_API dxp_download_dsp_done(int *, int *, int*, Dsp_Info *, unsigned short *, float *);
+XERXES_STATIC int XERXES_API dxp_download_dsp_done(int *, int *, int*, Dsp_Info *, 
+						   unsigned short *, float *);
 XERXES_STATIC int XERXES_API dxp_get_dspconfig(Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_get_dspdefaults(Dsp_Defaults *);
 XERXES_STATIC int XERXES_API dxp_load_dspfile(FILE *, Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_load_dspsymbol_table(FILE *, Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_load_dspconfig(FILE *, Dsp_Info *);
 
-XERXES_STATIC int XERXES_API dxp_decode_error(unsigned short [], Dsp_Info *, unsigned short *, unsigned short *);
+XERXES_STATIC int XERXES_API dxp_decode_error(unsigned short [], Dsp_Info *, unsigned short *, 
+											  unsigned short *);
 XERXES_STATIC int XERXES_API dxp_clear_error(int *, int *, Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_check_calibration(int *, unsigned short *, Dsp_Info *);
-XERXES_STATIC int XERXES_API dxp_get_runstats(unsigned short [],Dsp_Info *, unsigned int *,unsigned int *,
-									  unsigned int *,unsigned int *,unsigned int *,double *);
+XERXES_STATIC int XERXES_API dxp_get_runstats(unsigned short [],Dsp_Info *, unsigned int *,
+											  unsigned int *, unsigned int *,unsigned int *,
+											  unsigned int *,double *);
 XERXES_STATIC int XERXES_API dxp_symbolname(unsigned short *, Dsp_Info *, char *);
 
 XERXES_STATIC int XERXES_API dxp_modify_dspsymbol(int *, int *, char *, unsigned short *, Dsp_Info *);
@@ -101,7 +139,7 @@ XERXES_STATIC int XERXES_API dxp_read_history(int *, int *, Board *, unsigned sh
 XERXES_STATIC int XERXES_API dxp_perform_gaincalc(float *,unsigned short *,short *);
 XERXES_STATIC int XERXES_API dxp_change_gains(int *, int *, int *, float *,Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_setup_asc(int *, int *, int *, float *, float *, unsigned short *, 
-								   float *, float *, float *, Dsp_Info *);
+										   float *, float *, float *, Dsp_Info *);
 XERXES_STATIC int XERXES_API dxp_calibrate_asc(int *, int *, unsigned short *, Board *);
 XERXES_STATIC int XERXES_API dxp_calibrate_channel(int *, int *, unsigned short *, int *, Board *);
 XERXES_STATIC FILE* XERXES_API dxp_find_file(const char *, const char *);
@@ -199,3 +237,4 @@ typedef unsigned char boolean;
 #define FALSE_	(1==0)
 
 #endif						/* Endif for XIA_DXP4C2X_H */
+

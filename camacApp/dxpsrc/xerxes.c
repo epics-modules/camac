@@ -1,10 +1,7 @@
-/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
 
 /*
  * xerxes.c
- *   
- *   Copyright 1996 X-ray Instrumentation Associates
- *   All rights reserved
  *
  *   Created        25-Sep-1996  by Ed Oltman
  *   Extensive mods 19-Dec-1996  EO
@@ -31,6 +28,39 @@
  *   This file contains mid-level DXP control routines for handling a multi-
  *   channel array.  Most of these routines can be used as is or can serve as 
  *   examples for how the primitive routines are used. 
+ *
+ * Copyright (c) 2002, X-ray Instrumentation Associates
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted provided 
+ * that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the 
+ *     following disclaimer.
+ *   * Redistributions in binary form must reproduce the 
+ *     above copyright notice, this list of conditions and the 
+ *     following disclaimer in the documentation and/or other 
+ *     materials provided with the distribution.
+ *   * Neither the name of X-ray Instrumentation Associates 
+ *     nor the names of its contributors may be used to endorse 
+ *     or promote products derived from this software without 
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+ * IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE. 
  *
  */
 
@@ -2828,7 +2858,7 @@ static int XERXES_API dxp_add_fippi(char* filename, Board_Info* board, Fippi_Inf
   /* Finish allocating memory */
   temp_fippi->data = (unsigned short *) 
 	xerxes_md_alloc((temp_fippi->maxproglen)*sizeof(unsigned short));
-  if ((status=board->funcs->dxp_get_fipconfig(temp_fippi))!=DXP_SUCCESS) {
+  if ((status=board->funcs->dxp_get_fpgaconfig(temp_fippi))!=DXP_SUCCESS) {
 	/* Free up memory, since there was an error */
 	dxp_free_fippi(temp_fippi);
 	xerxes_md_free(current->filename);
@@ -3248,9 +3278,9 @@ int XERXES_API dxp_reset_channel(int* detChan)
   /*
    *  Download the FiPPI firmware
    */
-  dxp_log_info("dxp_reset_channel","Downloading FIPPI");
-  if((status=dxp_reset_fipconfig(detChan))!=DXP_SUCCESS){
-	dxp_log_error("dxp_reset_channel","Unable to load FIPPI",status);
+  dxp_log_info("dxp_reset_channel","Downloading FPGA");
+  if((status=dxp_reset_fpgaconfig(detChan, "all"))!=DXP_SUCCESS){
+	dxp_log_error("dxp_reset_channel","Unable to load FPGA",status);
 	return status;
   }
 
@@ -3268,7 +3298,7 @@ int XERXES_API dxp_reset_channel(int* detChan)
   if ((status=dxp_upload_dspparams(detChan))!=DXP_SUCCESS){
 	status = DXP_DSPPARAMS;
 	dxp_log_error("dxp_reset_channel",
-				  "Could not load parameters from detector channel",status);
+		      "Could not load parameters from detector channel",status);
 	return status;
   }
   /* 
@@ -3404,84 +3434,107 @@ int XERXES_API dxp_fipconfig(VOID)
   /* Loop over all the modules in the system */
 
   while (current!=NULL) {
-	mod    = current->mod;
-	ioChan = current->ioChan;
-	used   = current->used;
-
-	/* Disable the LAMs for each module before downloading */
-
-	if((status=current->btype->funcs->dxp_look_at_me(&ioChan, &allChan))!=DXP_SUCCESS){
-	  sprintf(info_string,"Error disabling LAM for module %d",mod);
+    mod    = current->mod;
+    ioChan = current->ioChan;
+    used   = current->used;
+    
+    /* Disable the LAMs for each module before downloading */
+    
+    if((status=current->btype->funcs->dxp_look_at_me(&ioChan, &allChan))!=DXP_SUCCESS){
+      sprintf(info_string,"Error disabling LAM for module %d",mod);
+      dxp_log_error("dxp_fipconfig",info_string,status);
+      return status;
+    }
+    
+    /* Broadcast the first used channel to all channels */
+    i = 0;
+    found = 0;
+    do {
+      if (used&(1<<i)) {
+	if((status=current->btype->funcs->dxp_download_fpgaconfig(&ioChan,
+								 &allChan, "all", current))!=DXP_SUCCESS){
+	  sprintf(info_string,"Error Broadcasting fpga configurations to module %d",mod);
 	  dxp_log_error("dxp_fipconfig",info_string,status);
 	  return status;
 	}
-
-	/* Broadcast the first used channel to all channels */
-	i = 0;
-	found = 0;
-	do {
-	  if (used&(1<<i)) {
-		if((status=current->btype->funcs->dxp_download_fipconfig(&ioChan,
-																 &allChan, current))!=DXP_SUCCESS){
-		  sprintf(info_string,"Error Broadcasting to module %d",mod);
-		  dxp_log_error("dxp_fipconfig",info_string,status);
-		  return status;
-		}
-		broadcast_fippi = current->fippi[i];
-		found = 1;
-	  }
-	  i++;
-	} while((broadcast_fippi==NULL) && (i<(int) current->nchan));
-
-	/* Check if at least one channel was active on this board */
-	if (found==0) {
-	  status = DXP_SUCCESS;
-	  sprintf(info_string,"No used channel was found in module %d \r\n Will Continue with other modules",mod);
-	  dxp_log_error("dxp_fipconfig",info_string,status);
-	}
-
-	/* Download the FiPPi program to all channels of a DXP */
-
-	/* peculiar start to loop, DO NOT initialize i=0 since the previous
-	 * while loop will stop with the correct starting point for i.  The
-	 * previous values of i would either point to a channel that is already
-	 * downloaded or one that is not implemented */
-	for (;i<(int) current->nchan;i++) {
-	  if (current->fippi[i] != broadcast_fippi) {
-		if (used&(1<<i)) {
-		  if((status=current->btype->funcs->dxp_download_fipconfig(&ioChan,
-																   &i, current))!=DXP_SUCCESS){
-			sprintf(info_string,"Error downloading to module %d",mod);
-			dxp_log_error("dxp_fipconfig",info_string,status);
-			return status;
-		  }
-		}
+	broadcast_fippi = current->fippi[i];
+	found = 1;
+      }
+      i++;
+    } while((broadcast_fippi==NULL) && (i<(int) current->nchan));
+    
+    /* Check if at least one channel was active on this board */
+    if (found==0) {
+      status = DXP_SUCCESS;
+      sprintf(info_string,"No used channel was found in module %d \r\n Will Continue with other modules",mod);
+      dxp_log_error("dxp_fipconfig",info_string,status);
+    }
+    
+    /* Download the FiPPi program to all channels of a DXP */
+    
+    /* peculiar start to loop, DO NOT initialize i=0 since the previous
+     * while loop will stop with the correct starting point for i.  The
+     * previous values of i would either point to a channel that is already
+     * downloaded or one that is not implemented */
+    for (;i<(int) current->nchan;i++) {
+      if (current->fippi[i] != broadcast_fippi) {
+	if (used&(1<<i)) {
+	  if((status=current->btype->funcs->dxp_download_fpgaconfig(&ioChan,
+								   &i, "fippi", current))!=DXP_SUCCESS){
+	    sprintf(info_string,"Error downloading to module %d",mod);
+	    dxp_log_error("dxp_fipconfig",info_string,status);
+	    return status;
 	  }
 	}
-
-	/* Determine if the FiPPi was downloaded successfully to all channels */
-
-	if((status=current->btype->funcs->dxp_download_fippi_done(&ioChan, &mod, 
-															  &used))!=DXP_SUCCESS){
-	  sprintf(info_string,"Failed to download FiPPi succesfully for module %d",mod);
-	  dxp_log_error("dxp_fipconfig",info_string,status);
-	  return status;
-	}
-	current = current->next;
+      }
+    }
+    
+    /* Determine if the FiPPi was downloaded successfully to all channels */
+    if((status=current->btype->funcs->dxp_download_fpga_done(&allChan, "all", current))!=DXP_SUCCESS){
+      sprintf(info_string,"Failed to download FPGAs succesfully for module %d", mod);
+      dxp_log_error("dxp_fipconfig",info_string,status);
+      return status;
+    }
+    current = current->next;
   }
+  
+  return DXP_SUCCESS;
+}
+
+/******************************************************************************
+ *
+ * Replaces the FiPPi configuration for the board, the routine replace_fpgaconfig()
+ * now supercedes this routine, but this remains for legacy code.
+ *
+ ******************************************************************************/
+int XERXES_API dxp_replace_fipconfig(int* detChan, char* filename)
+/* int *detChan;		Input: detector channel to load     */
+/* char *filename;		Input: location of the new FiPPi    */
+{
+  int status;
+  char info_string[INFO_LEN];
+
+  /* Get the ioChan and dxpChan matching the detChan */
+  status=dxp_replace_fpgaconfig(detChan, "fippi", filename);
+  if (status != DXP_SUCCESS)
+    {
+      sprintf(info_string,"Unable to download FiPPi configuration to Detector Channel %d",*detChan);
+      dxp_log_error("dxp_replace_fipconfig",info_string,status);
+      return status;
+    }
 
   return DXP_SUCCESS;
 }
 
 /******************************************************************************
  *
- * Downloads FiPPI firmware to all modules using broadcast command.  Check
- * CSR bits to see if download was successful.
+ * Replaces an FPGA configuration.
  *
  ******************************************************************************/
-int XERXES_API dxp_replace_fipconfig(int* detChan, char* filename)
-	 /* int *detChan;							Input: detector channel to load     */
-	 /* char *filename;							Input: location of the new FiPPi    */
+int XERXES_API dxp_replace_fpgaconfig(int* detChan, char *name, char* filename)
+/* int *detChan;		Input: detector channel to load     */
+/* char *name;                  Input: Type of FPGA to replace      */
+/* char *filename;		Input: location of the new FiPPi    */
 {
   int status;
   char info_string[INFO_LEN];
@@ -3494,7 +3547,7 @@ int XERXES_API dxp_replace_fipconfig(int* detChan, char* filename)
 
   if((status=dxp_det_to_elec(detChan, &chosen, &modChan))!=DXP_SUCCESS){
 	sprintf(info_string,"Unknown Detector Channel %d",*detChan);
-	dxp_log_error("dxp_replace_fipconfig",info_string,status);
+	dxp_log_error("dxp_replace_fpgaconfig",info_string,status);
 	return status;
   }
   ioChan = chosen->ioChan;
@@ -3504,7 +3557,7 @@ int XERXES_API dxp_replace_fipconfig(int* detChan, char* filename)
 
   if((status=chosen->btype->funcs->dxp_look_at_me(&ioChan, &allChan))!=DXP_SUCCESS){
 	sprintf(info_string,"Error disabling LAM for detector %d",*detChan);
-	dxp_log_error("dxp_replace_fipconfig",info_string,status);
+	dxp_log_error("dxp_replace_fpgaconfig",info_string,status);
 	return status;
   }
 
@@ -3514,25 +3567,24 @@ int XERXES_API dxp_replace_fipconfig(int* detChan, char* filename)
   dxp_log_debug("dxp_replace_fipconfig", info_string);
 
   if((status=dxp_add_fippi(filename, chosen->btype, &(chosen->fippi[modChan])))!=DXP_SUCCESS){
-	sprintf(info_string,"Error loading Fippi %s",filename);
-	dxp_log_error("dxp_replace_fipconfig",info_string,status);
+	sprintf(info_string,"Error loading FPGA %s",filename);
+	dxp_log_error("dxp_replace_fpgaconfig",info_string,status);
 	return status;
   }
 
   /* Download the FiPPi program to the channel */
 
-  if((status=chosen->btype->funcs->dxp_download_fipconfig(&ioChan,
-														  &modChan, chosen))!=DXP_SUCCESS){
-	sprintf(info_string,"Error downloading to detector %d", *detChan);
-	dxp_log_error("dxp_replace_fipconfig",info_string,status);
+  if((status=chosen->btype->funcs->dxp_download_fpgaconfig(&ioChan, 
+							  &modChan, name, chosen))!=DXP_SUCCESS){
+	sprintf(info_string,"Error downloading %s FPGA(s) to detector %d", name, *detChan);
+	dxp_log_error("dxp_replace_fpgaconfig",info_string,status);
 	return status;
   }
 
   /* Determine if the FiPPi was downloaded successfully */
-
-  if((status=chosen->btype->funcs->dxp_download_fippi_done(&ioChan, &(chosen->mod), &used))!=DXP_SUCCESS){
-	sprintf(info_string,"Failed to replace FiPPi succesfully for detector %d",*detChan);
-	dxp_log_error("dxp_replace_fipconfig",info_string,status);
+  if((status=chosen->btype->funcs->dxp_download_fpga_done(&modChan, name, chosen))!=DXP_SUCCESS){
+	sprintf(info_string,"Failed to replace %s FPGA(s) succesfully for detector %d", name, *detChan);
+	dxp_log_error("dxp_replace_fpgaconfig",info_string,status);
 	return status;
   }
 		
@@ -3545,47 +3597,67 @@ int XERXES_API dxp_replace_fipconfig(int* detChan, char* filename)
  *
  ******************************************************************************/
 int XERXES_API dxp_reset_fipconfig(int* detChan)
-	 /* int *detChan;					Input: Detector Channel number	*/
+/* int *detChan;		Input: Detector Channel number	*/
+{
+  int status;
+  char info_string[INFO_LEN];
+	
+  status = dxp_reset_fpgaconfig(detChan, "fippi");
+  if (status != DXP_SUCCESS)
+    {
+      sprintf(info_string,"Error downloading FIPPI to Detector Channel %d", *detChan);
+      dxp_log_error("dxp_reset_fipconfig",info_string,status);
+      return status;
+    }
+
+  return DXP_SUCCESS;
+}
+
+/******************************************************************************
+ *
+ * Download currently loaded FPGA firmware to a single channel.  
+ *
+ ******************************************************************************/
+int XERXES_API dxp_reset_fpgaconfig(int* detChan, char *name)
+/* int *detChan;		Input: Detector Channel number	    */
+/* char *name;                  Input: Type of firmware to download */
 {
   int status;
   char info_string[INFO_LEN];
   int modChan, ioChan;
-  unsigned short used;
   Board *chosen = NULL;
 	
   /* Get the ioChan and dxpChan matching the detChan */
 
   if((status=dxp_det_to_elec(detChan, &chosen, &modChan))!=DXP_SUCCESS){
-	sprintf(info_string,"Unknown Detector Channel %d",*detChan);
-	dxp_log_error("dxp_reset_fipconfig",info_string,status);
-	return status;
+    sprintf(info_string,"Unknown Detector Channel %d",*detChan);
+    dxp_log_error("dxp_reset_fpgaconfig",info_string,status);
+    return status;
   }
   ioChan = chosen->ioChan;
 
   /* Disable the LAMs for each module before downloading */
 
   if((status=chosen->btype->funcs->dxp_look_at_me(&ioChan, &allChan))!=DXP_SUCCESS){
-	sprintf(info_string,"Error disabling LAM for detector %d",*detChan);
-	dxp_log_error("dxp_reset_fipconfig",info_string,status);
-	return status;
+    sprintf(info_string,"Error disabling LAM for detector %d",*detChan);
+    dxp_log_error("dxp_reset_fpgaconfig",info_string,status);
+    return status;
   }
 
   /* Download the FiPPi program to the channel */
 
-  if((status=chosen->btype->funcs->dxp_download_fipconfig(&ioChan,
-														  &modChan, chosen))!=DXP_SUCCESS){
-	sprintf(info_string,"Error downloading to detector %d", *detChan);
-	dxp_log_error("dxp_reset_fipconfig",info_string,status);
-	return status;
+  if((status=chosen->btype->funcs->dxp_download_fpgaconfig(&ioChan, &modChan, 
+							   name, chosen))!=DXP_SUCCESS){
+    sprintf(info_string,"Error downloading %s FPGA(s) to detector %d", *detChan);
+    dxp_log_error("dxp_reset_fpgaconfig",info_string,status);
+    return status;
   }
 
   /* Determine if the FiPPi was downloaded successfully */
-  /* Fake routine into only checking this channel */
-  used = (unsigned short) (1<<modChan);
-  if((status=chosen->btype->funcs->dxp_download_fippi_done(&ioChan, &(chosen->mod), &used))!=DXP_SUCCESS){
-	sprintf(info_string,"Failed to replace FiPPi succesfully for detector %d",*detChan);
-	dxp_log_error("dxp_reset_fipconfig",info_string,status);
-	return status;
+  if((status=chosen->btype->funcs->dxp_download_fpga_done(&modChan, name, chosen))!=DXP_SUCCESS){
+    sprintf(info_string,"Failed to replace %s FPGA(s) succesfully for detector %d", name, *detChan);
+    dxp_log_error("dxp_reset_fpgaconfig",info_string,status);
+    return status;
   }
 	
   return DXP_SUCCESS;
@@ -3736,8 +3808,12 @@ int XERXES_API dxp_dspconfig(VOID)
 
 	dxp_log_debug("dxp_dspconfig", "Done checking BUSY");
 
-	/* Now Read all the parameters and test spectrm memory */		
+	/* Now Read all the parameters and test spectrum memory */		
 	for (chan = 0;chan<(int) current->nchan;chan++) {
+
+	  /* Reference: BUG ID #22 */	  
+	  if ((used & (1 << chan)) == 0) continue;
+
 	  if((status=current->btype->funcs->dxp_read_dspparams(&ioChan, &chan, 
 														   current->dsp[chan], current->params[chan]))!=DXP_SUCCESS){
 		sprintf(info_string,"Error reading parameters from module %d channel %d",mod,chan);

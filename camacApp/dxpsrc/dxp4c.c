@@ -1,4 +1,4 @@
-/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
 
 /*
  * dxp4c.c
@@ -21,8 +21,38 @@
  *        Replace MAXBLK parameter with function call to dxp_md_get_maxblk 
  *         
  *
- *   Copyright 1996 X-ray Instrumentation Associates
- *   All rights reserved
+ * Copyright (c) 2002, X-ray Instrumentation Associates
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted provided 
+ * that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the 
+ *     following disclaimer.
+ *   * Redistributions in binary form must reproduce the 
+ *     above copyright notice, this list of conditions and the 
+ *     following disclaimer in the documentation and/or other 
+ *     materials provided with the distribution.
+ *   * Neither the name of X-ray Instrumentation Associates 
+ *     nor the names of its contributors may be used to endorse 
+ *     or promote products derived from this software without 
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+ * IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE.
  *
  */
 
@@ -94,10 +124,10 @@ int dxp_init_dxp4c(Functions* funcs)
   funcs->dxp_get_fipinfo = dxp_get_fipinfo;
   funcs->dxp_get_defaultsinfo = dxp_get_defaultsinfo;
   funcs->dxp_get_dspconfig = dxp_get_dspconfig;
-  funcs->dxp_get_fipconfig = dxp_get_fipconfig;
+  funcs->dxp_get_fpgaconfig = dxp_get_fpgaconfig;
   funcs->dxp_get_dspdefaults = dxp_get_dspdefaults;
-  funcs->dxp_download_fipconfig = dxp_download_fipconfig;
-  funcs->dxp_download_fippi_done = dxp_download_fippi_done;
+  funcs->dxp_download_fpgaconfig = dxp_download_fpgaconfig;
+  funcs->dxp_download_fpga_done = dxp_download_fpga_done;
   funcs->dxp_download_dspconfig = dxp_download_dspconfig;
   funcs->dxp_download_dsp_done = dxp_download_dsp_done;
   funcs->dxp_calibrate_channel = dxp_calibrate_channel;
@@ -516,11 +546,17 @@ static int dxp_read_word(int* ioChan, int* modChan, int* xy,
 	return status;
   }
 
-  /* write status register for initiating transfer */
+  /* read-modify-write status register for initiating transfer */
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_read_word","Error reading from the CSR",status);
+      return status;
+    }
 
-  data=MASK_CAMXFER;
+  data |= MASK_CAMXFER;
   data |= (*modChan<<6);
-  if (*xy==YMEM) data|=MASK_YMEM;
+  if (*xy==YMEM) data |= MASK_YMEM;
 
   status = dxp_write_csr(ioChan, &data);
   if (status!=DXP_SUCCESS){
@@ -576,12 +612,22 @@ static int dxp_write_word(int* ioChan, int* modChan, int* xy,
 	return status;
   }
 
-  /* write status register for initiating transfer */
+  /* read-modify-write status register for initiating transfer */
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_write_word","Error reading from the CSR",status);
+      return status;
+    }
 
-  data=MASK_CAMXFER | MASK_WRITE;
-  if (*modChan==ALLCHAN) data|= MASK_ALLCHAN;
-  else data|=(*modChan<<6);
-  if (*xy==YMEM) data|=MASK_YMEM;
+  data |= (MASK_CAMXFER | MASK_WRITE);
+  if (*modChan == ALLCHAN) 
+    {
+      data |= MASK_ALLCHAN;
+    } else {
+      data |= (*modChan<<6);
+    }
+  if (*xy == YMEM) data |= MASK_YMEM;
 
   status = dxp_write_csr(ioChan, &data);
   if (status!=DXP_SUCCESS) {
@@ -608,15 +654,15 @@ static int dxp_write_word(int* ioChan, int* modChan, int* xy,
  *
  ******************************************************************************/
 static int dxp_read_block(int* ioChan, int* modChan, int* xy, int* constaddr,
-						  unsigned short* addr, unsigned int* length, 
-						  unsigned short* readdata)
-	 /* int *ioChan;						Input: I/O channel of DXP module		*/
-	 /* int *modChan;					Input: DXP channels no (0,1,2,3)		*/
-	 /* int *xy;							Input: X (0) or Y (1)memmory			*/
-	 /* int *constaddr;					Input: const add(1) incr. addr.(0)		*/
-	 /* unsigned short *addr;			Input: start address within X or Y mem.	*/
-	 /* unsigned int *length;			Input: # of 16 bit words to transfer	*/
-	 /* unsigned short *readdata;		Output: words to read from memory		*/
+			  unsigned short* addr, unsigned int* length, 
+			  unsigned short* readdata)
+     /* int *ioChan;				Input: I/O channel of DXP module	*/
+     /* int *modChan;				Input: DXP channels no (0,1,2,3)	*/
+     /* int *xy;				Input: X (0) or Y (1)memmory		*/
+     /* int *constaddr;				Input: const add(1) incr. addr.(0)	*/
+     /* unsigned short *addr;			Input: start address within X or Y mem.	*/
+     /* unsigned int *length;			Input: # of 16 bit words to transfer	*/
+     /* unsigned short *readdata;		Output: words to read from memory	*/
 {
   /*
    *     Read a block of words from a single DSP address, or consecutive
@@ -642,12 +688,18 @@ static int dxp_read_block(int* ioChan, int* modChan, int* xy, int* constaddr,
 	return status;
   }
 
-  /* write status register for initiating transfer */
+  /* read-modify-write status register for initiating transfer */
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_read_block","Error reading from the CSR",status);
+      return status;
+    }
     
-  data=MASK_CAMXFER;
-  data|=(*modChan<<6);
-  if (*xy==YMEM) data|=MASK_YMEM;
-  if (*constaddr==CONSTADD) data|= MASK_CONSTADD;
+  data |= MASK_CAMXFER;
+  data |= (*modChan<<6);
+  if (*xy == YMEM) data |= MASK_YMEM;
+  if (*constaddr == CONSTADD) data |= MASK_CONSTADD;
     
   status = dxp_write_csr(ioChan, &data);
   if (status!=DXP_SUCCESS) {
@@ -725,13 +777,23 @@ static int dxp_write_block(int* ioChan, int* modChan, int* xy, int* constaddr,
 	return status;
   }
 
-  /* write status register for initiating transfer */
+  /* read-modify-write status register for initiating transfer */
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_write_block","Error reading from the CSR",status);
+      return status;
+    }
 
-  data=MASK_CAMXFER|MASK_WRITE;
-  if (*modChan==ALLCHAN) data|= MASK_ALLCHAN;
-  else data|=(*modChan<<6);
-  if (*xy==YMEM) data|=MASK_YMEM;
-  if (*constaddr==CONSTADD) data|= MASK_CONSTADD;
+  data |= (MASK_CAMXFER | MASK_WRITE);
+  if (*modChan ==ALLCHAN) 
+    {
+      data |= MASK_ALLCHAN;
+    } else {
+      data |= (*modChan<<6);
+    }
+  if (*xy == YMEM) data |= MASK_YMEM;
+  if (*constaddr == CONSTADD) data |= MASK_CONSTADD;
     
   status = dxp_write_csr(ioChan, &data);
   if (status!=DXP_SUCCESS){
@@ -784,10 +846,11 @@ static int dxp_write_block(int* ioChan, int* modChan, int* xy, int* constaddr,
  * is read from the file filename. 
  *
  ******************************************************************************/
-static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
-	 /* int *ioChan;						Input: I/O channel of DXP module	*/
-	 /* int *modChan;					Input: DXP channels no (-1,0,1,2,3)	*/
-	 /* Board *board;					Input: Board data					*/
+static int dxp_download_fpgaconfig(int* ioChan, int* modChan, char *name, Board* board)
+     /* int *ioChan;			Input: I/O channel of DXP module	*/
+     /* int *modChan;			Input: DXP channels no (-1,0,1,2,3)	*/
+     /* char *name;                     Input: Type of FPGA to download         */
+     /* Board *board;			Input: Board data			*/
 {
   /*
    *   Download the appropriate FiPPi configuration file to a single channel
@@ -801,40 +864,64 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
   unsigned int maxblk;
   Fippi_Info *fippi=NULL;
 
+  if (!((STREQ(name, "all")) || (STREQ(name, "fippi")))) 
+    {
+      sprintf(info_string, "The DXP4C does not have an FPGA called %s for channel number %d", name, *modChan);
+      status = DXP_BAD_PARAM;
+      dxp_log_error("dxp_download_fpgaconfig",info_string,status);
+      return status;
+    }
+
   if((*modChan<-1)||(*modChan>3)){
-	sprintf(info_string,"called with DXP channel number %d",*modChan);
-	status = DXP_BAD_PARAM;
-	dxp_log_error("dxp_download_fipconfig",info_string,status);
-	return status;
+    sprintf(info_string,"called with DXP channel number %d",*modChan);
+    status = DXP_BAD_PARAM;
+    dxp_log_error("dxp_download_fpgaconfig",info_string,status);
+    return status;
   }
 
   /* If allchan chosen, then select the first valid fippi */
   for (i=0;i<board->nchan;i++) {
-	if (((board->used)&(0x1<<i))!=0) {
-	  fippi = board->fippi[i];
-	  break;
-	}
+    if (((board->used)&(0x1<<i))!=0) {
+      fippi = board->fippi[i];
+      break;
+    }
   }
   /* make sure a valid Fippi was found */
   if (fippi==NULL) {
-	sprintf(info_string,"There is no valid FiPPi defined for module %i",board->mod);
-	status = DXP_NOFIPPI;
-	dxp_log_error("dxp_download_fipconfig",info_string,status);
-	return status;
+    sprintf(info_string,"There is no valid FiPPi defined for module %i",board->mod);
+    status = DXP_NOFIPPI;
+    dxp_log_error("dxp_download_fpgaconfig",info_string,status);
+    return status;
   }
 
   length = fippi->proglen;
 	
   /* Write to CSR to initiate download */
 
-  data=MASK_FIPRESET|MASK_WRITE;
-  if (*modChan==ALLCHAN) data |= MASK_ALLCHAN;
-  else data|=(*modChan<<6);
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS){
+    dxp_log_error("dxp_download_fpgaconfig","Error reading the CSR",status); 
+    return status;
+  }
 
+  /* Mask off the channels bits */
+  data &= ~MASK_CHANNELS;
+
+  /* turn on the fippi reset bit and the write bit */
+  data |= (MASK_FIPRESET|MASK_WRITE);
+
+  if (*modChan==ALLCHAN) 
+    {
+      data |= MASK_ALLCHAN;
+    } else {
+      data |= (*modChan<<6);
+    }
+
+  /* Write the CSR back to the board */
   status = dxp_write_csr(ioChan, &data);
   if (status!=DXP_SUCCESS){
-	dxp_log_error("dxp_download_fipconfig","Error writing CSR",status); 
-	return status;
+    dxp_log_error("dxp_download_fpgaconfig","Error writing CSR",status); 
+    return status;
   }
 
   /* wait 50ms, for LCA to be ready for next data */
@@ -844,13 +931,13 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
 
   /* single word transfers for first 10 words */
   for (i=0;i<10;i++){
-	status = dxp_write_fippi(ioChan, &(fippi->data[i]), 1);
-	if (status!=DXP_SUCCESS){
-	  status = DXP_WRITE_WORD;
-	  sprintf(info_string,"Error in %dth 1-word transfer",i);
-	  dxp_log_error("dxp_download_fipconfig",info_string,status);
-	  return status;
-	}
+    status = dxp_write_fippi(ioChan, &(fippi->data[i]), 1);
+    if (status!=DXP_SUCCESS){
+      status = DXP_WRITE_WORD;
+      sprintf(info_string,"Error in %dth 1-word transfer",i);
+      dxp_log_error("dxp_download_fpgaconfig",info_string,status);
+      return status;
+    }
   }
 
   /* Retrieve MAXBLK and check if single transfer is needed */
@@ -863,33 +950,32 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
   j = 0;
   do {
 
-	/* now read the data */
+    /* now read the data */
         
-	status = dxp_write_fippi(ioChan, &(fippi->data[j*maxblk+10]), xlen);
-	if (status!=DXP_SUCCESS){
-	  status = DXP_WRITE_BLOCK;
-	  sprintf(info_string,"Error in %dth (last) block transfer",j);
-	  dxp_log_error("dxp_download_fipconfig",info_string,status);
-	  return status;
-	}
-	/* Next loop */
-	j++;
-	/* On last pass thru loop transfer the remaining bytes */
-	if (j==(nxfers-1)) xlen=((length-11)%maxblk) + 1;
+    status = dxp_write_fippi(ioChan, &(fippi->data[j*maxblk+10]), xlen);
+    if (status!=DXP_SUCCESS){
+      status = DXP_WRITE_BLOCK;
+      sprintf(info_string,"Error in %dth (last) block transfer",j);
+      dxp_log_error("dxp_download_fpgaconfig",info_string,status);
+      return status;
+    }
+    /* Next loop */
+    j++;
+    /* On last pass thru loop transfer the remaining bytes */
+    if (j==(nxfers-1)) xlen=((length-11)%maxblk) + 1;
   } while (j<nxfers);
-
+  
   return DXP_SUCCESS;
 }
 
 /******************************************************************************
- * Routine to read the FiPPi configuration file into memory
+ * Routine to read the FPGA configuration file into memory
  *
- * This routine reads in the file filename and stores the FiPPi program in
- * the fipconfig global array at location determined by *dec_index.
+ * This routine reads in the file filename and stores the FiPPi program
  *
  ******************************************************************************/
-static int dxp_get_fipconfig(Fippi_Info* fippi)
-	 /* Fippi_Info *fippi;				I/O: structure of Fippi info	*/
+static int dxp_get_fpgaconfig(Fippi_Info* fippi)
+     /* Fippi_Info *fippi;			I/O: structure of Fippi info	*/
 {
 
   int status, j;
@@ -899,26 +985,26 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
   unsigned int len;
   FILE *fp;
 
-  sprintf(info_string,"%s%s%s","Reading FiPPI file ",
+  sprintf(info_string,"%s%s%s","Reading FPGA file ",
 		  fippi->filename,"...");
-  dxp_log_info("dxp_get_fipconfig",info_string);
+  dxp_log_info("dxp_get_fpgaconfig",info_string);
   fippi->maxproglen = MAXFIP_LEN;
   if (fippi->data==NULL){
 	status = DXP_NOMEM;
 	sprintf(info_string,"Error space not allocated for data in file %s",
 			fippi->filename);
-	dxp_log_error("dxp_get_fipconfig",info_string,status);
+	dxp_log_error("dxp_get_fpgaconfig",info_string,status);
 	return status;
   }
   if((fp = dxp_find_file(fippi->filename,"r"))==NULL){
 	status = DXP_OPEN_FILE;
-	sprintf(info_string,"Unable to open FiPPi file %s",
+	sprintf(info_string,"Unable to open FPGA file %s",
 			fippi->filename);
-	dxp_log_error("dxp_get_fipconfig",info_string,status);
+	dxp_log_error("dxp_get_fpgaconfig",info_string,status);
 	return status;
   }
 
-  /* Stuff the data into the fipconfig array */
+  /* Stuff the data into the fippi array */
 
   len = 0;
   while (fgets(line,132,fp)!=NULL){
@@ -934,7 +1020,7 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
   }
   fippi->proglen = len;
   fclose(fp);
-  dxp_log_info("dxp_get_fipconfig","...DONE!");
+  dxp_log_info("dxp_get_fpgaconfig","...DONE!");
  
   return DXP_SUCCESS;
 }
@@ -946,32 +1032,58 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
  * FiPPis are OK
  *
  ******************************************************************************/
-static int dxp_download_fippi_done(int* ioChan, int* mod, unsigned short* used)
-	 /* int *ioChan;					Input: I/O channel of the module			*/
-	 /* int *mod;					Input: Module number, for error reporting	*/
-	 /* unsigned short *used;		Input: What channels are in use?			*/
+static int dxp_download_fpga_done(int* modChan, char *name, Board *board)
+/* int *modChan;			Input: Module channel number              */
+/* char *name;                          Input: Type of FPGA to check the status of*/
+/* board *board;			Input: Board structure for this device 	  */
 {
   int status, chan;
   char info_string[INFO_LEN];
   unsigned short data;
 
-  /* Read back the CSR to determine if the download was successfull.  */
+  int ioChan;
+  unsigned short used;
 
-  if((status=dxp_read_csr(ioChan,&data))!=DXP_SUCCESS){
-	sprintf(info_string," failed to read CSR for module %d",*mod);
-	dxp_log_error("dxp_download_fippi_done",info_string,status);
-	return status;
+  int idummy;
+
+  /* Assignment to satisfy the compiler */
+  idummy = *modChan;
+
+  /* Few assignements to make life easier */
+  ioChan = board->ioChan;
+  if (*modChan == allChan) 
+    {
+      used = board->used;
+    } else {
+      used = (unsigned short) (board->used & (1 << *modChan));
+    }
+
+  if (!((STREQ(name, "all")) || (STREQ(name, "fippi")))) 
+    {
+      sprintf(info_string, "The DXP4C2X does not have an FPGA called %s for channel number %d", name, board->mod);
+      status = DXP_BAD_PARAM;
+      dxp_log_error("dxp_download_fpga_done",info_string,status);
+      return status;
+    }
+
+  /* Read back the CSR to determine if the download was successfull.  */
+  if((status=dxp_read_csr(&ioChan,&data))!=DXP_SUCCESS){
+    sprintf(info_string,"Failed to read CSR for module %d", board->mod);
+    dxp_log_error("dxp_download_fpga_done",info_string,status);
+    return status;
   }
+  
+  
   for(chan=0;chan<4;chan++){
-	if((*used&(1<<chan))==0) continue;		/* if not used, then we succeed */
-	if((data&(0x0100<<chan))!=0){
-	  sprintf(info_string,
-			  "FiPPI download error (CSR bits) for module %d chan %d",
-			  *mod,chan);
-	  status=DXP_FIPDOWNLOAD;
-	  dxp_log_error("dxp_download_fippi_done",info_string,status);
-	  return status;
-	}
+    if((used&(1<<chan))==0) continue;		/* if not used, then we succeed */
+    if((data&(0x0100<<chan))!=0){
+      sprintf(info_string,
+	      "FiPPI download error (CSR bits) for module %d chan %d",
+	      board->mod,chan);
+      status=DXP_FPGADOWNLOAD;
+      dxp_log_error("dxp_download_fpga_done",info_string,status);
+      return status;
+    }
   }
 
   return DXP_SUCCESS;
@@ -987,9 +1099,9 @@ static int dxp_download_fippi_done(int* ioChan, int* mod, unsigned short* used)
  *
  ******************************************************************************/
 static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
-	 /* int *ioChan;					Input: I/O channel of DXP modul		*/
-	 /* int *modChan;				Input: DXP channel no (-1,0,1,2,3)	*/
-	 /* Dsp_Info *dsp;				Input: DSP structure				*/
+     /* int *ioChan;			Input: I/O channel of DXP modul		*/
+     /* int *modChan;			Input: DXP channel no (-1,0,1,2,3)	*/
+     /* Dsp_Info *dsp;			Input: DSP structure				*/
 {
   /*
    *   Download the DSP configuration file to a single channel or all channels 
@@ -1009,37 +1121,46 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
 
   dxp_log_debug("dxp_download_dspconfig", "Preparing to download DSP config");
   
-  if((*modChan<-1)||(*modChan>3)){
-    
-    sprintf(info_string,"called with DXP channel number %d",*modChan);
-    status = DXP_BAD_PARAM;
-    dxp_log_error("dxp_download_dspconfig",info_string,status);
-  }
+  if((*modChan<-1)||(*modChan>3))
+    {
+      sprintf(info_string,"called with DXP channel number %d",*modChan);
+      status = DXP_BAD_PARAM;
+      dxp_log_error("dxp_download_dspconfig",info_string,status);
+    }
+  
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_download_dspconfig","Error reading the CSR",status);
+      return status;
+    }
+  /* Mask off the channel bits */
+  data &= ~MASK_CHANNELS;
   
   /* Write to CSR to initiate download */
   
-  data=MASK_DSPRESET|MASK_WRITE;
-  if (*modChan==ALLCHAN) data|= MASK_ALLCHAN;
-  else data|=(*modChan<<6);
+  data |= (MASK_DSPRESET|MASK_WRITE);
+  if (*modChan==ALLCHAN) data |= MASK_ALLCHAN;
+  else data |= (*modChan<<6);
   
   status = dxp_write_csr(ioChan, &data);
-  if (status!=DXP_SUCCESS){
-    
-    dxp_log_error("dxp_download_dspconfig","Error writing CSR",status);
-    return status;
-  }
+  if (status!=DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_download_dspconfig","Error writing to the CSR",status);
+      return status;
+    }
 
   /* write "instruction wait cycle count" */
   data = 0;
   status = dxp_write_dsp(ioChan, &data, 1);
-  if (status!=DXP_SUCCESS) {
-    
-    status = DXP_WRITE_WORD;
-    dxp_log_error("dxp_download_dspconfig","Error writing instruction wait cycle",
-				  status);
-    return status;
-  }
-
+  if (status!=DXP_SUCCESS) 
+    {
+      status = DXP_WRITE_WORD;
+      dxp_log_error("dxp_download_dspconfig","Error writing instruction wait cycle",
+		    status);
+      return status;
+    }
+  
   /* Set the length to words */
   length = (unsigned short)(dsp->proglen / 2);
 
@@ -2519,13 +2640,20 @@ static int dxp_begin_run(int* ioChan, int* modChan, unsigned short* gate,
   itemp = modChan;
   btemp = board;
 
-  /* write to CSR to start data run */
+  /* read-modify-write status register to start a data run */
+  status = dxp_read_csr(ioChan, &data);
+  if (status!=DXP_SUCCESS)
+    {
+      dxp_log_error("dxp_begin_run","Error reading from the CSR",status);
+      return status;
+    }
 
-  data = MASK_RUNENABLE;
+  data |= MASK_RUNENABLE;
   /*	data |= (unsigned short) (*modChan==ALLCHAN ? MASK_ALLCHAN : *modChan<<6);*/
   data |= (unsigned short) MASK_ALLCHAN;
-  if(*resume==CLEARMCA)data|=MASK_RESETMCA;
-  if (*gate==IGNOREGATE)  data|= MASK_IGNOREGATE;
+  if (*resume == CLEARMCA) data |= MASK_RESETMCA;
+  if (*gate == IGNOREGATE) data |= MASK_IGNOREGATE;
+
   status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
   if (status!=DXP_SUCCESS){
 	dxp_log_error("dxp_begin_run","Error writing CSR",status);
@@ -2556,18 +2684,19 @@ static int dxp_end_run(int* ioChan, int* modChan)
   itemp = modChan;
 
   status = dxp_read_csr(ioChan, &data);
-  if (status != DXP_SUCCESS) {
-
-	dxp_log_error("dxp_end_run", "Error reading CST", status);
-  }
+  if (status != DXP_SUCCESS) 
+    {
+      dxp_log_error("dxp_end_run", "Error reading CST", status);
+    }
 
   data &= ~MASK_RUNENABLE;
   data |= MASK_ALLCHAN;
 
   status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
-  if (status!=DXP_SUCCESS) {
-	dxp_log_error("dxp_end_run","Error writing CSR",status);
-  }
+  if (status!=DXP_SUCCESS) 
+    {
+      dxp_log_error("dxp_end_run","Error writing CSR",status);
+    }
 
   if((status=dxp_clear_LAM(ioChan, &allChan))!=DXP_SUCCESS) {
 	dxp_log_error("dxp_end_run"," ",status);

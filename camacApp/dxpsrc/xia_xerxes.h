@@ -1,4 +1,4 @@
-/*<##Wed Apr  3 17:20:53 2002--COUGAR--Do not remove--XIA##>*/
+/*<Thu Apr 25 18:48:16 2002--ALPHA_CHIEFW--0.0.3--Do not remove--XIA>*/
 
 /*
  *  xia_xerxes.h
@@ -7,12 +7,43 @@
  *      dxp_read_long and dxp_write_long; added various parameters
  *  Major Mods 3-17-00 JW: Complete revamping of libraries
  *
- *  Copyright 1996 X-ray Instrumentation Associates
- *  All rights reserved
+ * Copyright (c) 2002, X-ray Instrumentation Associates
+ * All rights reserved.
  *
+ * Redistribution and use in source and binary forms, 
+ * with or without modification, are permitted provided 
+ * that the following conditions are met:
+ *
+ *   * Redistributions of source code must retain the above 
+ *     copyright notice, this list of conditions and the 
+ *     following disclaimer.
+ *   * Redistributions in binary form must reproduce the 
+ *     above copyright notice, this list of conditions and the 
+ *     following disclaimer in the documentation and/or other 
+ *     materials provided with the distribution.
+ *   * Neither the name of X-ray Instrumentation Associates 
+ *     nor the names of its contributors may be used to endorse 
+ *     or promote products derived from this software without 
+ *     specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND 
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, 
+ * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF 
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
+ * IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE 
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON 
+ * ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR 
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF 
+ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF 
+ * SUCH DAMAGE.
  *
  *    Following are prototypes for dxp driver routines
  */
+
+
 #ifndef XIA_XERXES_H
 #define XIA_XERXES_H
 
@@ -60,7 +91,7 @@ XERXES_EXPORT int XERXES_API dxp_assign_channel(void);
 XERXES_EXPORT int XERXES_API dxp_user_setup(void);
 XERXES_EXPORT int XERXES_API dxp_reset_channel(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_reset_dspconfig(int *detChan);
-XERXES_EXPORT int XERXES_API dxp_reset_fipconfig(int *detChan);
+XERXES_EXPORT int XERXES_API dxp_reset_fpgaconfig(int *detChan, char *name);
 XERXES_EXPORT int XERXES_API dxp_del_board(char *type, char *iolib, char *ifacelib, 
 								   char *iostring);
 XERXES_EXPORT int XERXES_API dxp_del_btype(char *name);
@@ -68,7 +99,7 @@ XERXES_EXPORT int XERXES_API dxp_del_dsp(char *filename);
 XERXES_EXPORT int XERXES_API dxp_del_fippi(char *filename);
 XERXES_EXPORT int XERXES_API dxp_del_defaults(char *filename);
 XERXES_EXPORT int XERXES_API dxp_add_board(char *type, char *iolib, char *ifacelib,
-								   char *iostring, unsigned short *nchan, int *detChan);
+					   char *iostring, unsigned short *nchan, int *detChan);
 XERXES_EXPORT int XERXES_API dxp_add_btype(char *name, char *pointer, char *dllname);
 XERXES_EXPORT int XERXES_API dxp_get_board_type(int *detChan, char *name);
 XERXES_EXPORT int XERXES_API dxp_enable_LAM(int *detChan);
@@ -77,22 +108,25 @@ XERXES_EXPORT int XERXES_API dxp_reset_LAM(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_start_run(unsigned short *gate, unsigned short *resume);
 XERXES_EXPORT int XERXES_API dxp_resume_run(void);
 XERXES_EXPORT int XERXES_API dxp_stop_run(void);
-XERXES_EXPORT int XERXES_API dxp_start_one_run(int *detChan, unsigned short *gate, unsigned short *resume);
+XERXES_EXPORT int XERXES_API dxp_start_one_run(int *detChan, unsigned short *gate, 
+					       unsigned short *resume);
 XERXES_EXPORT int XERXES_API dxp_resume_one_run(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_stop_one_run(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_isrunning(int *detChan, int *active);
 XERXES_EXPORT int XERXES_API dxp_isrunning_any(int *detChan, int *active);
-XERXES_EXPORT int XERXES_API dxp_start_control_task(int *detChan, short *type, unsigned int *length, int *info);
+XERXES_EXPORT int XERXES_API dxp_start_control_task(int *detChan, short *type, 
+													unsigned int *length, int *info);
 XERXES_EXPORT int XERXES_API dxp_stop_control_task(int *detChan);
 XERXES_EXPORT int XERXES_API dxp_control_task_info(int *detChan, short *type, int *info);
 XERXES_EXPORT int XERXES_API dxp_get_control_task_data(int *detChan, short *type, void *data);
-XERXES_EXPORT int XERXES_API dxp_readout_detector_run(int *, unsigned short [], unsigned short [], unsigned long []);
+XERXES_EXPORT int XERXES_API dxp_readout_detector_run(int *, unsigned short [], unsigned short [], 
+													  unsigned long []);
 XERXES_EXPORT int XERXES_API dxp_write_spectra(int *,int *);
 XERXES_EXPORT int XERXES_API dxp_dspdefaults(int *);
 XERXES_EXPORT int XERXES_API dxp_dspconfig(void);
 XERXES_EXPORT int XERXES_API dxp_fipconfig(void);
-XERXES_EXPORT int XERXES_API dxp_replace_fipconfig(int *, char *);
-XERXES_EXPORT int XERXES_API dxp_replace_dspconfig(int *, char *);
+XERXES_EXPORT int XERXES_API dxp_replace_fpgaconfig(int *detChan, char *name, char *filename);
+XERXES_EXPORT int XERXES_API dxp_replace_dspconfig(int *detChan, char *filename);
 XERXES_EXPORT int XERXES_API dxp_put_dspparams(void);
 XERXES_EXPORT int XERXES_API dxp_replace_dspparams(int *);
 XERXES_EXPORT int XERXES_API dxp_dspparams(char *);
@@ -103,8 +137,10 @@ XERXES_EXPORT int XERXES_API dxp_set_one_dspsymbol(int *,char *, unsigned short 
 XERXES_EXPORT int XERXES_API dxp_get_one_dspsymbol(int *,char *, unsigned short *);
 XERXES_EXPORT int XERXES_API dxp_get_dspsymbol(int *,char *, unsigned long *);
 XERXES_EXPORT int XERXES_API dxp_download_params(int *, unsigned short [], unsigned short []);
-XERXES_EXPORT int XERXES_API dxp_download_one_params(int *, int *,unsigned short [], unsigned short []);
-XERXES_EXPORT int XERXES_API dxp_upload_channel(int *, unsigned short *,unsigned short *, unsigned long *);
+XERXES_EXPORT int XERXES_API dxp_download_one_params(int *, int *,unsigned short [], 
+													 unsigned short []);
+XERXES_EXPORT int XERXES_API dxp_upload_channel(int *, unsigned short *,unsigned short *, 
+												unsigned long *);
 XERXES_EXPORT int XERXES_API dxp_nspec(int *, unsigned int *);
 XERXES_EXPORT int XERXES_API dxp_nbase(int *, unsigned int *);
 XERXES_EXPORT int XERXES_API dxp_nevent(int *, unsigned int *);
@@ -113,7 +149,8 @@ XERXES_EXPORT int XERXES_API dxp_ndxpchan(int *);
 XERXES_EXPORT int XERXES_API dxp_max_symbols(int *, unsigned short *);
 XERXES_EXPORT int XERXES_API dxp_symbolname_list(int *, char **);
 XERXES_EXPORT int XERXES_API dxp_symbolname_by_index(int *, unsigned short *, char *);
-XERXES_EXPORT int XERXES_API dxp_symbolname_limits(int *, unsigned short *, unsigned short *, unsigned short *);
+XERXES_EXPORT int XERXES_API dxp_symbolname_limits(int *, unsigned short *, unsigned short *, 
+												   unsigned short *);
 XERXES_EXPORT int XERXES_API dxp_check_decimation(unsigned short *,unsigned short *);
 XERXES_EXPORT int XERXES_API dxp_calibrate(int *calibtask);
 XERXES_EXPORT int XERXES_API dxp_calibrate_one_channel(int *detChan, int *calibtask);
@@ -150,7 +187,9 @@ XERXES_IMPORT int MD_API dxp_md_init_io(Xia_Io_Functions *funcs, char *type);
 
 /* Routines contained in xia_common.c.  Routines that are used across libraries but not exported */
 
-
+/* Deprecated functions */
+XERXES_EXPORT int XERXES_API dxp_replace_fipconfig(int *detChan, char *filename);
+XERXES_EXPORT int XERXES_API dxp_reset_fipconfig(int *detChan);
 #else									/* Begin old style C prototypes */
 /*
  * following are internal prototypes for xerxes.c routines
@@ -172,7 +211,7 @@ XERXES_EXPORT int XERXES_API dxp_assign_channel();
 XERXES_EXPORT int XERXES_API dxp_user_setup();
 XERXES_EXPORT int XERXES_API dxp_reset_channel();
 XERXES_EXPORT int XERXES_API dxp_reset_dspconfig();
-XERXES_EXPORT int XERXES_API dxp_reset_fipconfig();
+XERXES_EXPORT int XERXES_API dxp_reset_fpgaconfig();
 XERXES_EXPORT int XERXES_API dxp_add_board();
 XERXES_EXPORT int XERXES_API dxp_add_btype();
 XERXES_EXPORT int XERXES_API dxp_get_board_type();
@@ -196,7 +235,7 @@ XERXES_EXPORT int XERXES_API dxp_write_spectra();
 XERXES_EXPORT int XERXES_API dxp_dspconfig();
 XERXES_EXPORT int XERXES_API dxp_dspdefaults();
 XERXES_EXPORT int XERXES_API dxp_fipconfig();
-XERXES_EXPORT int XERXES_API dxp_replace_fipconfig();
+XERXES_EXPORT int XERXES_API dxp_replace_fpgaconfig();
 XERXES_EXPORT int XERXES_API dxp_replace_dspconfig();
 XERXES_EXPORT int XERXES_API dxp_put_dspparams();
 XERXES_EXPORT int XERXES_API dxp_replace_dspparams();
@@ -254,6 +293,9 @@ XERXES_IMPORT int MD_API dxp_md_init_io();
 
 /* Routines contained in xia_common.c.  Routines that are used across libraries but not exported */
 
+/* Deprecated functions */
+XERXES_EXPORT int XERXES_API dxp_replace_fipconfig();
+XERXES_EXPORT int XERXES_API dxp_reset_fipconfig();
 #endif                                  /*   end if _XERXES_PROTO_ */
 
 /* If this is compiled by a C++ compiler, make it clear that these are C routines */
@@ -306,3 +348,4 @@ typedef unsigned char boolean;
 #define FALSE_	(1==0)
 
 #endif						/* Endif for XIA_XERXES_H */
+
