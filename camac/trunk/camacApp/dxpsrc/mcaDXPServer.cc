@@ -23,6 +23,7 @@
                       rather just set forceRead so next time readoutRun is
                       called it will not use cached values.
     13-Feb-2002  MLR  Fixed bug in setting preset live time or real time.
+    10-Mar-2002  MLR  Added support for downloading new FiPPI code
 */
 
 #include <vxWorks.h>
@@ -56,7 +57,7 @@ extern "C"
 #ifdef NODEBUG
 #define DEBUG(l,f,v) ;
 #else
-#define DEBUG(l,f,v...) { if(l<=mcaDXPServerDebug) errlogPrintf(f,## v); }
+#define DEBUG(l,f,v...) { if(l<=mcaDXPServerDebug) printf(f,## v); }
 #endif
 volatile int mcaDXPServerDebug = 0;
 }
@@ -69,6 +70,7 @@ volatile int mcaDXPServerDebug = 0;
 
 static int numDXP4C=0;
 static SEM_ID dxpSEMID=NULL;
+static char *fippiFiles[]={"FIPPI0","FIPPI1","FIPPI2","FIPPI3"};
 
 typedef struct {
     int exists;
@@ -196,8 +198,22 @@ extern "C" int DXPConfig(const char *serverName, int chan1, int chan2,
           dxpChannel->detChan = detChan;
           dxpChannel->exists = 1;
           dxp_max_symbols(&detChan, &p->nsymbols);
+          DEBUG(3, "dxp_max_symbols, chan=%d, nsymbols=%d\n", 
+                    detChan, p->nsymbols);
           dxp_nbase(&detChan, &p->nbase);
+          DEBUG(3, "dxp_nbase, chan=%d, nbase=%d\n", 
+                    detChan, p->nbase);
           dxp_nspec(&detChan, &p->nchans);
+          DEBUG(3, "dxp_nspec, chan=%d, nspec=%d\n", 
+                    detChan, p->nchans);
+          /* If p->nchans == 0 then something is wrong, dxp_initialize failed.
+           * It would be nice to have a more robust way to determine this.
+           * If this happens, return without creating task */
+          if (p->nchans == 0) {
+             DEBUG(1, "dxp_nspec, chan=%d, nspec=%d\n", 
+                    detChan, p->nchans);
+             return(-1);
+          }
           dxp_get_symbol_index(&detChan, "LIVETIME0", &p->livetime_index);
           if (p->moduleType == MODEL_DXP2X) {
              dxp_get_symbol_index(&detChan, "REALTIME0", &p->realtime_index);
@@ -447,6 +463,13 @@ void mcaDXPServer::processMessages()
                   /* Calibrate */
                   int_value = (int)pim->value;
                   dxp_calibrate_one_channel(&detChan, &int_value);
+                  break;
+               case MSG_DXP_DOWNLOAD_FIPPI:
+                  /* Download new FiPPI file */
+                  int_value = (int)pim->value;
+                  DEBUG(2, "(mcaDXPServer [%s detChan=%d]): download FiPPI file=%s\n",
+                           pMessageServer->getName(), detChan, fippiFiles[int_value]);
+                  dxp_replace_fipconfig(&detChan, fippiFiles[int_value]);
                   break;
                default:
                   errlogPrintf("%s mcaDXPServer got illegal command %d\n",
