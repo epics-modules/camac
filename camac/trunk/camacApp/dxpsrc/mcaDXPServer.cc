@@ -17,6 +17,12 @@
        and caching the information from each channel, and restarting the
        module.  This can be much more efficient than stopping the module 4
        times, once for each channel.
+  
+    Modifications:
+    10-Feb-2002  MLR  Eliminated call to readoutRun(1) after writing a parameter,
+                      rather just set forceRead so next time readoutRun is
+                      called it will not use cached values.
+    13-Feb-2002  MLR  Fixed bug in setting preset live time or real time.
 */
 
 #include <vxWorks.h>
@@ -86,7 +92,7 @@ public:
     void pauseRun();
     void stopRun();
     void resumeRun(unsigned short resume);
-    void readoutRun(int forceRead);
+    void readoutRun();
     void setPreset(struct dxpChannel *dxpChan, int mode, double time);
     static void mcaDXPServerTask(mcaDXPServer *);
     void getAcquisitionStatus(struct dxpChannel *dxpChan, 
@@ -99,6 +105,7 @@ public:
     int stopDelayTicks;
     unsigned int statusTime;
     unsigned int maxStatusTime;
+    int forceRead;
     struct dxpChannel *dxpChannel;
     int acquiring;
     int erased;
@@ -213,6 +220,7 @@ extern "C" int DXPConfig(const char *serverName, int chan1, int chan2,
        }
     }
     p->statusTime = 0;
+    p->forceRead = 1;  // Don't use cache first time
 
     strcpy(taskname, "t");
     strcat(taskname, serverName);
@@ -298,7 +306,7 @@ void mcaDXPServer::processMessages()
                   if (erased) {
                      memset(pi32m->value, 0, nchans*sizeof(unsigned long));
                   } else {
-                     readoutRun(0);
+                     readoutRun();
                      memcpy(pi32m->value, dxpChan->counts, nchans*sizeof(long));
                   }
                   delete pim;
@@ -415,7 +423,7 @@ void mcaDXPServer::processMessages()
                   len = (nsymbols + nbase)/2;
                   pi32m->allocValue(len);
                   pi32m->setLength(len);
-                  readoutRun(0);
+                  readoutRun();
                   memcpy(pi32m->value, dxpChan->params, 
                          nsymbols*sizeof(unsigned short));
                   memcpy((unsigned short *)pi32m->value + nsymbols, 
@@ -433,7 +441,7 @@ void mcaDXPServer::processMessages()
                   dxp_download_one_params(&detChan, &nparams, &offset, 
                                           &short_value);
                   resumeRun(1);
-                  readoutRun(1); // Force a read of new parameters
+                  forceRead = 1; // Force a read of new parameters next time
                   break;
                case MSG_DXP_CALIBRATE:
                   /* Calibrate */
@@ -506,7 +514,7 @@ void mcaDXPServer::dxpInterlock(int state)
    else       semGive(dxpSEMID);
 }
 
-void mcaDXPServer::readoutRun(int forceRead)
+void mcaDXPServer::readoutRun()
 {
    struct dxpChannel *dxpChan;
    int i, s, tstart;
@@ -528,6 +536,7 @@ void mcaDXPServer::readoutRun(int forceRead)
    }
    resumeRun(1);
    statusTime = tickGet();
+   forceRead = 0;
    DEBUG(1, "(mcaDXPServer::readoutRun for det. %d, time=%d\n", 
              detChan, statusTime-tstart);
    dxpInterlock(0);
@@ -553,7 +562,7 @@ void mcaDXPServer::getAcquisitionStatus(struct dxpChannel *dxpChan,
       dxpChan->etotal = 0.;
       ereal = 0.;
    } else {
-      readoutRun(0);
+      readoutRun();
       dxpChan->etotal =  0.;
       switch(moduleType) {
          case MODEL_DXP4C:
@@ -668,7 +677,7 @@ void mcaDXPServer::setPreset(struct dxpChannel *dxpChan,
       values[0] = ((int)(time*clockRate)) >> 16;
       offsets[0] = preset_index;
       values[1] = ((int)(time*clockRate)) & 0xffff;
-      offsets[1] = preset_index+2;
+      offsets[1] = preset_index+1;
       values[2] = time_mode;
       offsets[2] = preset_mode_index;
       dxp_download_one_params(&detChan, &nparams, offsets, values);
