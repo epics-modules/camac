@@ -32,7 +32,6 @@
 #define PROGRAM_BASE     0x0000
 #define DATA_BASE        0x4000
 #define START_PARAMS     0x4000
-#define MAXSYM              256
 #define MAXDSP_LEN       0x8000
 #define MAXFIP_LEN   0x00020000
 #define MAX_FIPPI			  5
@@ -64,10 +63,26 @@
 #define ADJUST_FAST_FILT  0x010
 #define BASELINE_SHIFT	  0x020
 #define RESIDUAL_BASE	  0x040
-#define WRITE_BASELINE	  0x080
-#define SPECIAL_TASK	  0x100
+#define STOP_BASELINE	  0x080
+#define CONTROL_TASK	  	  0x100
 #define DELTA_BASELINE	  0x200
-#define BASELINE_CUT	  0x400
+#define BASELINE_CUT	     0x400
+/*
+ *    Calibration control codes
+ */
+#define WHICHTEST_SET_ASCDAC         0
+#define WHICHTEST_ACQUIRE_ADC        1
+#define WHICHTEST_TRKDAC             2
+#define WHICHTEST_SLOPE_CALIB        3
+#define WHICHTEST_SLEEP_DSP          6
+#define WHICHTEST_PROGRAM_FIPPI     11
+#define WHICHTEST_SET_POLARITY      12
+#define WHICHTEST_CLOSE_INPUT_RELAY 13
+#define WHICHTEST_OPEN_INPUT_RELAY  14
+#define WHICHTEST_RC_BASELINE       15
+#define WHICHTEST_RC_EVENT          16
+#define WHICHTEST_BASELINE_HISTORY  
+#define WHICHTEST_RESET             99
 /*
  *    CAMAC status Register control codes
  */

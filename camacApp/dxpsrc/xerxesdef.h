@@ -22,6 +22,7 @@
 
 
 #define XERXES_STATIC static
+#define XERXES_SHARED
 
 
 #define DXP_API

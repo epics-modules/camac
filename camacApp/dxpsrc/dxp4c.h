@@ -33,7 +33,6 @@
 #define START_SPECTRUM   0x0000
 #define START_BASELINE   0x0200
 #define START_EVENT      0x0400
-#define MAXSYM              256
 #define MAXSPEC            1024
 #define MAXBASE             512
 #define MAXEVENT           1024
@@ -55,8 +54,32 @@
 #define GAIN1_MIN         0.903
 #define GAIN1_FAC         0.820
 #define GAIN0_MIN         0.246
+/* 
+ * WHICHTEST values
+ */
+#define WHICHTEST_RESETASC    0
+#define WHICHTEST_TRKDAC      2
+#define WHICHTEST_DACSET      4
+#define WHICHTEST_ADCTEST     5
+#define WHICHTEST_ASCMON      6
+#define WHICHTEST_RESET       7
+#define WHICHTEST_ADC_TRACE   8
+#define WHICHTEST_FIP_TRACE   9
 /*
- *    CAMAC status Register control codes
+ * RUNTASKS masks
+ */
+#define INIT_MEASURE_SLOPE 0x01
+#define UPDATE_SLOPE      0x002
+#define INIT_BASELINE     0x004
+#define UPDATE_BASELINE   0x008
+#define COLLECT_MCA_DATA  0x010
+#define CORRECT_BASELINE  0x020
+#define RESIDUAL_BASELINE 0x040
+#define BASELINE_HISTORY  0x080
+#define CONTROL_TASK      0x100
+#define DELTA_BASELINE    0x200
+/*
+ * CAMAC status Register control codes
  */
 #define XMEM                  0
 #define YMEM                  1
@@ -68,7 +91,7 @@
 #define CLEARMCA              0
 #define UPDATEMCA             1
 /*
- *     CAMAC status Register bit positions
+ * CAMAC status Register bit positions
  */
 #define MASK_YMEM         0x0001
 #define MASK_WRITE        0x0002
@@ -80,8 +103,9 @@
 #define MASK_DSPRESET     0x0200
 #define MASK_FIPRESET     0x0400
 #define MASK_IGNOREGATE   0x0800
-
-/* Definitions of CAMAC addresses for the DXP boards */
+/* 
+ * Definitions of CAMAC addresses for the DXP boards 
+ */
 #define DXP_TSAR_F_WRITE		17
 #define DXP_TSAR_A_WRITE		1
 #define DXP_CSR_F_WRITE			17
@@ -108,4 +132,3 @@
 #define DXP_DSP_A_WRITE			2
 
 #endif						/* Endif for DXP4C_H */
-

@@ -10,9 +10,7 @@
 #ifndef XERXES_ERROR_H
 #define XERXES_ERROR_H
 
-#ifndef XERXESDEF_H
 #include <xerxesdef.h>
-#endif
 
 /*
  *  some error codes
@@ -23,6 +21,7 @@
 #define DXP_MDIO               2
 #define DXP_MDINITIALIZE       3
 #define DXP_MDLOCK			   4
+#define DXP_MDFILEIO		   5
 /*  primitive level error codes (due to mdio failures) 101-200*/
 #define DXP_WRITE_TSAR       101
 #define DXP_WRITE_CSR        102
@@ -31,7 +30,10 @@
 #define DXP_WRITE_BLOCK      105
 #define DXP_READ_BLOCK       106
 #define DXP_DISABLE_LAM      107
-#define DXP_CLEAR_LAM        108
+/* changed from DXP_CLEAR_LAM to DXP_CLR_LAM due to a conflict with an existing
+ * function pointer
+ */
+#define DXP_CLR_LAM          108
 #define DXP_TEST_LAM         109
 #define DXP_READ_CSR         110
 #define DXP_WRITE_FIPPI      111
@@ -41,6 +43,8 @@
 #define DXP_ENABLE_LAM       115
 #define DXP_READ_GSR         116
 #define DXP_WRITE_GCR        117
+#define DXP_WRITE_WCR        118
+#define DXP_READ_WCR         119
 /*  DSP/FIPPI level error codes 201-300  */
 #define DXP_MEMERROR         201
 #define DXP_DSPRUNERROR      202
@@ -58,6 +62,10 @@
 #define DXP_ADC_RUNACTIVE    214
 #define DXP_ADC_READ		 215
 #define DXP_ADC_TIMEOUT      216
+#define DXP_ALLOCMEM         217
+#define DXP_NOCONTROLTYPE    218
+#define DXP_NOFIPPI			 219
+#define DXP_DSPSLEEP		 220
 /*  configuration errors  301-400  */
 #define DXP_BAD_PARAM        301
 #define DXP_NODECIMATION     302
@@ -84,7 +92,8 @@
 #define DXP_CLOSE_FILE       403
 #define DXP_INDEXOOB         404
 #define DXP_RUNACTIVE		 405
-/* Debug support */
-#define DXP_DEBUG           1001
+#define DXP_MEMINUSE         406
+/*  misc error codes:  501-600 */
+#define DXP_LOG_LEVEL		 501	/** Log level invalid */
 
 #endif						/* Endif for XERXES_ERRORS_H */

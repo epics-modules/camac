@@ -14,6 +14,14 @@
 #ifndef XERXES_H
 #define XERXES_H
 
+/* Define some generic constants for use by XerXes */
+#ifndef XERXES_GENERIC_H
+#include <xerxes_generic.h>
+#endif	
+
+#include <xia_xerxes_structures.h>
+#include <xerxes_structures.h>
+
 #ifndef XERXESDEF_H
 #include <xerxesdef.h>
 #endif
@@ -34,12 +42,13 @@ XERXES_IMPORT int XERXES_API dxp_md_init_io(Xia_Io_Functions *funcs, char *type)
  */
 XERXES_IMPORT int XERXES_API dxp_initialize(void);
 XERXES_IMPORT int XERXES_API dxp_init_ds(void);
+XERXES_IMPORT int XERXES_API dxp_set_log_output(char *filename);
 XERXES_IMPORT int XERXES_API dxp_init_boards_ds(void);
 XERXES_IMPORT int XERXES_API dxp_init_library(void);
 XERXES_IMPORT int XERXES_API dxp_install_utils(const char *utilname);
 XERXES_IMPORT int XERXES_API dxp_read_config(char *cname);
-XERXES_IMPORT int XERXES_API dxp_add_system_item(char *token, char **values);
-XERXES_IMPORT int XERXES_API dxp_add_board_item(char *token, char **values);
+XERXES_IMPORT int XERXES_API dxp_add_system_item(char *ltoken, char **values);
+XERXES_IMPORT int XERXES_API dxp_add_board_item(char *ltoken, char **values);
 XERXES_IMPORT int XERXES_API dxp_assign_channel(void);
 XERXES_IMPORT int XERXES_API dxp_user_setup(void);
 XERXES_IMPORT int XERXES_API dxp_reset_channel(int *detChan);
@@ -66,6 +75,10 @@ XERXES_IMPORT int XERXES_API dxp_resume_one_run(int *detChan);
 XERXES_IMPORT int XERXES_API dxp_stop_one_run(int *detChan);
 XERXES_IMPORT int XERXES_API dxp_isrunning(int *detChan, int *active);
 XERXES_IMPORT int XERXES_API dxp_isrunning_any(int *detChan, int *active);
+XERXES_IMPORT int XERXES_API dxp_start_control_task(int *detChan, short *type, unsigned int *length, int *info);
+XERXES_IMPORT int XERXES_API dxp_stop_control_task(int *detChan);
+XERXES_IMPORT int XERXES_API dxp_control_task_info(int *detChan, short *type, int *info);
+XERXES_IMPORT int XERXES_API dxp_get_control_task_data(int *detChan, short *type, void *data);
 XERXES_IMPORT int XERXES_API dxp_readout_detector_run(int *detChan, unsigned short params[], unsigned short [], unsigned long []);
 XERXES_IMPORT int XERXES_API dxp_write_spectra(int *,int *);
 XERXES_IMPORT int XERXES_API dxp_dspdefaults(int *);
@@ -77,7 +90,7 @@ XERXES_IMPORT int XERXES_API dxp_put_dspparams(void);
 XERXES_IMPORT int XERXES_API dxp_replace_dspparams(int *);
 XERXES_IMPORT int XERXES_API dxp_dspparams(char *);
 XERXES_IMPORT int XERXES_API dxp_upload_dspparams(int *);
-XERXES_IMPORT int XERXES_API dxp_get_symbol_index(int* detChan, char* name, unsigned short* index);
+XERXES_IMPORT int XERXES_API dxp_get_symbol_index(int* detChan, char* name, unsigned short* symindex);
 XERXES_IMPORT int XERXES_API dxp_set_dspsymbol(char *, unsigned short *);
 XERXES_IMPORT int XERXES_API dxp_set_one_dspsymbol(int *,char *, unsigned short *);
 XERXES_IMPORT int XERXES_API dxp_get_one_dspsymbol(int *,char *, unsigned short *);
@@ -129,6 +142,7 @@ XERXES_IMPORT int XERXES_API dxp_md_init_io();
  */
 XERXES_IMPORT int XERXES_API dxp_initialize();
 XERXES_IMPORT int XERXES_API dxp_init_ds();
+XERXES_IMPORT int XERXES_API dxp_set_log_output();
 XERXES_IMPORT int XERXES_API dxp_init_boards_ds();
 XERXES_IMPORT int XERXES_API dxp_init_library();
 XERXES_IMPORT int XERXES_API dxp_install_utils();
@@ -154,6 +168,10 @@ XERXES_IMPORT int XERXES_API dxp_resume_one_run();
 XERXES_IMPORT int XERXES_API dxp_stop_one_run();
 XERXES_IMPORT int XERXES_API dxp_isrunning();
 XERXES_IMPORT int XERXES_API dxp_isrunning_any();
+XERXES_IMPORT int XERXES_API dxp_start_control_task();
+XERXES_IMPORT int XERXES_API dxp_stop_control_task();
+XERXES_IMPORT int XERXES_API dxp_control_task_info();
+XERXES_IMPORT int XERXES_API dxp_get_control_task_data();
 XERXES_IMPORT int XERXES_API dxp_readout_detector_run();
 XERXES_IMPORT int XERXES_API dxp_write_spectra();
 XERXES_IMPORT int XERXES_API dxp_dspconfig();
@@ -212,9 +230,15 @@ XERXES_IMPORT int XERXES_API dxp_lock_resource();
 }
 #endif
 
-/* Define some generic constants for use by XerXes */
-#ifndef XERXES_GENERIC_H
-#include <xerxes_generic.h>
-#endif						/* Endif for XERXES_GENERIC */
+/* Import the global variables from the DLL here */
+XERXES_IMPORT Interface    *iface_head;
+XERXES_IMPORT Utils        *utils;
+XERXES_IMPORT Board_Info   *btypes_head;
+XERXES_IMPORT Board        *system_head;
+XERXES_IMPORT System_Info  *info;
+XERXES_IMPORT Dsp_Info     *dsp_head;
+XERXES_IMPORT Fippi_Info   *fippi_head;
+XERXES_IMPORT Dsp_Defaults *defaults_head;
+
 
 #endif						/* Endif for XERXES_H */
