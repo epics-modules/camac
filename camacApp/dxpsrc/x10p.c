@@ -53,7 +53,7 @@
  *     dxp_clear_error(ioChan,modChan)
  *     dxp_get_runstats(params[],evts,under,over,fast,base,live)
  *     dxp_swaplong(len,array)
- *     dxp_symbolname(index,name)
+ *     dxp_symbolname(lindex,name)
  *     dxp_read_long(ioChan,modChan,xy,addr,readdata)
  *     dxp_write_long(ioChan,modChan,xy,addr,writedata)
  *     dxp_little_endian()
@@ -65,25 +65,23 @@
 #include <ctype.h>
 #include <limits.h>
 #include <math.h>
+#include <md_generic.h>
 #include <xerxes_structures.h>
 #include <xia_xerxes_structures.h>
 #include <x10p.h>
 #include <xerxes_errors.h>
 #include <xia_x10p.h>
 
-static char info_string[132],line[132];
-/* Debug mode? */
-/*static int debug=DXP_DEBUG;*/
-/*static int debug=DXP_SUCCESS;*/
+static char info_string[400],line[132];
 /* Starting memory location and length for DSP parameter memory */
 static unsigned short startp=START_PARAMS;
-static unsigned int lenp=MAXSYM;
+/*static unsigned int lenp=MAXSYM;*/
 /* Variable to store the number of DAC counts per unit gain (dB)	*/
 static double dacpergaindb;
 /* Variable to store the number of DAC counts per unit gain (linear) */
 static double dacpergain;
 
-static char error_string[132];	/* Error string for dxp_md_error	*/
+static char error_string[132];	/* Error string for dxp_log_error	*/
 
 /* 
  * Store pointers to the proper DLL routines to talk to the CAMAC crate 
@@ -94,7 +92,7 @@ static DXP_MD_GET_MAXBLK dxp_md_get_maxblk;
 /* 
  * Define the utility routines used throughout this library
  */
-static DXP_MD_ERROR dxp_md_error;
+static DXP_MD_LOG dxp_md_log;
 static DXP_MD_ALLOC dxp_md_alloc;
 static DXP_MD_FREE dxp_md_free;
 static DXP_MD_PUTS dxp_md_puts;
@@ -149,13 +147,16 @@ int dxp_init_dxpx10p(Functions* funcs)
 	funcs->dxp_begin_run = dxp_begin_run;
 	funcs->dxp_end_run = dxp_end_run;
 	funcs->dxp_run_active = dxp_run_active;
+	funcs->dxp_begin_control_task = dxp_begin_control_task;
+	funcs->dxp_end_control_task = dxp_end_control_task;
+	funcs->dxp_control_task_params = dxp_control_task_params;
+	funcs->dxp_control_task_data = dxp_control_task_data;
+
 	funcs->dxp_decode_error = dxp_decode_error;
 	funcs->dxp_clear_error = dxp_clear_error;
 	funcs->dxp_get_runstats = dxp_get_runstats;
 	funcs->dxp_change_gains = dxp_change_gains;
 	funcs->dxp_setup_asc = dxp_setup_asc;
-
-	funcs->dxp_get_adc = dxp_get_adc;
 
 	return DXP_SUCCESS;
 }
@@ -185,9 +186,18 @@ static int dxp_init_utils(Utils* utils)
 {
 
 /* Assign all the static vars here to point at the proper library routines */
-	dxp_md_error = utils->funcs->dxp_md_error;
+	dxp_md_log = utils->funcs->dxp_md_log;
+
+#ifdef XIA_SPECIAL_MEM
 	dxp_md_alloc = utils->funcs->dxp_md_alloc;
-	dxp_md_free = utils->funcs->dxp_md_free;
+	dxp_md_free  = utils->funcs->dxp_md_free;
+#endif /* XIA_SPECIAL_MEM */
+
+#ifdef XIA_STANDARD_MEM
+	dxp_md_alloc = malloc;
+	dxp_md_free  = free;
+#endif /* XIA_STANDARD_MEM */
+
 	dxp_md_wait = utils->funcs->dxp_md_wait;
 	dxp_md_puts = utils->funcs->dxp_md_puts;
 
@@ -224,7 +234,7 @@ static int dxp_write_tsar(int* ioChan, unsigned short* addr)
 	status=dxp_md_io(ioChan,&f,&a,addr,&len);					/* write TSAR */
 	if (status!=DXP_SUCCESS){
 		status = DXP_WRITE_TSAR;
-		dxp_md_error("dxp_write_tsar","Error writing TSAR",&status);
+		dxp_log_error("dxp_write_tsar","Error writing TSAR",status);
 	}
 	return status;
 }
@@ -249,7 +259,7 @@ static int dxp_write_csr(int* ioChan, unsigned short* data)
 	saddr = DXP_CSR_ADDRESS;
 	status = dxp_write_tsar(ioChan, &saddr);
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_write_csr","Error writing TSAR",&status);
+		dxp_log_error("dxp_write_csr","Error writing TSAR",status);
 		return status;
 	}
 
@@ -261,7 +271,7 @@ static int dxp_write_csr(int* ioChan, unsigned short* data)
 	status=dxp_md_io(ioChan,&f,&a,data,&len);					/* write CSR */
 	if (status!=DXP_SUCCESS){
 		status = DXP_WRITE_CSR;
-		dxp_md_error("dxp_write_csr","Error writing CSR",&status);
+		dxp_log_error("dxp_write_csr","Error writing CSR",status);
 	}
 	return status;
 }
@@ -286,7 +296,7 @@ static int dxp_read_csr(int* ioChan, unsigned short* data)
 	saddr = DXP_CSR_ADDRESS;
 	status = dxp_write_tsar(ioChan, &saddr);
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_read_csr","Error writing TSAR",&status);
+		dxp_log_error("dxp_read_csr","Error writing TSAR",status);
 		return status;
 	}
 
@@ -298,7 +308,7 @@ static int dxp_read_csr(int* ioChan, unsigned short* data)
 	status=dxp_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
 	if (status!=DXP_SUCCESS){
 		status = DXP_READ_CSR;
-		dxp_md_error("dxp_read_csr","Error reading CSR",&status);
+		dxp_log_error("dxp_read_csr","Error reading CSR",status);
 	}
 	return status;
 }
@@ -323,7 +333,7 @@ static int dxp_read_data(int* ioChan, unsigned short* data, unsigned int len)
 	status=dxp_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
 	if (status!=DXP_SUCCESS){
 		status = DXP_READ_DATA;
-		dxp_md_error("dxp_read_data","Error reading data",&status);
+		dxp_log_error("dxp_read_data","Error reading data",status);
 	}
 	return status;
 }
@@ -348,7 +358,7 @@ static int dxp_write_data(int* ioChan, unsigned short* data, unsigned int len)
 	status=dxp_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
 	if (status!=DXP_SUCCESS){
 		status = DXP_WRITE_DATA;
-		dxp_md_error("dxp_write_data","Error writing data",&status);
+		dxp_log_error("dxp_write_data","Error writing data",status);
 	}
 
 	return status;
@@ -376,7 +386,7 @@ static int dxp_write_fippi(int* ioChan, unsigned short* data, unsigned int len)
 	saddr = DXP_FIPPI_ADDRESS;
 	status = dxp_write_tsar(ioChan, &saddr);
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_write_fippi","Error writing TSAR",&status);
+		dxp_log_error("dxp_write_fippi","Error writing TSAR",status);
 		return status;
 	}
 
@@ -387,7 +397,7 @@ static int dxp_write_fippi(int* ioChan, unsigned short* data, unsigned int len)
 	status=dxp_md_io(ioChan,&f,&a,data,&len);					/* write TSAR */
 	if (status!=DXP_SUCCESS){
 		status = DXP_WRITE_FIPPI;
-		dxp_md_error("dxp_write_fippi","Error writing to FiPPi reg",&status);
+		dxp_log_error("dxp_write_fippi","Error writing to FiPPi reg",status);
 	}
 	return status;
 }
@@ -491,14 +501,14 @@ static int dxp_read_word(int* ioChan, int* modChan, unsigned short* addr,
 	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
 		sprintf(error_string,"X10P routine called with channel number %d",*modChan);
 		status = DXP_BAD_PARAM;
-		dxp_md_error("dxp_read_word",error_string,&status);
+		dxp_log_error("dxp_read_word",error_string,status);
 	}
 
 /* write transfer start address register */
 	
 	status = dxp_write_tsar(ioChan, addr);
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_read_word","Error writing TSAR",&status);
+		dxp_log_error("dxp_read_word","Error writing TSAR",status);
 		return status;
 	}
 
@@ -507,7 +517,7 @@ static int dxp_read_word(int* ioChan, int* modChan, unsigned short* addr,
 	status = dxp_read_data(ioChan, readdata, 1);
 	if(status!=DXP_SUCCESS){
 		status=DXP_READ_WORD;
-		dxp_md_error("dxp_read_word","Error reading CAMDATA",&status);
+		dxp_log_error("dxp_read_word","Error reading CAMDATA",status);
 		return status;
 	}
 	return DXP_SUCCESS;
@@ -536,14 +546,14 @@ static int dxp_write_word(int* ioChan, int* modChan, unsigned short* addr,
 	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
 		sprintf(error_string,"X10P routine called with channel number %d",*modChan);
 		status = DXP_BAD_PARAM;
-		dxp_md_error("dxp_write_word",error_string,&status);
+		dxp_log_error("dxp_write_word",error_string,status);
 	}
 
 /* write transfer start address register */
 	
 	status = dxp_write_tsar(ioChan, addr);
 	if (status!=DXP_SUCCESS) {
-		dxp_md_error("dxp_write_word","Error writing TSAR",&status);
+		dxp_log_error("dxp_write_word","Error writing TSAR",status);
 		return status;
 	}
 
@@ -552,7 +562,7 @@ static int dxp_write_word(int* ioChan, int* modChan, unsigned short* addr,
 	status = dxp_write_data(ioChan, writedata, 1);
 	if (status!=DXP_SUCCESS){
 		status=DXP_WRITE_WORD;
-		dxp_md_error("dxp_write_word","Error writing CAMDATA",&status);
+		dxp_log_error("dxp_write_word","Error writing CAMDATA",status);
 		return status;
 	}
 	return DXP_SUCCESS;
@@ -584,14 +594,14 @@ static int dxp_read_block(int* ioChan, int* modChan, unsigned short* addr,
 	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
 		sprintf(error_string,"X10P routine called with channel number %d",*modChan);
 		status = DXP_BAD_PARAM;
-		dxp_md_error("dxp_read_block",error_string,&status);
+		dxp_log_error("dxp_read_block",error_string,status);
 	}
 
 /* write transfer start address register */
 
 	status = dxp_write_tsar(ioChan, addr);
 	if (status!=DXP_SUCCESS) {
-		dxp_md_error("dxp_read_block","Error writing TSAR",&status);
+		dxp_log_error("dxp_read_block","Error writing TSAR",status);
 		return status;
 	}
 	
@@ -611,7 +621,7 @@ static int dxp_read_block(int* ioChan, int* modChan, unsigned short* addr,
 		if (status!=DXP_SUCCESS) {
 			status = DXP_READ_BLOCK;
 			sprintf(error_string,"Error reading %dth block transer",i);
-			dxp_md_error("dxp_read_block",error_string,&status);
+			dxp_log_error("dxp_read_block",error_string,status);
 			return status;
 		}
 /* Next loop */
@@ -649,14 +659,14 @@ static int dxp_write_block(int* ioChan, int* modChan, unsigned short* addr,
 	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
 		sprintf(error_string,"X10P routine called with channel number %d",*modChan);
 		status = DXP_BAD_PARAM;
-		dxp_md_error("dxp_write_block",error_string,&status);
+		dxp_log_error("dxp_write_block",error_string,status);
 	}
 
 /* write transfer start address register */
 
 	status = dxp_write_tsar(ioChan, addr);
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_write_block","Error writing TSAR",&status);
+		dxp_log_error("dxp_write_block","Error writing TSAR",status);
 		return status;
 	}
 
@@ -676,7 +686,7 @@ static int dxp_write_block(int* ioChan, int* modChan, unsigned short* addr,
 		if (status!=DXP_SUCCESS) {
             status = DXP_WRITE_BLOCK;
             sprintf(error_string,"Error in %dth block transfer",i);
-            dxp_md_error("dxp_write_block",error_string,&status);
+            dxp_log_error("dxp_write_block",error_string,status);
             return status;
 		}
 /* Next loop */
@@ -714,7 +724,7 @@ static int dxp_read_long(int* ioChan, int* modChan, unsigned short* addr,
 							   modChan,
 							   &address,
 							   sptr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_read_long","Error reading high order bytes",&status);
+		dxp_log_error("dxp_read_long","Error reading high order bytes",status);
 		return status;
 	}
 /* Read the second word and Store in next 2 bytes of sptr */
@@ -725,7 +735,7 @@ static int dxp_read_long(int* ioChan, int* modChan, unsigned short* addr,
 							   modChan,
 							   &address,
 							   sptr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_read_long","Error readong low order bytes",&status);
+		dxp_log_error("dxp_read_long","Error readong low order bytes",status);
 		return status;
 	}
 	if (dxp_little_endian()) dxp_swaplong(&one, readdata);
@@ -762,7 +772,7 @@ static int dxp_write_long(int* ioChan, int* modChan, unsigned short* addr,
 							   modChan,
 							   &address,
 							   sptr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_write_long","Error writing high order bytes",&status);
+		dxp_log_error("dxp_write_long","Error writing high order bytes",status);
 		return status;
 	}
 	
@@ -774,7 +784,7 @@ static int dxp_write_long(int* ioChan, int* modChan, unsigned short* addr,
    								modChan,
 								&address,
 								sptr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_write_long","Error writing low order bytes",&status);
+		dxp_log_error("dxp_write_long","Error writing low order bytes",status);
 		return status;
 	}
 	
@@ -796,25 +806,84 @@ static int dxp_write_long(int* ioChan, int* modChan, unsigned short* addr,
  * DXP channel is specified then all channels are downloaded.
  *
  ******************************************************************************/
-static int dxp_download_fipconfig(int* ioChan, int* modChan, Fippi_Info* fippi)
-/* int *ioChan;						Input: I/O channel of DXP module		*/
+static int dxp_download_fipconfig(int* ioChan, int* modChan, Board* board)
+/* int *ioChan;						Input: I/O channel of DXP module	*/
 /* int *modChan;					Input: DXP channels no (-1,0,1,2,3)	*/
-/* Fippi_Info *fippi;				Input: FiPPi config to download		*/
+/* Board *board;					Input: Board data					*/
 {
 /*
  *   Download the appropriate FiPPi configuration file to a single channel
  *   or all channels of a single DXP module.
  */
 	int status;
+	
 	unsigned short data;
+
 	unsigned int i,j,length,xlen,nxfers;
 	float wait;
 	unsigned int maxblk;
+	Fippi_Info *fippi=NULL;
+	int mod;
+
+/* Variables for the control tasks */
+	short task;
+	unsigned int ilen=1;
+	int taskinfo[1];
+	unsigned short value=7;
+	float timeout;
 
 	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
 		sprintf(error_string,"X10P routine called with channel number %d",*modChan);
 		status = DXP_BAD_PARAM;
-		dxp_md_error("dxp_download_fipconfig",error_string,&status);
+		dxp_log_error("dxp_download_fipconfig",error_string,status);
+		return status;
+	}
+
+/* If allchan chosen, then select the first valid fippi */
+	for (i=0;i<board->nchan;i++) {
+		if (((board->used)&(0x1<<i))!=0) {
+			fippi = board->fippi[i];
+			break;
+		}
+	}
+	mod = board->mod;
+/* make sure a valid Fippi was found */
+	if (fippi==NULL) {
+		sprintf(error_string,"There is no valid FiPPi defined for module %i",mod);
+        status = DXP_NOFIPPI;
+        dxp_log_error("dxp_download_fipconfig",error_string,status);
+		return status;
+	}
+
+/* If needed, put the DSP to sleep before downloading the FIPPI */
+	if (board->chanstate==NULL) {
+		sprintf(error_string,"Something wrong in initialization, no channel state information for module %i",mod);
+        status = DXP_INITIALIZE;
+        dxp_log_error("dxp_download_fipconfig",error_string,status);
+		return status;
+	}
+/* check the DSP download state, if downloaded, then sleep */
+	if (board->chanstate[*modChan].dspdownloaded==1) {
+		task = CT_DXPX10P_SLEEP_DSP;
+		ilen = 1;
+		taskinfo[0] = 1;
+		if ((status=dxp_begin_control_task(ioChan, modChan, &task, 
+											&ilen, taskinfo, board))!=DXP_SUCCESS) {
+			sprintf(error_string,"Error putting the DSP to sleep for module %i",mod);
+			status = DXP_DSPSLEEP;
+			dxp_log_error("dxp_download_fipconfig",error_string,status);
+			return status;
+		}
+/* Now wait for BUSY=7 to indicate the DSP is asleep */
+		value = 7;
+		timeout = 2.0;
+		if ((status=dxp_download_dsp_done(ioChan, modChan, &mod, board->dsp[*modChan], 
+											&value, &timeout))!=DXP_SUCCESS) {
+			sprintf(error_string,"Error waiting for BUSY=7 state for module %i",mod);
+			status = DXP_DSPTIMEOUT;
+			dxp_log_error("dxp_download_fipconfig",error_string,status);
+			return status;
+		}
 	}
 
 	length = fippi->proglen;
@@ -825,7 +894,7 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Fippi_Info* fippi)
 
 	status = dxp_write_csr(ioChan, &data);
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_download_fipconfig","Error writing CSR",&status); 
+		dxp_log_error("dxp_download_fipconfig","Error writing CSR",status); 
 		return status;
 	}
 
@@ -841,7 +910,7 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Fippi_Info* fippi)
 		if (status!=DXP_SUCCESS){
 			status = DXP_WRITE_WORD;
 			sprintf(error_string,"Error in %dth 1-word transfer",i);
-			dxp_md_error("dxp_download_fipconfig",error_string,&status);
+			dxp_log_error("dxp_download_fipconfig",error_string,status);
 			return status;
 		}
 	}
@@ -862,7 +931,7 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Fippi_Info* fippi)
 		if (status!=DXP_SUCCESS){
 			status = DXP_WRITE_BLOCK;
 			sprintf(error_string,"Error in %dth (last) block transfer",j);
-			dxp_md_error("dxp_download_fipconfig",error_string,&status);
+			dxp_log_error("dxp_download_fipconfig",error_string,status);
 			return status;
         }
 /* Next loop */
@@ -871,6 +940,27 @@ static int dxp_download_fipconfig(int* ioChan, int* modChan, Fippi_Info* fippi)
 		if (j==(nxfers-1)) xlen=((length-11)%maxblk) + 1;
 	} while (j<nxfers);
 
+/* After FIPPI is downloaded, end the SLEEP mode */
+	if (board->chanstate[*modChan].dspdownloaded==1) {
+		if ((status=dxp_end_control_task(ioChan, modChan, board))!=DXP_SUCCESS) {
+			sprintf(error_string,"Error putting the DSP to sleep for module %i",mod);
+			status = DXP_DSPSLEEP;
+			dxp_log_error("dxp_download_fipconfig",error_string,status);
+			return status;
+		}
+/* Now wait for BUSY=0 to indicate the DSP is ready */
+		value = 0;
+		timeout = 2.0;
+		if ((status=dxp_download_dsp_done(ioChan, modChan, &mod, board->dsp[*modChan], 
+											&value, &timeout))!=DXP_SUCCESS) {
+			sprintf(error_string,"Error waiting for BUSY=0 state for module %i",mod);
+			status = DXP_DSPTIMEOUT;
+			dxp_log_error("dxp_download_fipconfig",error_string,status);
+			return status;
+		}
+	}
+
+	
 	return DXP_SUCCESS;
 }
 
@@ -885,8 +975,6 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 /* Fippi_Info *fippi;					I/O: structure of Fippi info */
 {
 	int status;
-	int debug=DXP_DEBUG;
-	char line[100];
 	unsigned int j, nchars, len;
 	FILE *fp;
 	
@@ -894,7 +982,7 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 	
 	sprintf(error_string,"%s%s%s","Reading FiPPI file ",
 		fippi->filename,"...");
-	dxp_md_error("dxp_get_fipconfig",error_string,&debug);
+	dxp_log_info("dxp_get_fipconfig",error_string);
 
 	fippi->maxproglen = MAXFIP_LEN;
 
@@ -902,7 +990,7 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 		status = DXP_NOMEM;
 		sprintf(error_string,"%s",
 			"Error allocating space for configuration");
-		dxp_md_error("dxp_get_fipconfig",error_string,&status);
+		dxp_log_error("dxp_get_fipconfig",error_string,status);
 		return status;
 	}
 /*
@@ -913,7 +1001,7 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 		status = DXP_OPEN_FILE;
 		sprintf(error_string,"%s%s","Unable to open FiPPI configuration ",
 			fippi->filename);
-		dxp_md_error("dxp_get_fipconfig",error_string,&status);
+		dxp_log_error("dxp_get_fipconfig",error_string,status);
 		return status;
 	}
 	
@@ -921,7 +1009,7 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 		
 	lowbyte = 1;
 	len = 0;
-	while (fgets(line,100,fp)!=NULL){
+	while (fgets(line,132,fp)!=NULL){
 		if (line[0]=='*') continue;
 		nchars = strlen(line)-1;
 		while ((nchars>0) && !isxdigit(line[nchars])) {
@@ -942,7 +1030,7 @@ static int dxp_get_fipconfig(Fippi_Info* fippi)
 	}
 	fippi->proglen = len;
 	fclose(fp);
-	dxp_md_error("dxp_get_fipconfig","...DONE!",&debug);
+	dxp_log_info("dxp_get_fipconfig","...DONE!");
 
 	return DXP_SUCCESS;
 }
@@ -967,7 +1055,7 @@ static int dxp_download_fippi_done(int* ioChan, int* mod, unsigned short* used)
 	
 	if((status=dxp_read_csr(ioChan,&data))!=DXP_SUCCESS){
 		sprintf(info_string," failed to read CSR for module %d",*mod);
-		dxp_md_error("dxp_download_fippi_done",info_string,&status);
+		dxp_log_error("dxp_download_fippi_done",info_string,status);
 		return status;
 	}
 	if(*used==0) return DXP_SUCCESS;		/* if not used, then we succeed */
@@ -975,7 +1063,7 @@ static int dxp_download_fippi_done(int* ioChan, int* mod, unsigned short* used)
 		sprintf(info_string,
 			"FiPPI download error (CSR bits) for module %d",*mod);
 		status=DXP_FIPDOWNLOAD;
-		dxp_md_error("dxp_download_fippi_done",info_string,&status);
+		dxp_log_error("dxp_download_fippi_done",info_string,status);
 		return status;
 	}
 
@@ -1015,7 +1103,7 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
 	if((*modChan!=0)&&(*modChan!=ALLCHAN)){
 		sprintf(error_string,"X10P called with channel number %d",*modChan);
 		status = DXP_BAD_PARAM;
-		dxp_md_error("dxp_download_dspconfig",error_string,&status);
+		dxp_log_error("dxp_download_dspconfig",error_string,status);
 	}
 	
 /* Copy the DSP program into the local array */
@@ -1027,7 +1115,7 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
    
 	status = dxp_write_csr(ioChan, &data);
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_download_dspconfig","Error writing CSR",&status);
+		dxp_log_error("dxp_download_dspconfig","Error writing CSR",status);
 		return status;
 	}
 /* 
@@ -1052,7 +1140,7 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
         if (status!=DXP_SUCCESS) {
             status = DXP_WRITE_BLOCK;
             sprintf(error_string,"Error in  %dth block transfer",j);
-            dxp_md_error("dxp_download_dspconfig",error_string,&status);
+            dxp_log_error("dxp_download_dspconfig",error_string,status);
             return status;
         }
 /* Next loop */
@@ -1075,7 +1163,7 @@ static int dxp_download_dspconfig(int* ioChan, int* modChan, Dsp_Info* dsp)
  * All done, clear the LAM on this module 
  */
 	if((status=dxp_clear_LAM(ioChan, modChan))!=DXP_SUCCESS){
-		dxp_md_error("dxp_download_dspconfig","Unable to clear LAM",&status);
+		dxp_log_error("dxp_download_dspconfig","Unable to clear LAM",status);
 	}
 
 	return status;
@@ -1113,7 +1201,7 @@ static int dxp_download_dsp_done(int* ioChan, int* modChan, int* mod,
 		if((status=dxp_read_dspsymbol(ioChan, modChan,
 						"BUSY", dsp, &data))!=DXP_SUCCESS){
 			sprintf(info_string,"Error reading BUSY from module %d channel %d", *mod, *modChan);
-			dxp_md_error("dxp_download_dsp_done",info_string,&status);
+			dxp_log_error("dxp_download_dsp_done",info_string,status);
 			return status;
 		}
 /* Check if the BUSY parameter matches the requested value
@@ -1127,7 +1215,7 @@ static int dxp_download_dsp_done(int* ioChan, int* modChan, int* mod,
 	status = DXP_DSPTIMEOUT;
 	sprintf(info_string,"Timeout waiting for DSP BUSY=%d from module %d channel %d", 
 			*value, *mod, *modChan);
-	dxp_md_error("dxp_download_dsp_done",info_string,&status);
+	dxp_log_error("dxp_download_dsp_done",info_string,status);
 	return status;
 }
 
@@ -1195,17 +1283,17 @@ static int dxp_get_dspconfig(Dsp_Info* dsp)
 /* Dsp_Info *dsp;					I/O: Structure of DSP program Info	*/
 {
 	FILE  *fp;
-	int   debug=DXP_DEBUG,status;
+	int   status;
    
 	sprintf(error_string, "Loading DSP program in %s", dsp->filename); 
-	dxp_md_error("dxp_get_dspconfig",error_string,&debug);
+	dxp_log_info("dxp_get_dspconfig",error_string);
 
 /* Now retrieve the file pointer to the DSP program */
 	
 	if((fp = dxp_find_file(dsp->filename,"r"))==NULL){
 		status = DXP_OPEN_FILE;
 		sprintf(error_string, "Unable to open %s", dsp->filename); 
-		dxp_md_error("dxp_get_dspconfig",error_string,&status);
+		dxp_log_error("dxp_get_dspconfig",error_string,status);
 		return status;
 	}
 
@@ -1219,14 +1307,14 @@ static int dxp_get_dspconfig(Dsp_Info* dsp)
 	if ((status = dxp_load_dspfile(fp, dsp))!=DXP_SUCCESS) {
 		status = DXP_DSPLOAD;
 		fclose(fp);
-		dxp_md_error("dxp_get_dspconfig","Unable to Load DSP file",&status);
+		dxp_log_error("dxp_get_dspconfig","Unable to Load DSP file",status);
 		return status;
 	}
 
 /* Close the file and get out */
 
 	fclose(fp);
-	dxp_md_error("dxp_get_dspconfig","...DONE!",&debug);
+	dxp_log_info("dxp_get_dspconfig","...DONE!");
 	
 	return DXP_SUCCESS;
 }
@@ -1243,14 +1331,14 @@ static int dxp_get_dspdefaults(Dsp_Defaults* defaults)
 /* Dsp_Defaults *defaults;					I/O: Structure of DSP defaults    */
 {
     FILE  *fp;
-    int   debug=DXP_DEBUG,status, i;
+    int   status, i, last;
 	char *fstatus=" ";
 	unsigned short nsymbols;
     char *token,*delim=" ,:=\r\n\t";
 	char strtmp[4];
     
 	sprintf(error_string,"Loading DSP defaults in %s",defaults->filename);
-    dxp_md_error("dxp_get_dspdefaults",error_string,&debug);
+    dxp_log_info("dxp_get_dspdefaults",error_string);
 
 /* Check the filename: if NULL, then there are no parameters */
 
@@ -1267,7 +1355,7 @@ static int dxp_get_dspdefaults(Dsp_Defaults* defaults)
     if ((fp = dxp_find_file(defaults->filename,"r"))==NULL){
         status = DXP_OPEN_FILE;
 		sprintf(error_string,"Unable to open %s",defaults->filename);
-        dxp_md_error("dxp_get_dspdefaults",error_string,&status);
+        dxp_log_error("dxp_get_dspdefaults",error_string,status);
         return status;
     }
 
@@ -1285,7 +1373,7 @@ static int dxp_get_dspdefaults(Dsp_Defaults* defaults)
 			defaults->params->nsymbol = nsymbols;
             status = DXP_ARRAY_TOO_SMALL;
 			sprintf(error_string,"Too many parameters in %s",defaults->filename);
-	        dxp_md_error("dxp_get_dspdefaults",error_string,&status);
+	        dxp_log_error("dxp_get_dspdefaults",error_string,status);
             return status;
         }
         if ((fstatus==NULL)) continue;					/* End of file?  or END finishes */
@@ -1296,11 +1384,18 @@ static int dxp_get_dspdefaults(Dsp_Defaults* defaults)
         
 		token=strtok(line,delim);
 /* Got the symbol name, copy the value */
-		defaults->params->pnames[nsymbols] = 
-			strcpy(defaults->params->pnames[nsymbols], token);
+		defaults->params->parameters[nsymbols].pname = 
+			strcpy(defaults->params->parameters[nsymbols].pname, token);
 /* Now get the value and store it in the data array */
 		token = strtok(NULL, delim);
-		defaults->data[nsymbols] = (unsigned short) strtoul(token,NULL,10);
+/* Check if the number is entered as a hex entry? */
+		last = strlen(token)-1;
+		if ((strncmp(token+last,"h",1)==0)||(strncmp(token+last,"H",1)==0)) {
+			token[last] = '\0';
+			defaults->data[nsymbols] = (unsigned short) strtoul(token,NULL,16);
+		} else {
+			defaults->data[nsymbols] = (unsigned short) strtoul(token,NULL,0);
+		}
 
 /* Increment nsymbols and go get the next pair */
 		nsymbols++;
@@ -1312,7 +1407,7 @@ static int dxp_get_dspdefaults(Dsp_Defaults* defaults)
 /* Close the file and get out */
 
     fclose(fp);
-    dxp_md_error("dxp_get_dspdefaults","...DONE!",&debug);
+    dxp_log_info("dxp_get_dspdefaults","...DONE!");
     return DXP_SUCCESS;
 
 }
@@ -1336,7 +1431,7 @@ static int dxp_load_dspfile(FILE* fp, Dsp_Info* dsp)
 	
 	if ((status = dxp_load_dspsymbol_table(fp, dsp))!=DXP_SUCCESS) {
 		status = DXP_DSPLOAD;
-		dxp_md_error("dxp_load_dspfile","Unable to read DSP symbol table",&status);
+		dxp_log_error("dxp_load_dspfile","Unable to read DSP symbol table",status);
 		return status;
 	}
 	
@@ -1344,7 +1439,7 @@ static int dxp_load_dspfile(FILE* fp, Dsp_Info* dsp)
 	
 	if ((status = dxp_load_dspconfig(fp, dsp))!=DXP_SUCCESS) {
 		status = DXP_DSPLOAD;
-		dxp_md_error("dxp_load_dspfile","Unable to read DSP configuration",&status);
+		dxp_log_error("dxp_load_dspfile","Unable to read DSP configuration",status);
 		return status;
 	}	
 	
@@ -1369,15 +1464,15 @@ static int dxp_load_dspconfig(FILE* fp, Dsp_Info* dsp)
 /* Check if we have some allocated memory space	*/
 	if (dsp->data==NULL){
 		status = DXP_NOMEM;
-		dxp_md_error("dxp_load_dspconfig",
-			"Error allocating space for configuration",&status);
+		dxp_log_error("dxp_load_dspconfig",
+			"Error allocating space for configuration",status);
 		return status;
 	}
 /*
  *  and read the configuration
  */
 	dsp->proglen = 0;
-	while(fgets(line,100,fp)!=NULL) {
+	while(fgets(line,132,fp)!=NULL) {
 		nchars = strlen(line);
 		while ((nchars>0) && !isxdigit(line[nchars])) {
 			nchars--;
@@ -1403,14 +1498,13 @@ static int dxp_load_dspsymbol_table(FILE* fp, Dsp_Info* dsp)
 {
 	int status, retval;
 	unsigned short i;
-	char line[100];
 /* Hold the character representing the access type *=R/W -=RO */
-	char atype[1];
+	char atype[2];
 
 /*
  *  Read comments and number of symbols
  */
-	while(fgets(line,100,fp)!=NULL){
+	while(fgets(line,132,fp)!=NULL){
 		if (line[0]=='*') continue;
 		sscanf(line,"%hd",&(dsp->params->nsymbol));
 		break;
@@ -1419,40 +1513,41 @@ static int dxp_load_dspsymbol_table(FILE* fp, Dsp_Info* dsp)
 /*
  *  Allocate space and read symbols
  */
-		if (dsp->params->pnames==NULL){
+		if (dsp->params->parameters==NULL){
 			status = DXP_NOMEM;
-			dxp_md_error("dxp_load_dspsymbol_table",
-				"Memory not allocated for all parameter names",&status);
+			dxp_log_error("dxp_load_dspsymbol_table",
+				"Memory not allocated for all parameter names",status);
 			return status;
 		}
 		for(i=0;i<(dsp->params->nsymbol);i++){
-			if (dsp->params->pnames[i]==NULL){
+			if (dsp->params->parameters[i].pname==NULL){
 				status = DXP_NOMEM;
-				dxp_md_error("dxp_load_dspsymbol_table",
-					"Memory not allocated for single parameter name",&status);
+				dxp_log_error("dxp_load_dspsymbol_table",
+					"Memory not allocated for single parameter name",status);
 				return status;
 			}
-			if (fgets(line, 100, fp)==NULL) {
+			if (fgets(line, 132, fp)==NULL) {
 				status = DXP_BAD_PARAM;
-				dxp_md_error("dxp_load_dspsymbol_table",
-					"Error in SYMBOL format of DSP file",&status);
+				dxp_log_error("dxp_load_dspsymbol_table",
+					"Error in SYMBOL format of DSP file",status);
 				return status;
 			}
-			retval = sscanf(line, "%s %s %hd %hd", dsp->params->pnames[i], atype, 
-						&(dsp->params->lbound[i]), &(dsp->params->ubound[i]));
-			dsp->params->access[i] = 0;
+			retval = sscanf(line, "%s %1s %hd %hd", dsp->params->parameters[i].pname, atype, 
+						&(dsp->params->parameters[i].lbound), &(dsp->params->parameters[i].ubound));
+			dsp->params->parameters[i].address = i;
+			dsp->params->parameters[i].access = 0;
 			if (retval>1) {
-				if (strcmp(atype,"-")==0) dsp->params->access[i] = 1;
+				if (strcmp(atype,"*")==0) dsp->params->parameters[i].access = 1;
 			}
 			if (retval==2) {
-				dsp->params->lbound[i] = 0;
-				dsp->params->ubound[i] = 0;
+				dsp->params->parameters[i].lbound = 0;
+				dsp->params->parameters[i].ubound = 0;
 			}
 			if (retval==3) {
 				status = DXP_BAD_PARAM;
 				sprintf(error_string, "Error in SYMBOL(%s) format of DSP file: 3 parameters found",
-										dsp->params->pnames[i]);
-				dxp_md_error("dxp_load_dspsymbol_table", error_string, &status);
+										dsp->params->parameters[i].pname);
+				dxp_log_error("dxp_load_dspsymbol_table", error_string, status);
 				return status;
 			}
 		}
@@ -1466,8 +1561,8 @@ static int dxp_load_dspsymbol_table(FILE* fp, Dsp_Info* dsp)
  * of the DSP 
  *
  ******************************************************************************/
-static int dxp_symbolname(unsigned short* index, Dsp_Info* dsp, char string[])
-/* unsigned short *index;				Input: address of parameter			*/
+static int dxp_symbolname(unsigned short* lindex, Dsp_Info* dsp, char string[])
+/* unsigned short *lindex;				Input: address of parameter			*/
 /* Dsp_Info *dsp;						Input: dsp structure with info		*/
 /* char string[];						Output: parameter name				*/
 {
@@ -1476,12 +1571,12 @@ static int dxp_symbolname(unsigned short* index, Dsp_Info* dsp, char string[])
 	
 /* There better be an array call symbolname! */
 	
-	if (*index>=(dsp->params->nsymbol)) {
+	if (*lindex>=(dsp->params->nsymbol)) {
 		status = DXP_INDEXOOB;
-		dxp_md_error("dxp_symbolname","Index greater than the number of symbols",&status);
+		dxp_log_error("dxp_symbolname","Index greater than the number of symbols",status);
 		return status;
 	}
-	strcpy(string,(dsp->params->pnames[*index]));
+	strcpy(string,(dsp->params->parameters[*lindex].pname));
 
 	return DXP_SUCCESS;
 }
@@ -1507,14 +1602,14 @@ static int dxp_loc(char name[], Dsp_Info* dsp, unsigned short* address)
 	if((dsp->proglen)<=0){
 		status = DXP_DSPLOAD;
 		sprintf(error_string, "Must Load DSP code before searching for %s", name);
-		dxp_md_error("dxp_loc", error_string, &status);
+		dxp_log_error("dxp_loc", error_string, status);
 		return status;
 	}
 	
 	*address = USHRT_MAX;
 	for(i=0;i<(dsp->params->nsymbol);i++) {
-		if (  (strlen(name)==strlen((dsp->params->pnames[i]))) &&
-			   (strstr(name,(dsp->params->pnames[i]))!=NULL)  ) {
+		if (  (strlen(name)==strlen((dsp->params->parameters[i].pname))) &&
+			   (strstr(name,(dsp->params->parameters[i].pname))!=NULL)  ) {
 			*address = i;
 			break;
 		}
@@ -1526,7 +1621,7 @@ static int dxp_loc(char name[], Dsp_Info* dsp, unsigned short* address)
 	if(*address == USHRT_MAX){
 		status = DXP_NOSYMBOL;
 /*		sprintf(error_string, "Cannot find <%s> in symbol table",name);
-		dxp_md_error("dxp_loc",error_string,&status);
+		dxp_log_error("dxp_loc",error_string,status);
 */	}
 
 	return status;
@@ -1565,7 +1660,7 @@ static int dxp_dspparam_dump(int* ioChan, int* modChan, Dsp_Info* dsp)
 							   &startp,
 							   &nsymbol,
 							   data))!=DXP_SUCCESS) {
-		dxp_md_error("dxp_mem_dump"," ",&status);
+		dxp_log_error("dxp_mem_dump"," ",status);
 		dxp_md_free(data);
 		return status;
 	}
@@ -1598,10 +1693,10 @@ static int dxp_dspparam_dump(int* ioChan, int* modChan, Dsp_Info* dsp)
 	for (i=0;i<ncol;i++) {
 		sprintf(buf, 
 			"%11s x%4.4x | %11s x%4.4x | %11s x%4.4x | %11s x%4.4x\r\n",
-			dsp->params->pnames[i], data[i+col[0]],
-			dsp->params->pnames[i+ncol+col[1]], data[i+ncol+col[1]],
-			dsp->params->pnames[i+2*ncol+col[2]], data[i+2*ncol+col[2]],
-			dsp->params->pnames[i+3*ncol+col[3]], data[i+3*ncol+col[3]]);
+			dsp->params->parameters[i].pname, data[i+col[0]],
+			dsp->params->parameters[i+ncol+col[1]].pname, data[i+ncol+col[1]],
+			dsp->params->parameters[i+2*ncol+col[2]].pname, data[i+2*ncol+col[2]],
+			dsp->params->parameters[i+3*ncol+col[3]].pname, data[i+3*ncol+col[3]]);
 		dxp_md_puts(buf);
 	}
 
@@ -1609,11 +1704,11 @@ static int dxp_dspparam_dump(int* ioChan, int* modChan, Dsp_Info* dsp)
 
 	if (nleft>0) {
 		sprintf(buf, "%11s x%4.4x | ",
-			dsp->params->pnames[ncol+col[0]], data[ncol+col[0]]);
+			dsp->params->parameters[ncol+col[0]].pname, data[ncol+col[0]]);
 		for (i=1;i<nleft;i++) {
 			sprintf(buf, 
 				"%s%11s x%4.4x | ", buf,
-				dsp->params->pnames[i*ncol+ncol+col[i]], data[i*ncol+ncol+col[i]]);
+				dsp->params->parameters[i*ncol+ncol+col[i]].pname, data[i*ncol+ncol+col[i]]);
 		}
 		sprintf(buf, "%s \r\n", buf);
 		dxp_md_puts(buf);
@@ -1641,33 +1736,32 @@ static int dxp_dspparam_dump(int* ioChan, int* modChan, Dsp_Info* dsp)
  *
  ******************************************************************************/
 static int dxp_test_spectrum_memory(int* ioChan, int* modChan, int* pattern, 
-									Dsp_Info* dsp, unsigned short* params)
+									Board *board)
 /* int *ioChan;					Input: IO channel to test				*/
-/* int *modChan;				Input: Channel on the module to test		*/
-/* int *pattern;				Input: Pattern to use during testing		*/
-/* Dsp_Info *dsp;				Input: Relavent DSP info					*/
-/* unsigned short *params;		Input: Array of DSP parameters			*/
+/* int *modChan;				Input: Channel on the module to test	*/
+/* int *pattern;				Input: Pattern to use during testing	*/
+/* Board *board;				Input: Relavent Board info				*/
 {
 	int status;
 	unsigned short start, addr;
 	unsigned int len;
 
-	if((status=dxp_loc("SPECTSTART", dsp, &addr))!=DXP_SUCCESS) {
-		dxp_md_error("dxp_test_spectrum_memory",
-			"Unable to find SPECTSTART symbol",&status);
+	if((status=dxp_loc("SPECTSTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
+		dxp_log_error("dxp_test_spectrum_memory",
+			"Unable to find SPECTSTART symbol",status);
 	}
-	start = (unsigned short) (params[addr] + PROGRAM_BASE);
-	if((status=dxp_loc("SPECTLEN", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_test_spectrum_memory",
-			"Unable to find SPECTLEN symbol",&status);
+	start = (unsigned short) (board->params[*modChan][addr] + PROGRAM_BASE);
+	if((status=dxp_loc("SPECTLEN", board->dsp[*modChan], &addr))!=DXP_SUCCESS){
+		dxp_log_error("dxp_test_spectrum_memory",
+			"Unable to find SPECTLEN symbol",status);
 	}
-	len = (unsigned int) params[addr];
+	len = (unsigned int) board->params[*modChan][addr];
 	
 	if((status = dxp_test_mem(ioChan, modChan, pattern, 
 							&len, &start))!=DXP_SUCCESS) {
 		sprintf(error_string,
 		 "Error testing spectrum memory for IO channel %d, channel %d",*ioChan, *modChan);
-		dxp_md_error("dxp_test_spectrum_memory",error_string,&status);
+		dxp_log_error("dxp_test_spectrum_memory",error_string,status);
 		return status;
 	}
 	return status;
@@ -1684,33 +1778,32 @@ static int dxp_test_spectrum_memory(int* ioChan, int* modChan, int* pattern,
  *
  ******************************************************************************/
 static int dxp_test_baseline_memory(int* ioChan, int* modChan, int* pattern, 
-									Dsp_Info* dsp, unsigned short* params)
+									Board *board)
 /* int *ioChan;						Input: IO channel to test				*/
 /* int *modChan;					Input: Channel on the module to test	*/
 /* int *pattern;					Input: Pattern to use during testing	*/
-/* Dsp_Info *dsp;					Input: Relavent DSP info				*/
-/* unsigned short *params;			Input: Array of DSP parameters			*/
+/* Board *board;					Input: Relavent Board info					*/
 {
 	int status;
 	unsigned short start, addr;
 	unsigned int len;
 
-	if((status=dxp_loc("BASESTART", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_test_baseline_memory",
-			"Unable to find BASESTART symbol",&status);
+	if((status=dxp_loc("BASESTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS){
+		dxp_log_error("dxp_test_baseline_memory",
+			"Unable to find BASESTART symbol",status);
 	}
-	start = (unsigned short) (params[addr] + DATA_BASE);
-	if((status=dxp_loc("BASELEN", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_test_baseline_memory",
-			"Unable to find BASELEN symbol",&status);
+	start = (unsigned short) (board->params[*modChan][addr] + DATA_BASE);
+	if((status=dxp_loc("BASELEN", board->dsp[*modChan], &addr))!=DXP_SUCCESS){
+		dxp_log_error("dxp_test_baseline_memory",
+			"Unable to find BASELEN symbol",status);
 	}
-	len = (unsigned int) params[addr];
+	len = (unsigned int) board->params[*modChan][addr];
 	
 	if((status = dxp_test_mem(ioChan, modChan, pattern, 
 							&len, &start))!=DXP_SUCCESS) {
 		sprintf(error_string,
 		 "Error testing baseline memory for IO channel %d, channel %d",*ioChan, *modChan);
-		dxp_md_error("dxp_test_baseline_memory",error_string,&status);
+		dxp_log_error("dxp_test_baseline_memory",error_string,status);
 		return status;
 	}
 
@@ -1728,12 +1821,11 @@ static int dxp_test_baseline_memory(int* ioChan, int* modChan, int* pattern,
  *
  ******************************************************************************/
 static int dxp_test_event_memory(int* ioChan, int* modChan, int* pattern, 
-								 Dsp_Info* dsp, unsigned short* params)
+								 Board *board)
 /* int *ioChan;						Input: IO channel to test				*/
 /* int *modChan;					Input: Channel on the module to test	*/
 /* int *pattern;					Input: Pattern to use during testing	*/
-/* Dsp_Info *dsp;					Input: Relavent DSP info				*/
-/* unsigned short *params;			Input: Array of DSP parameters			*/
+/* Board *board;					Input: Relavent Board info					*/
 {
 	int status;
 	unsigned short start, addr;
@@ -1742,22 +1834,22 @@ static int dxp_test_event_memory(int* ioChan, int* modChan, int* pattern,
 /* Now read the Event Buffer base address and length and store in
  * static library variables for future use. */
 
-	if((status=dxp_loc("EVTBSTART", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_test_event_memory",
-			"Unable to find EVTBSTART symbol",&status);
+	if((status=dxp_loc("EVTBSTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS){
+		dxp_log_error("dxp_test_event_memory",
+			"Unable to find EVTBSTART symbol",status);
 	}
-	start = (unsigned short) (params[addr] + DATA_BASE);
-	if((status=dxp_loc("EVTBLEN", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_test_event_memory",
-			"Unable to find EVTBLEN symbol",&status);
+	start = (unsigned short) (board->params[*modChan][addr] + DATA_BASE);
+	if((status=dxp_loc("EVTBLEN", board->dsp[*modChan], &addr))!=DXP_SUCCESS){
+		dxp_log_error("dxp_test_event_memory",
+			"Unable to find EVTBLEN symbol",status);
 	}
-	len = (unsigned int) params[addr];
+	len = (unsigned int) board->params[*modChan][addr];
 
 	if((status = dxp_test_mem(ioChan, modChan, pattern,
 							&len, &start))!=DXP_SUCCESS) {
 		sprintf(error_string,
 		 "Error testing baseline memory for IO channel %d, channel %d",*ioChan, *modChan);
-		dxp_md_error("dxp_test_event_memory",error_string,&status);
+		dxp_log_error("dxp_test_event_memory",error_string,status);
 		return status;
 	}
 
@@ -1796,7 +1888,7 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
         status=DXP_BAD_PARAM;
         sprintf(error_string,
 			"Attempting to test %d elements in DSP memory",*length);
-        dxp_md_error("dxp_test_mem",error_string,&status);
+        dxp_log_error("dxp_test_mem",error_string,status);
         return status;
 	}
 
@@ -1805,7 +1897,7 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
 		status=DXP_BAD_PARAM;
 		sprintf(error_string,
 		 "Attempting to overwrite Parameter values beginning at address %x",*addr);
-		dxp_md_error("dxp_test_mem",error_string,&status);
+		dxp_log_error("dxp_test_mem",error_string,status);
 		dxp_md_free(readbuf);
 		dxp_md_free(writebuf);
 		return status;
@@ -1813,8 +1905,8 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
 	switch (*pattern) {
 		case 0 : 
 			for (j=0;j<(*length)/2;j++) {
-				writebuf[2*j]   = (unsigned short) (j&&0x00FFFF00);
-				writebuf[2*j+1] = (unsigned short) (j&&0x000000FF);
+				writebuf[2*j]   = (unsigned short) (j&0x00FFFF00);
+				writebuf[2*j+1] = (unsigned short) (j&0x000000FF);
 			}
 			break;
 		case 1 :
@@ -1826,7 +1918,7 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
 		default :
 			status = DXP_BAD_PARAM;
 			sprintf(error_string,"Pattern %d not implemented",*pattern);
-			dxp_md_error("dxp_test_mem",error_string,&status);
+			dxp_log_error("dxp_test_mem",error_string,status);
 			dxp_md_free(readbuf);
 			dxp_md_free(writebuf);
 			return status;
@@ -1839,7 +1931,7 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
 							   addr,
 							   length,
 							   writebuf))!=DXP_SUCCESS) {
-		dxp_md_error("dxp_test_mem"," ",&status);
+		dxp_log_error("dxp_test_mem"," ",status);
 		dxp_md_free(readbuf);
 		dxp_md_free(writebuf);
 		return status;
@@ -1852,7 +1944,7 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
 							  addr,
 							  length,
 							  readbuf))!=DXP_SUCCESS) {
-		dxp_md_error("dxp_test_mem"," ",&status);
+		dxp_log_error("dxp_test_mem"," ",status);
 		dxp_md_free(readbuf);
 		dxp_md_free(writebuf);
 		return status;
@@ -1863,13 +1955,13 @@ static int dxp_test_mem(int* ioChan, int* modChan, int* pattern,
 		if(nerrors<10){
 			sprintf(error_string, "Error: word %d, wrote %x, read back %x",
 				j,((unsigned int) writebuf[j]),((unsigned int) readbuf[j]));
-			dxp_md_error("dxp_test_mem",error_string,&status);
+			dxp_log_error("dxp_test_mem",error_string,status);
 		}
 	}
 	
 	if (nerrors!=0){
 		sprintf(error_string, "%d memory compare errors found",nerrors);
-		dxp_md_error("dxp_test_mem",error_string,&status);
+		dxp_log_error("dxp_test_mem",error_string,status);
 		dxp_md_free(readbuf);
 		dxp_md_free(writebuf);
 		return status;
@@ -1905,7 +1997,7 @@ static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name,
 	if (strlen(name)>dsp->params->maxsymlen) {
 		status = DXP_NOSYMBOL;
 		sprintf(info_string, "Symbol name must be <%d characters", dsp->params->maxsymlen);
-		dxp_md_error("dxp_modify_dspsymbol", info_string, &status);
+		dxp_log_error("dxp_modify_dspsymbol", info_string, status);
 		return status;
 	}
 	for (i = 0; i < strlen(name); i++) 
@@ -1916,7 +2008,7 @@ static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name,
 	if ((dsp->proglen)<=0) {
 		status = DXP_DSPLOAD;
 		sprintf(error_string, "Must Load DSP code before modifying %s", name);
-		dxp_md_error("dxp_modify_dspsymbol", error_string, &status);
+		dxp_log_error("dxp_modify_dspsymbol", error_string, status);
 		return status;
 	}
    
@@ -1924,7 +2016,7 @@ static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name,
 
 	if ((status=dxp_loc(uname, dsp, &addr))!=DXP_SUCCESS) {
 		sprintf(info_string, "Failed to find symbol %s in DSP memory", uname);
-		dxp_md_error("dxp_modify_dspsymbol", info_string, &status);
+		dxp_log_error("dxp_modify_dspsymbol", info_string, status);
 		return status;
 	}
 
@@ -1932,42 +2024,43 @@ static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name,
  * parameters.
  */
 
-	if (dsp->params->access[addr]==1) {
+	if (dsp->params->parameters[addr].access==0) {
 		sprintf(info_string, "Parameter %s is Read-Only.  No writing allowed.", uname);
 		status = DXP_DSPACCESS;
-		dxp_md_error("dxp_modify_dspsymbol", info_string, &status);
+		dxp_log_error("dxp_modify_dspsymbol", info_string, status);
 		return status;
 	}
 
 /* Check the bounds, set to min or max if out of bounds. */
 
 /* Check if there are any bounds defined first */
-	if ((dsp->params->lbound[addr]!=0)||(dsp->params->ubound[addr]!=0)) {
+	if ((dsp->params->parameters[addr].lbound!=0)||(dsp->params->parameters[addr].ubound!=0)) {
 /* Check the lower bound */
-		if (*value<dsp->params->lbound[addr]) {
+		if (*value<dsp->params->parameters[addr].lbound) {
 			sprintf(info_string, "Value is below the lower acceptable bound %i<%i. Changing to lower bound.", 
-				*value, dsp->params->lbound[addr]);
+				*value, dsp->params->parameters[addr].lbound);
 			status = DXP_DSPPARAMBOUNDS;
-			dxp_md_error("dxp_modify_dspsymbol", info_string, &status);
+			dxp_log_error("dxp_modify_dspsymbol", info_string, status);
 /* Set to the lower bound */
-			*value = dsp->params->lbound[addr];
+			*value = dsp->params->parameters[addr].lbound;
 		}
 /* Check the upper bound */
-		if (*value>dsp->params->ubound[addr]) {
+		if (*value>dsp->params->parameters[addr].ubound) {
 			sprintf(info_string, "Value is above the upper acceptable bound %i<%i. Changing to upper bound.", 
-				*value, dsp->params->ubound[addr]);
+				*value, dsp->params->parameters[addr].ubound);
 			status = DXP_DSPPARAMBOUNDS;
-			dxp_md_error("dxp_modify_dspsymbol", info_string, &status);
+			dxp_log_error("dxp_modify_dspsymbol", info_string, status);
 /* Set to the upper bound */
-			*value = dsp->params->ubound[addr];
+			*value = dsp->params->parameters[addr].ubound;
 		}
 	}
 
 /* Write the value of the symbol into DSP memory */
 	
-	if((status=dxp_write_dsp_param_addr(ioChan,modChan,&addr,value))!=DXP_SUCCESS){
+	if((status=dxp_write_dsp_param_addr(ioChan,modChan,&(dsp->params->parameters[addr].address),
+										value))!=DXP_SUCCESS){
 		sprintf(info_string, "Error writing parameter %s", uname);
-		dxp_md_error("dxp_modify_dspsymbol",info_string,&status);
+		dxp_log_error("dxp_modify_dspsymbol",info_string,status);
 		return status;
 	}
 
@@ -1981,23 +2074,25 @@ static int dxp_modify_dspsymbol(int* ioChan, int* modChan, char* name,
  *
  ******************************************************************************/
 static int dxp_write_dsp_param_addr(int* ioChan, int* modChan, 
-									unsigned short* addr, unsigned short* value)
+									unsigned int* addr, unsigned short* value)
 /* int *ioChan;						Input: IO channel to write to				*/
-/* int *modChan;					Input: Module channel number to write to		*/
-/* unsigned short *addr;			Input: address to write in DSP memory		*/
+/* int *modChan;					Input: Module channel number to write to	*/
+/* unsigned int *addr;				Input: address to write in DSP memory		*/
 /* unsigned short *value;			Input: Value to set the symbol to			*/
 {
 
 	int status=DXP_SUCCESS;
+
+	unsigned short saddr;
 	
 /* Move the address into Parameter memory.  The passed address is relative to 
  * base memory. */
 	
-	*addr = (unsigned short) (*addr + startp);
+	saddr = (unsigned short) (*addr + startp);
 
-	if((status=dxp_write_word(ioChan,modChan,addr,value))!=DXP_SUCCESS){
+	if((status=dxp_write_word(ioChan,modChan,&saddr,value))!=DXP_SUCCESS){
 		sprintf(info_string, "Error writing parameter at %d", *addr);
-		dxp_md_error("dxp_write_dsp_param_addr",info_string,&status);
+		dxp_log_error("dxp_write_dsp_param_addr",info_string,status);
 		return status;
 	}
 	
@@ -2039,7 +2134,7 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
 	if (strlen(name)>(dsp->params->maxsymlen)) {
 		status = DXP_NOSYMBOL;
         sprintf(error_string, "Symbol Name must be <%i characters", dsp->params->maxsymlen);
-		dxp_md_error("dxp_read_dspsymbol", error_string, &status);
+		dxp_log_error("dxp_read_dspsymbol", error_string, status);
 		return status;
 	}
 
@@ -2053,7 +2148,7 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
 	if ((dsp->proglen)<=0) {
         status = DXP_DSPLOAD;
         sprintf(error_string, "Must Load DSP code before reading %s", name);
-        dxp_md_error("dxp_read_dspsymbol",error_string,&status);
+        dxp_log_error("dxp_read_dspsymbol",error_string,status);
 		return status;
 	}
     
@@ -2067,7 +2162,7 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
 		if ((status  = dxp_loc(tempchar, dsp, &addr))!=DXP_SUCCESS) {
 /* Failed to find the name with 0 attached, this symbol doesnt exist */
 			sprintf(info_string, "Failed to find symbol %s in DSP memory", name);
-			dxp_md_error("dxp_read_dspsymbol", info_string, &status);
+			dxp_log_error("dxp_read_dspsymbol", info_string, status);
 			return status;
 		}
 /* Search for the 2nd entry now */
@@ -2075,7 +2170,7 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
 		if ((status  = dxp_loc(tempchar, dsp, &addr1))!=DXP_SUCCESS) {
 /* Failed to find the name with 1 attached, this symbol doesnt exist */
 			sprintf(info_string, "Failed to find symbol %s+1 in DSP memory", name);
-			dxp_md_error("dxp_read_dspsymbol", info_string, &status);
+			dxp_log_error("dxp_read_dspsymbol", info_string, status);
 			return status;
 		}
 /* Special case of REALTIME or LIVETIME that are 48 bit numbers */
@@ -2086,7 +2181,7 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
 			if ((status  = dxp_loc(tempchar, dsp, &addr2))!=DXP_SUCCESS) {
 /* Failed to find the name with 1 attached, this symbol doesnt exist */
 				sprintf(info_string, "Failed to find symbol %s+2 in DSP memory", name);
-				dxp_md_error("dxp_read_dspsymbol", info_string, &status);
+				dxp_log_error("dxp_read_dspsymbol", info_string, status);
 				return status;
 			}
 		}
@@ -2096,29 +2191,29 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
  * parameters.
  */
 
-	if (dsp->params->access[addr]==2) {
+	if (dsp->params->parameters[addr].access==2) {
 		sprintf(info_string, "Parameter %s is Write-Only.  No peeking allowed.", name);
 		status = DXP_DSPACCESS;
-		dxp_md_error("dxp_read_dspsymbol", info_string, &status);
+		dxp_log_error("dxp_read_dspsymbol", info_string, status);
 		return status;
 	}
 
 /* Read the value of the symbol from DSP memory */
 
-	addr = (unsigned short) (addr + startp);
+	addr = (unsigned short) (dsp->params->parameters[addr].address + startp);
 	if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
 		sprintf(info_string, "Error writing parameter %s", name);
-		dxp_md_error("dxp_read_dspsymbol",info_string,&status);
+		dxp_log_error("dxp_read_dspsymbol",info_string,status);
 		return status;
 	}
 	ltemp = (unsigned long) stemp;
 
 /* If there is a second word, read it in */
 	if (nword>1) {
-		addr = (unsigned short) (addr1 + startp);
+		addr = (unsigned short) (dsp->params->parameters[addr1].address + startp);
 		if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
 			sprintf(info_string, "Error writing parameter %s+1", name);
-			dxp_md_error("dxp_read_dspsymbol",info_string,&status);
+			dxp_log_error("dxp_read_dspsymbol",info_string,status);
 			return status;
 		}
 		ltemp1 = (unsigned long) stemp;
@@ -2131,10 +2226,10 @@ static int dxp_read_dspsymbol(int* ioChan, int* modChan, char* name,
 
 /* Special case of 48 Bit numbers */
 	if (nword==3) {
-		addr = (unsigned short) (addr2 + startp);
+		addr = (unsigned short) (dsp->params->parameters[addr2].address + startp);
 		if((status=dxp_read_word(ioChan,modChan,&addr,&stemp))!=DXP_SUCCESS){
 			sprintf(info_string, "Error writing parameter %s+2", name);
-			dxp_md_error("dxp_read_dspsymbol",info_string,&status);
+			dxp_log_error("dxp_read_dspsymbol",info_string,status);
 			return status;
 		}
 /* For 2 words, create the proper 32 bit number */
@@ -2166,7 +2261,7 @@ static int dxp_read_dspparams(int* ioChan, int* modChan, Dsp_Info* dsp,
 	
 	len = dsp->params->nsymbol;
 	if((status=dxp_read_block(ioChan,modChan,&startp,&len,params))!=DXP_SUCCESS){
-		dxp_md_error("dxp_read_dspparams","error reading parameters",&status);
+		dxp_log_error("dxp_read_dspparams","error reading parameters",status);
 		return status;
 	}
 	
@@ -2195,7 +2290,7 @@ static int dxp_write_dspparams(int* ioChan, int* modChan, Dsp_Info* dsp,
 
 	len = dsp->params->nsymbol;
 	if((status=dxp_write_block(ioChan,modChan,&startp,&len,params))!=DXP_SUCCESS){
-		dxp_md_error("dxp_write_dspparams","error reading parameters",&status);
+		dxp_log_error("dxp_write_dspparams","error reading parameters",status);
 		return status;
 	}
 
@@ -2215,15 +2310,21 @@ static unsigned int dxp_get_spectrum_length(Dsp_Info* dsp,
 /* unsigned short *params;			Input: Array of DSP parameters	*/
 {
 	int status;
-	unsigned short addr;
+	unsigned short addr, addr1;
 
-	if((status=dxp_loc("SPECTLEN", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_get_spectrum_length",
-			"Unable to find SPECTLEN symbol",&status);
+	if((status=dxp_loc("MCALIMHI", dsp, &addr))!=DXP_SUCCESS){
+		dxp_log_error("dxp_get_spectrum_length",
+			"Unable to find SPECTLEN symbol",status);
 		return 0;
 	}
 
-	return ((unsigned int) params[addr]);
+	if((status=dxp_loc("MCALIMLO", dsp, &addr1))!=DXP_SUCCESS){
+		dxp_log_error("dxp_get_spectrum_length",
+			"Unable to find SPECTLEN symbol",status);
+		return 0;
+	}
+
+	return ((unsigned int) (params[addr]-params[addr1]));
 
 }
 
@@ -2243,8 +2344,8 @@ static unsigned int dxp_get_baseline_length(Dsp_Info* dsp,
 	unsigned short addr;
 
 	if((status=dxp_loc("BASELEN", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_get_baseline_length",
-			"Unable to find BASELEN symbol",&status);
+		dxp_log_error("dxp_get_baseline_length",
+			"Unable to find BASELEN symbol",status);
 		return 0;
 	}
 
@@ -2267,8 +2368,32 @@ static unsigned int dxp_get_event_length(Dsp_Info* dsp, unsigned short* params)
 	unsigned short addr;
 
 	if((status=dxp_loc("EVTBLEN", dsp, &addr))!=DXP_SUCCESS){
-		dxp_md_error("dxp_get_event_length",
-			"Unable to find EVTBLEN symbol",&status);
+		dxp_log_error("dxp_get_event_length",
+			"Unable to find EVTBLEN symbol",status);
+		return 0;
+	}
+
+	return ((unsigned int) params[addr]);
+
+}
+
+/******************************************************************************
+ * Routine to return the length of the history buffer.
+ *
+ * For 4C-2X boards, this value is stored in the DSP and dynamic.  
+ * For 4C boards, it is fixed.
+ * 
+ ******************************************************************************/
+static unsigned int dxp_get_history_length(Dsp_Info* dsp, unsigned short* params)
+/* Dsp_Info *dsp;					Input: Relavent DSP info			*/
+/* unsigned short *params;			Input: Array of DSP parameters	*/
+{
+	int status;
+	unsigned short addr;
+
+	if((status=dxp_loc("HSTLEN", dsp, &addr))!=DXP_SUCCESS){
+		dxp_log_error("dxp_get_history_length",
+			"Unable to find HSTLEN symbol",status);
 		return 0;
 	}
 
@@ -2283,12 +2408,11 @@ static unsigned int dxp_get_event_length(Dsp_Info* dsp, unsigned short* params)
  * modChan.  It returns the array to the caller.
  *
  ******************************************************************************/
-static int dxp_read_spectrum(int* ioChan, int* modChan, Dsp_Info* dsp, 
-							 unsigned short* params, unsigned long* spectrum)
+static int dxp_read_spectrum(int* ioChan, int* modChan, Board* board, 
+							 unsigned long* spectrum)
 /* int *ioChan;					Input: I/O channel of DSP		*/
 /* int *modChan;				Input: module channel of DSP		*/
-/* Dsp_Info *dsp;				Input: Relavent DSP info			*/
-/* unsigned short *params;		Input: Array of DSP parameters	*/
+/* Board *board;				Input: Relavent Board info			*/
 /* unsigned long *spectrum;		Output: array of spectrum values	*/
 {
 
@@ -2297,14 +2421,14 @@ static int dxp_read_spectrum(int* ioChan, int* modChan, Dsp_Info* dsp,
 	unsigned short *spec, addr, start;
 	unsigned int len;					/* number of short words in spectrum	*/
 
-	if((status=dxp_loc("SPECTSTART", dsp, &addr))!=DXP_SUCCESS) {
+	if((status=dxp_loc("SPECTSTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
 		status = DXP_NOSYMBOL;
-		dxp_md_error("dxp_read_spectrum",
-			"Unable to find SPECTSTART symbol",&status);
+		dxp_log_error("dxp_read_spectrum",
+			"Unable to find SPECTSTART symbol",status);
 		return status;
 	}
-	start = (unsigned short) (params[addr] + PROGRAM_BASE);
-	len = 2*dxp_get_spectrum_length(dsp, params);
+	start = (unsigned short) (board->params[*modChan][addr] + PROGRAM_BASE);
+	len = 2*dxp_get_spectrum_length(board->dsp[*modChan], board->params[*modChan]);
 
 /* Allocate memory for the spectrum */
 	spec = (unsigned short *) dxp_md_alloc(len*sizeof(unsigned short));
@@ -2312,7 +2436,7 @@ static int dxp_read_spectrum(int* ioChan, int* modChan, Dsp_Info* dsp,
 /* Read the spectrum */
 
 	if((status=dxp_read_block(ioChan,modChan,&start,&len,spec))!=DXP_SUCCESS){
-		dxp_md_error("dxp_read_spectrum","Error reading out spectrum",&status);
+		dxp_log_error("dxp_read_spectrum","Error reading out spectrum",status);
 		dxp_md_free(spec);
 		return status;
 	}
@@ -2336,12 +2460,11 @@ static int dxp_read_spectrum(int* ioChan, int* modChan, Dsp_Info* dsp,
  * modChan.  It returns the array to the caller.
  *
  ******************************************************************************/
-static int dxp_read_baseline(int* ioChan, int* modChan, Dsp_Info* dsp, 
-							 unsigned short* params, unsigned short* baseline)
+static int dxp_read_baseline(int* ioChan, int* modChan, Board* board, 
+							 unsigned short* baseline)
 /* int *ioChan;						Input: I/O channel of DSP					*/
 /* int *modChan;					Input: module channel of DSP					*/
-/* Dsp_Info *dsp;					Input: Relavent DSP info						*/
-/* unsigned short *params;			Input: Array of DSP parameters				*/
+/* Board *board;				Input: Relavent Board info			*/
 /* unsigned short *baseline;		Output: array of baseline histogram values	*/
 {
 
@@ -2349,20 +2472,97 @@ static int dxp_read_baseline(int* ioChan, int* modChan, Dsp_Info* dsp,
 	unsigned short addr, start;
 	unsigned int len;					/* number of short words in spectrum	*/
 
-	if((status=dxp_loc("BASESTART", dsp, &addr))!=DXP_SUCCESS) {
+	if((status=dxp_loc("BASESTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
 		status = DXP_NOSYMBOL;
-		dxp_md_error("dxp_read_baseline",
-			"Unable to find BASESTART symbol",&status);
+		dxp_log_error("dxp_read_baseline",
+			"Unable to find BASESTART symbol",status);
 		return status;
 	}
-	start = (unsigned short) (params[addr] + DATA_BASE);
-	len = dxp_get_baseline_length(dsp, params);
+	start = (unsigned short) (board->params[*modChan][addr] + DATA_BASE);
+	len = dxp_get_baseline_length(board->dsp[*modChan], board->params[*modChan]);
 
 	
 /* Read out the basline histogram. */
 	
 	if((status=dxp_read_block(ioChan,modChan,&start,&len,baseline))!=DXP_SUCCESS){
-		dxp_md_error("dxp_read_baseline","Error reading out baseline",&status);
+		dxp_log_error("dxp_read_baseline","Error reading out baseline",status);
+		return status;
+	}
+
+	return status;
+}
+	
+/******************************************************************************
+ * Routine to readout the history buffer from a single DSP.
+ * 
+ * This routine reads the history buffer from the DSP pointed to by ioChan and
+ * modChan.  It returns the array to the caller.
+ *
+ ******************************************************************************/
+static int dxp_read_history(int* ioChan, int* modChan, Board* board, 
+							 unsigned short* history)
+/* int *ioChan;						Input: I/O channel of DSP					*/
+/* int *modChan;					Input: module channel of DSP				*/
+/* Board *board;				Input: Relavent Board info			*/
+/* unsigned short *history;			Output: array of history buffervalues		*/
+{
+
+	int status;
+	unsigned short addr, start;
+	unsigned int len;					/* number of short words in spectrum	*/
+
+	if((status=dxp_loc("HSTSTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
+		status = DXP_NOSYMBOL;
+		dxp_log_error("dxp_read_history",
+			"Unable to find HSTSTART symbol",status);
+		return status;
+	}
+	start = (unsigned short) (board->params[*modChan][addr] + DATA_BASE);
+	len = dxp_get_history_length(board->dsp[*modChan], board->params[*modChan]);
+
+	
+/* Read out the basline histogram. */
+	
+	if((status=dxp_read_block(ioChan,modChan,&start,&len,history))!=DXP_SUCCESS){
+		dxp_log_error("dxp_read_history","Error reading out history buffer",status);
+		return status;
+	}
+
+	return status;
+}
+	
+/******************************************************************************
+ * Routine to readout the event buffer from a single DSP.
+ * 
+ * This routine reads the event buffer from the DSP pointed to by ioChan and
+ * modChan.  It returns the array to the caller.
+ *
+ ******************************************************************************/
+static int dxp_read_event(int* ioChan, int* modChan, Board* board, 
+						  unsigned short* event)
+/* int *ioChan;						Input: I/O channel of DSP					*/
+/* int *modChan;					Input: module channel of DSP				*/
+/* Board *board;				Input: Relavent Board info			*/
+/* unsigned short *event;			Output: array of history buffervalues		*/
+{
+
+	int status;
+	unsigned short addr, start;
+	unsigned int len;					/* number of short words in spectrum	*/
+
+	if((status=dxp_loc("EVTBSTART", board->dsp[*modChan], &addr))!=DXP_SUCCESS) {
+		status = DXP_NOSYMBOL;
+		dxp_log_error("dxp_read_event","Unable to find EVTBSTART symbol",status);
+		return status;
+	}
+	start = (unsigned short) (board->params[*modChan][addr] + DATA_BASE);
+	len = dxp_get_event_length(board->dsp[*modChan], board->params[*modChan]);
+
+	
+/* Read out the basline histogram. */
+	
+	if((status=dxp_read_block(ioChan,modChan,&start,&len,event))!=DXP_SUCCESS){
+		dxp_log_error("dxp_read_event","Error reading out event buffer",status);
 		return status;
 	}
 
@@ -2401,18 +2601,18 @@ int dxp_prep_for_readout(int* ioChan, int *modChan)
  * allows readout via CAMAC bus.
  *
  ******************************************************************************/
-int dxp_done_with_readout(int* ioChan, int *modChan, short* state)
+int dxp_done_with_readout(int* ioChan, int *modChan, Board *board)
 /* int *ioChan;						Input: I/O channel of DXP module	*/
 /* int *modChan;					Input: Module channel number		*/
-/* short *state;					Input: Array of state information	*/
+/* Board *board;					Input: Relavent Board info					*/
 {
 	int *itemp;
-	short *stemp;
+	Board *btemp;
 
 /* Assign input parameters to avoid compiler warnings */
 	itemp = ioChan;
 	itemp = modChan;
-	stemp = state;
+	btemp = board;
 
 /*
  * Nothing needs to be done for the DXP4C2X, the CAMAC interface 
@@ -2430,11 +2630,12 @@ int dxp_done_with_readout(int* ioChan, int *modChan, short* state)
  *
  ******************************************************************************/
 static int dxp_begin_run(int* ioChan, int* modChan, unsigned short* gate, 
-						 unsigned short* resume)
+						 unsigned short* resume, Board *board)
 /* int *ioChan;						Input: I/O channel of DXP module			*/
 /* int *modChan;					Input: Module channel number				*/
 /* unsigned short *gate;			Input: ignore (1) or use (0) ext. gate	*/
 /* unsigned short *resume;			Input: clear MCA first(0) or update (1)	*/
+/* Board *board;					Input: Relavent Board info					*/
 {
 /*
  *   Initiate data taking for all channels of a single DXP module. 
@@ -2442,21 +2643,29 @@ static int dxp_begin_run(int* ioChan, int* modChan, unsigned short* gate,
 	int status;
 	unsigned short data;
 	int *itemp;
+	Board *btemp;
+
+	dxp_log_debug("dxp_begin_run", "Entering dxp_begin_run()");
 
 /* Assign input parameters to avoid compiler warnings */
 	itemp = modChan;
-
+	btemp = board;
+		
 /* write to CSR to start data run */
 
 	data=MASK_RUNENABLE;
 	if(*resume==CLEARMCA)data|=MASK_RESETMCA;
 	if (*gate==IGNOREGATE)  data|= MASK_IGNOREGATE;
 
+	dxp_log_debug("dxp_begin_run", "Preparing to write CSR");
+
 	status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
 	if (status!=DXP_SUCCESS){
-		dxp_md_error("dxp_begin_run","Error writing CSR",&status);
+		dxp_log_error("dxp_begin_run","Error writing CSR",status);
 		return status;
 	}
+
+	dxp_log_debug("dxp_begin_run", "Exiting dxp_being_run()");
 
 	return DXP_SUCCESS;
 }
@@ -2479,11 +2688,11 @@ static int dxp_end_run(int* ioChan, int* modChan)
 
 	status = dxp_write_csr(ioChan, &data);                    /* write to CSR */
 	if (status!=DXP_SUCCESS) {
-		dxp_md_error("dxp_end_run","Error writing CSR",&status);
+		dxp_log_error("dxp_end_run","Error writing CSR",status);
 	}
 	
 	if((status=dxp_clear_LAM(ioChan, modChan))!=DXP_SUCCESS) {
-		dxp_md_error("dxp_end_run"," ",&status);
+		dxp_log_error("dxp_end_run"," ",status);
 		return status;
 	}
 	
@@ -2508,13 +2717,436 @@ static int dxp_run_active(int* ioChan, int* modChan, int* active)
 
 	status = dxp_read_csr(ioChan, &data);                    /* read the CSR */
 	if (status!=DXP_SUCCESS) {
-		dxp_md_error("dxp_run_active","Error reading the CSR",&status);
+		dxp_log_error("dxp_run_active","Error reading the CSR",status);
 	}
 
 /* Check the run active bit of the CSR */
 	if ((data & (0x1<<11))!=0) *active = 1;
 
     return status;    
+
+}
+
+/******************************************************************************
+ *
+ * Routine to start a control task routine.  Definitions for types are contained
+ * in the xerxes_generic.h file.
+ * 
+ ******************************************************************************/
+static int dxp_begin_control_task(int* ioChan, int* modChan, short *type, 
+								  unsigned int *length, int *info, Board *board)
+/* int *ioChan;						Input: I/O channel of DXP module			*/
+/* int *modChan;					Input: module channel number of DXP module	*/
+/* short *type;						Input: type of control task to perfomr		*/
+/* int *length;						Input: Length of the config info array		*/
+/* int *info;						Input: Configuration info for the task		*/
+/* Board *board;					Input: Board data							*/
+{
+	int status = DXP_SUCCESS;
+
+/* Variables for parameters to be read/written from/to the DSP */
+	unsigned short runtasks, whichtest, tracewait;
+
+	unsigned short zero=0;
+	unsigned long temp;
+
+	dxp_log_debug("dxp_begin_control_task", "Entering dxp_begin_control_task()");
+
+/* Check that the length of allocated memory is greater than 0 */
+	if (*length==0) {
+		status = DXP_ALLOCMEM;
+		sprintf(info_string,
+			"Must pass an array of at least length 1 containing LOOPCOUNT for module %d chan %d",
+			&board->mod,*modChan);
+		dxp_log_error("dxp_begin_control_task",info_string,status);
+        return status;
+	}
+
+/* Read/Modify/Write the RUNTASKS parameter */
+/* read */
+	if((status=dxp_read_dspsymbol(ioChan,modChan,
+							"RUNTASKS",board->dsp[*modChan],&temp))!=DXP_SUCCESS){
+		sprintf(info_string,
+			"Error reading RUNTASKS from module %d chan %d",&board->mod,*modChan);
+		dxp_log_error("dxp_begin_control_task",info_string,status);
+        return status;
+    }
+
+	 sprintf(info_string, "runtasks = %#x\n", temp);
+	dxp_log_debug("dxp_begin_control_task", info_string);
+
+/* modify */
+	if (*type!=CT_DXPX10P_BASELINE_HIST) {
+
+		runtasks = (unsigned short) (temp | CONTROL_TASK);
+	
+	} else {
+ 
+		runtasks = (unsigned short) temp;
+	}
+	
+   sprintf(info_string, "runtasks = %#x\n", runtasks);
+	dxp_log_debug("dxp_begin_control_task", info_string);
+
+	if ((*type == CT_ADC) ||
+		 (*type == CT_DXPX10P_ADC) ||
+		 (*type == CT_DXPX10P_BASELINE_HIST))
+	{
+/* For baseline history, we just want to change the RUNTASKS variable to stop filling of the history, 
+ * so we can readout the buffer without it constantly being modified. */
+
+		runtasks |= STOP_BASELINE;
+	}
+
+	sprintf(info_string, "runtasks = %#x\n", runtasks);
+	dxp_log_debug("dxp_begin_control_task", info_string);
+
+/* write */
+	if((status=dxp_modify_dspsymbol(ioChan,modChan,
+							"RUNTASKS",&runtasks,board->dsp[*modChan]))!=DXP_SUCCESS){
+		sprintf(info_string,
+			"Error writing RUNTASKS from module %d chan %d",&board->mod,*modChan);
+		dxp_log_error("dxp_begin_control_task",info_string,status);
+        return status;
+    }
+
+/* First check if the control task is the ADC readout */
+	if (*type==CT_DXPX10P_SET_ASCDAC) {
+		whichtest = WHICHTEST_SET_ASCDAC;
+	} else if ((*type==CT_ADC) || (*type==CT_DXPX10P_ADC)) {
+		whichtest = WHICHTEST_ACQUIRE_ADC;
+/* Make sure at least the user thinks there is allocated memory */
+		if (*length>1) {
+/* write TRACEWAIT */
+			tracewait = (unsigned short) info[1];
+			if((status=dxp_modify_dspsymbol(ioChan,modChan,
+									"TRACEWAIT",&tracewait,board->dsp[*modChan]))!=DXP_SUCCESS){
+				sprintf(info_string,
+					"Error writing TRACEWAIT to module %d chan %d",&board->mod,*modChan);
+				dxp_log_error("dxp_begin_control_task",info_string,status);
+				return status;
+			}
+		} else {
+			status = DXP_ALLOCMEM;
+			sprintf(info_string,
+				"This control task requires at least 2 parameters for mod %d chan %d",&board->mod,*modChan);
+			dxp_log_error("dxp_begin_control_task",info_string,status);
+			return status;
+		}
+	} else if (*type==CT_DXPX10P_TRKDAC) {
+		whichtest = WHICHTEST_TRKDAC;
+	} else if (*type==CT_DXPX10P_SLOPE_CALIB) {
+		whichtest = WHICHTEST_SLOPE_CALIB;
+	} else if (*type==CT_DXPX10P_SLEEP_DSP) {
+		whichtest = WHICHTEST_SLEEP_DSP;
+	} else if (*type==CT_DXPX10P_PROGRAM_FIPPI) {
+		whichtest = WHICHTEST_PROGRAM_FIPPI;
+	} else if (*type==CT_DXPX10P_SET_POLARITY) {
+		whichtest = WHICHTEST_SET_POLARITY;
+	} else if (*type==CT_DXPX10P_CLOSE_INPUT_RELAY) {
+		whichtest = WHICHTEST_CLOSE_INPUT_RELAY;
+	} else if (*type==CT_DXPX10P_OPEN_INPUT_RELAY) {
+		whichtest = WHICHTEST_OPEN_INPUT_RELAY;
+	} else if (*type==CT_DXPX10P_RC_BASELINE) {
+		whichtest = WHICHTEST_RC_BASELINE;
+	} else if (*type==CT_DXPX10P_RC_EVENT) {
+		whichtest = WHICHTEST_RC_EVENT;
+	} else if (*type==CT_DXPX10P_BASELINE_HIST) {
+	} else if (*type==CT_DXPX10P_RESET) {
+		whichtest = WHICHTEST_RESET;
+	} else {
+		status=DXP_NOCONTROLTYPE;
+		sprintf(info_string,
+			"Unknown control type %d for this DXP4C2X module",*type);
+		dxp_log_error("dxp_begin_control_task",info_string,status);
+		return status;
+	}
+
+/* For baseline history, we just want to change the RUNTASKS variable to stop filling of the history, 
+ * so we can readout the buffer without it constantly being modified. */
+
+	if (*type!=CT_DXPX10P_BASELINE_HIST) {
+/* write WHICHTEST */
+		if((status=dxp_modify_dspsymbol(ioChan,modChan,
+								"WHICHTEST",&whichtest,board->dsp[*modChan]))!=DXP_SUCCESS){
+			sprintf(info_string,
+					"Error writing WHICHTEST to module %d chan %d",&board->mod,*modChan);
+			dxp_log_error("dxp_begin_control_task",info_string,status);
+			return status;
+		}
+
+/* start the control run */
+		if((status=dxp_begin_run(ioChan,modChan,&zero,&zero,board))!=DXP_SUCCESS){
+			sprintf(info_string,
+				"Error starting control run on module %d chan %d",&board->mod,*modChan);
+			dxp_log_error("dxp_begin_control_task",info_string,status);
+			return status;
+		}
+	}
+
+	return DXP_SUCCESS;    
+
+}
+/******************************************************************************
+ *
+ * Routine to end a control task routine.
+ * 
+ ******************************************************************************/
+static int dxp_end_control_task(int* ioChan, int* modChan, Board *board)
+/* int *ioChan;						Input: I/O channel of DXP module			*/
+/* int *modChan;					Input: module channel number of DXP module	*/
+/* Board *board;					Input: Board data							*/
+{
+	int status = DXP_SUCCESS;
+	unsigned long temp;
+	unsigned short runtasks;
+	unsigned short gate = 0;
+	unsigned short resume = 0;
+
+	int mod;
+	unsigned short value;
+	float timeout;
+
+	mod = board->mod;
+/* Read WHICHTEST, check if this was a DSP Sleep mode control task */
+	if((status=dxp_read_dspsymbol(ioChan,modChan,
+							"WHICHTEST",board->dsp[*modChan],&temp))!=DXP_SUCCESS){
+		sprintf(info_string,
+			"Error reading WHICHTEST from module %d chan %d",mod,*modChan);
+		dxp_log_error("dxp_end_control_task",info_string,status);
+        return status;
+    }
+
+/* Special case for SLEEP mode.  Merely start a run prior to ending the run and the DSP will 
+ * awaken */
+	if (temp==WHICHTEST_SLEEP_DSP) {
+		if ((status = dxp_begin_run(ioChan, modChan, &gate, 
+									&resume, board)) != DXP_SUCCESS) {
+			sprintf(error_string, "Error starting run to end DSP sleep for module %i", mod);
+			status = DXP_DSPSLEEP;
+			dxp_log_error("dxp_end_control_task", error_string, status);
+			return status;
+		}
+/* Now wait for BUSY=0 to indicate the DSP is IDLE */
+		value = 0;
+		timeout = 2.0;
+		if ((status=dxp_download_dsp_done(ioChan, modChan, &mod, board->dsp[*modChan], 
+											&value, &timeout))!=DXP_SUCCESS) {
+			sprintf(error_string,"Error waiting for BUSY=0 state for module %i",mod);
+			status = DXP_DSPTIMEOUT;
+			dxp_log_error("dxp_end_control_task",error_string,status);
+			return status;
+		}
+	}
+	
+	if((status=dxp_end_run(ioChan,modChan))!=DXP_SUCCESS){
+		sprintf(info_string,
+			"Error ending control task run for chan %d",*modChan);
+		dxp_log_error("dxp_end_control_task",info_string,status);
+        return status;
+    }
+
+/* Read/Modify/Write the RUNTASKS parameter */
+/* read */
+	if((status=dxp_read_dspsymbol(ioChan,modChan,
+							"RUNTASKS",board->dsp[*modChan],&temp))!=DXP_SUCCESS){
+		sprintf(info_string,
+			"Error reading RUNTASKS from module %d chan %d",&board->mod,*modChan);
+		dxp_log_error("dxp_end_control_task",info_string,status);
+        return status;
+    }
+/* Remove the CONTROL_TASK bit and add the WRITE_BASELINE bit */
+/* modify */
+	sprintf(info_string, "runtasks = %#x\n", runtasks);
+	dxp_log_debug("dxp_end_control_task", info_string);
+
+	runtasks = (unsigned short) ((temp & ~CONTROL_TASK) & ~STOP_BASELINE);
+	
+	sprintf(info_string, "runtasks = %#x\n", runtasks);
+	dxp_log_debug("dxp_end_control_task", info_string);
+	
+/* write */
+	if((status=dxp_modify_dspsymbol(ioChan,modChan,
+							"RUNTASKS",&runtasks,board->dsp[*modChan]))!=DXP_SUCCESS){
+		sprintf(info_string,
+			"Error writing RUNTASKS from module %d chan %d",&board->mod,*modChan);
+		dxp_log_error("dxp_end_control_task",info_string,status);
+        return status;
+	}
+
+	return status;    
+
+}
+
+/******************************************************************************
+ *
+ * Routine to get control task parameters.
+ * 
+ ******************************************************************************/
+static int dxp_control_task_params(int* ioChan, int* modChan, short *type, 
+								   Board *board, int *info)
+/* int *ioChan;						Input: I/O channel of DXP module			*/
+/* int *modChan;					Input: module channel number of DXP module	*/
+/* short *type;						Input: type of control task to perfomr		*/
+/* Board *board;					Input: Board data							*/
+/* int info[20];					Output: Configuration info for the task		*/
+{
+	int status = DXP_SUCCESS;
+
+/* Default values */
+/* nothing to readout here */
+	info[0] = 0;
+/* stop when user is ready */
+	info[1] = 0;
+/* stop when user is ready */
+	info[2] = 0;
+
+/* Check the control task type */
+	if (*type==CT_DXPX10P_SET_ASCDAC) {
+	} else if ((*type==CT_ADC) || (*type==CT_DXPX10P_ADC)) {
+/* length=spectrum length*/
+		info[0] = dxp_get_history_length(board->dsp[*modChan], board->params[*modChan]);
+/* Recommend waiting 4ms initially, 400ns*spectrum length */
+		info[1] = 4;
+/* Recomment 1ms polling after initial wait */
+		info[2] = 1;
+	} else if (*type==CT_DXPX10P_TRKDAC) {
+/* length=1, the value of the tracking DAC */
+		info[0] = 1;
+/* Recommend waiting 10ms initially */
+		info[1] = 10;
+/* Recomment 1ms polling after initial wait */
+		info[2] = 1;
+	} else if (*type==CT_DXPX10P_SLOPE_CALIB) {
+	} else if (*type==CT_DXPX10P_SLEEP_DSP) {
+	} else if (*type==CT_DXPX10P_PROGRAM_FIPPI) {
+	} else if (*type==CT_DXPX10P_SET_POLARITY) {
+	} else if (*type==CT_DXPX10P_CLOSE_INPUT_RELAY) {
+	} else if (*type==CT_DXPX10P_OPEN_INPUT_RELAY) {
+	} else if (*type==CT_DXPX10P_RC_BASELINE) {
+	} else if (*type==CT_DXPX10P_RC_EVENT) {
+	} else if (*type==CT_DXPX10P_BASELINE_HIST) {
+		info[0] = dxp_get_history_length(board->dsp[*modChan], board->params[*modChan]);
+/* Recommend waiting 0ms, baseline history is available immediately */
+		info[1] = 1;
+/* Recomment 0ms polling, baseline history is available immediately */
+		info[2] = 1;
+	} else if (*type==CT_DXPX10P_RESET) {
+	} else {
+		status=DXP_NOCONTROLTYPE;
+		sprintf(info_string,
+			"Unknown control type %d for this DXP4C2X module",*type);
+		dxp_log_error("dxp_control_task_params",info_string,status);
+		return status;
+	}
+	
+	return status;
+
+}
+
+/******************************************************************************
+ *
+ * Routine to return control task data.
+ * 
+ ******************************************************************************/
+static int dxp_control_task_data(int* ioChan, int* modChan, short *type, 
+								   Board *board, void *data)
+/* int *ioChan;						Input: I/O channel of DXP module			*/
+/* int *modChan;					Input: module channel number of DXP module	*/
+/* short *type;						Input: type of control task to perfomr		*/
+/* Board *board;					Input: Board data							*/
+/* int *data;						Output: Data read after the control task	*/
+{
+	int status = DXP_SUCCESS;
+
+	unsigned int i, lenh;
+	unsigned short *stemp;
+	unsigned long *ultemp;
+	long *ltemp;
+	unsigned long hststart, circular, offset;
+	
+/* Check the control task type */
+	if (*type==CT_DXPX10P_SET_ASCDAC) {
+	} else if ((*type==CT_ADC) || (*type==CT_DXPX10P_ADC) || 
+			   (*type==CT_DXPX10P_BASELINE_HIST)) {
+/* allocate memory */
+		lenh = dxp_get_history_length(board->dsp[*modChan],board->params[*modChan]);
+		stemp = (unsigned short *) dxp_md_alloc(lenh*sizeof(unsigned short));
+		if (stemp==NULL) {
+			status = DXP_NOMEM;
+			sprintf(info_string,
+				"Not enough memory to allocate temporary array of length %d",lenh);
+			dxp_log_error("dxp_control_task_data",info_string,status);
+			return status;
+		}
+
+		if((status=dxp_read_history(ioChan, modChan, board, stemp))!=DXP_SUCCESS){
+			dxp_md_free(stemp);
+			sprintf(info_string,
+				"Error ending control task run for chan %d",*modChan);
+			dxp_log_error("dxp_control_task_data",info_string,status);
+			return status;
+	    }
+
+		if (*type!=CT_DXPX10P_BASELINE_HIST) {
+/* Assign the void *data to a local unsigned long * array for assignment purposes.  Just easier to read than
+ * casting the void * on the left hand side */
+ 			dxp_log_debug("dxp_control_task_data", "type != CT_DXPX10P_BASELINE_HIST");
+
+			ultemp = (unsigned long *) data;
+			for (i=0;i<lenh;i++) ultemp[i] = (unsigned long) stemp[i];
+		} else {
+			
+			dxp_log_debug("dxp_control_task_data", "type == CT_DXPX10P_BASELINE_HIST");
+
+/* For the baseline history, get the start of the circular buffer and return the array with the 
+ * start at location 0 instead of the random location within the DSP memory. */
+			if((status=dxp_read_dspsymbol(ioChan,modChan,
+									"CIRCULAR",board->dsp[*modChan],&circular))!=DXP_SUCCESS){
+				dxp_md_free(stemp);
+				sprintf(info_string,
+					"Error reading CIRCULAR from module %d chan %d",&board->mod,*modChan);
+				dxp_log_error("dxp_end_control_task",info_string,status);
+			    return status;
+		    }
+			if((status=dxp_read_dspsymbol(ioChan,modChan,
+									"HSTSTART",board->dsp[*modChan],&hststart))!=DXP_SUCCESS){
+				dxp_md_free(stemp);
+				sprintf(info_string,
+					"Error reading HSTSTART from module %d chan %d",&board->mod,*modChan);
+				dxp_log_error("dxp_end_control_task",info_string,status);
+			    return status;
+		    }
+			ltemp = (long *) data;
+			offset = circular - hststart;
+/* Do a short cast of the unsigned short to force the compiler to do the sign-extension properly.  If you try 
+ * to cast directly into a long, the compiler will NOT sign extend the unsigned short array */
+			for (i=offset;i<lenh;i++) ltemp[i-offset] = (long) ((short) stemp[i]);
+			for (i=0;i<offset;i++) ltemp[i+(lenh-offset)] = (long) ((short) stemp[i]);
+		}
+
+/* Free memory */
+		dxp_md_free(stemp);
+
+	} else if (*type==CT_DXPX10P_TRKDAC) {
+	} else if (*type==CT_DXPX10P_SLOPE_CALIB) {
+	} else if (*type==CT_DXPX10P_SLEEP_DSP) {
+	} else if (*type==CT_DXPX10P_PROGRAM_FIPPI) {
+	} else if (*type==CT_DXPX10P_SET_POLARITY) {
+	} else if (*type==CT_DXPX10P_CLOSE_INPUT_RELAY) {
+	} else if (*type==CT_DXPX10P_OPEN_INPUT_RELAY) {
+	} else if (*type==CT_DXPX10P_RC_BASELINE) {
+	} else if (*type==CT_DXPX10P_RC_EVENT) {
+	} else if (*type==CT_DXPX10P_RESET) {
+	} else {
+		status=DXP_NOCONTROLTYPE;
+		sprintf(info_string,
+			"Unknown control type %d for this DXP4C2X module",*type);
+		dxp_log_error("dxp_control_task_data",info_string,status);
+		return status;
+	}
+	
+	return status;    
 
 }
 
@@ -2537,25 +3169,25 @@ static int dxp_run_active(int* ioChan, int* modChan, int* active)
  *				
  *
  ******************************************************************************/
-static int dxp_begin_calibrate(int* ioChan, int* modChan, int* calib_task, Dsp_Info* dsp)
-/* int *ioChan;					Input: I/O channel of DXP module	*/
-/* int *modChan;				Input: Module channel number		*/
-/* int *calib_task;				Input: int.gain (1) reset (2)    */
-/* Dsp_Info *dsp;				Input: Relavent DSP info			*/
+static int dxp_begin_calibrate(int* ioChan, int* modChan, int* calib_task, Board *board)
+/* int *ioChan;					Input: I/O channel of DXP module*/
+/* int *modChan;				Input: Module channel number	*/
+/* int *calib_task;				Input: int.gain (1) reset (2)   */
+/* Board *board;				Input: Relavent Board info		*/
 {
 /*
  */
 	int status;
 	unsigned short ignore=IGNOREGATE,resume=CLEARMCA;
 	unsigned short whichtest= (unsigned short) *calib_task;
-	unsigned short runtasks=SPECIAL_TASK;
+	unsigned short runtasks=CONTROL_TASK;
 
 /* Be paranoid and check if the DSP configuration is downloaded.  If not, do it */
 	
-	if ((dsp->proglen) <= 0) {
+	if ((board->dsp[*modChan]->proglen) <= 0) {
 		status = DXP_DSPLOAD;
 		sprintf(error_string, "Must Load DSP code before calibrations");
-		dxp_md_error("dxp_begin_calibrate", error_string, &status);
+		dxp_log_error("dxp_begin_calibrate", error_string, status);
 		return status;
 	}
 
@@ -2563,35 +3195,35 @@ static int dxp_begin_calibrate(int* ioChan, int* modChan, int* calib_task, Dsp_I
 
 	if (*calib_task==99) {
 		status = DXP_BAD_PARAM;
-		dxp_md_error("dxp_begin_calibrate", 
-			"RESET calibration not necc with this model", &status);
+		dxp_log_error("dxp_begin_calibrate", 
+			"RESET calibration not necc with this model", status);
 		return status;
 	} else if ((*calib_task==4)||(*calib_task==5)||
 			((*calib_task>6)&&(*calib_task<11))||(*calib_task>16)) {
 		status = DXP_BAD_PARAM;
 		sprintf(error_string,"Calibration task = %d is nonexistant",
 										*calib_task);
-		dxp_md_error("dxp_begin_calibrate", error_string, &status);
+		dxp_log_error("dxp_begin_calibrate", error_string, status);
 		return status;
 	}
 	
 	
 	if((status=dxp_modify_dspsymbol(ioChan, modChan,
-									"WHICHTEST", &whichtest, dsp))!=DXP_SUCCESS) {    
-		dxp_md_error("dxp_begin_calibrate","Error writing WHICHTEST",&status);
+									"WHICHTEST", &whichtest, board->dsp[*modChan]))!=DXP_SUCCESS) {    
+		dxp_log_error("dxp_begin_calibrate","Error writing WHICHTEST",status);
 		return status;
 	}
 
 	if((status=dxp_modify_dspsymbol(ioChan, modChan,
-									"RUNTASKS",&runtasks, dsp))!=DXP_SUCCESS) {    
-       dxp_md_error("dxp_begin_calibrate","Error writing RUNTASKS",&status);
+									"RUNTASKS",&runtasks, board->dsp[*modChan]))!=DXP_SUCCESS) {    
+       dxp_log_error("dxp_begin_calibrate","Error writing RUNTASKS",status);
        return status;
 	}
 
 /* Finally startup the Calibration run. */
 
-	if((status = dxp_begin_run(ioChan, modChan, &ignore, &resume))!=DXP_SUCCESS){
-       dxp_md_error("dxp_begin_calibrate"," ",&status);
+	if((status = dxp_begin_run(ioChan, modChan, &ignore, &resume, board))!=DXP_SUCCESS){
+       dxp_log_error("dxp_begin_calibrate"," ",status);
 	}
     
 	return status;
@@ -2619,7 +3251,7 @@ static int dxp_decode_error(unsigned short array[], Dsp_Info* dsp,
 	if ((dsp->proglen)<=0) {
 		status = DXP_DSPLOAD;
 		sprintf(error_string, "Must Load DSP code before decoding errors");
-		dxp_md_error("dxp_decode_error", error_string, &status);
+		dxp_log_error("dxp_decode_error", error_string, status);
 		return status;
 	}
 
@@ -2629,8 +3261,8 @@ static int dxp_decode_error(unsigned short array[], Dsp_Info* dsp,
 	status += dxp_loc("ERRINFO", dsp, &addr_ERRINFO);
 	if(status!=DXP_SUCCESS){
 		status=DXP_NOSYMBOL;
-		dxp_md_error("dxp_decode_error",
-			"Could not locate either RUNERROR or ERRINFO symbols",&status);
+		dxp_log_error("dxp_decode_error",
+			"Could not locate either RUNERROR or ERRINFO symbols",status);
 		return status;
 	}
 
@@ -2661,7 +3293,7 @@ static int dxp_clear_error(int* ioChan, int* modChan, Dsp_Info* dsp)
 	if ((dsp->proglen)<=0) {
 		status = DXP_DSPLOAD;
 		sprintf(error_string, "Must Load DSP code before clearing errors");
-		dxp_md_error("dxp_clear_error", error_string, &status);
+		dxp_log_error("dxp_clear_error", error_string, status);
 		return status;
 	}
 
@@ -2669,7 +3301,7 @@ static int dxp_clear_error(int* ioChan, int* modChan, Dsp_Info* dsp)
     status = dxp_modify_dspsymbol(ioChan, modChan, "RUNERROR", 
 									&zero, dsp);
     if (status!=DXP_SUCCESS) 
-		dxp_md_error("dxp_clear_error","Unable to clear RUNERROR",&status);
+		dxp_log_error("dxp_clear_error","Unable to clear RUNERROR",status);
 
     return status;
 
@@ -2778,8 +3410,8 @@ static int dxp_get_runstats(unsigned short array[], Dsp_Info* dsp,
 
 	if(status!=DXP_SUCCESS){
 		status = DXP_NOSYMBOL;
-		dxp_md_error("dxp_get_runstats",
-			"Unable to find 1 or more parameters",&status);
+		dxp_log_error("dxp_get_runstats",
+			"Unable to find 1 or more parameters",status);
 		return status;
 	}
 
@@ -2854,7 +3486,7 @@ static int dxp_change_gains(int* ioChan, int* modChan, int* module,
 							"GAINDAC", dsp, &ltemp))!=DXP_SUCCESS){
 		sprintf(info_string,
 			"Error reading GAINDAC from mod %d chan %d",*module,*modChan);
-		dxp_md_error("dxp_change_gains",info_string,&status);
+		dxp_log_error("dxp_change_gains",info_string,status);
         return status;
     }
 	gaindac = (unsigned short) ltemp;
@@ -2865,7 +3497,7 @@ static int dxp_change_gains(int* ioChan, int* modChan, int* module,
 							"THRESHOLD", dsp, &ltemp))!=DXP_SUCCESS){
         sprintf(info_string,
 			"Error reading THRESHOLD from mod %d chan %d",*module,*modChan);
-		dxp_md_error("dxp_change_gains",info_string,&status);
+		dxp_log_error("dxp_change_gains",info_string,status);
         return status;
     }
 	fast_threshold = (unsigned short) ltemp;
@@ -2876,7 +3508,7 @@ static int dxp_change_gains(int* ioChan, int* modChan, int* module,
 							"SLOWTHRESH", dsp, &ltemp))!=DXP_SUCCESS){
         sprintf(info_string,
 			"Error reading SLOWTHRESH from mod %d chan %d",*module,*modChan);
-		dxp_md_error("dxp_change_gains",info_string,&status);
+		dxp_log_error("dxp_change_gains",info_string,status);
         return status;
     }
 	slow_threshold = (unsigned short) ltemp;
@@ -2887,7 +3519,7 @@ static int dxp_change_gains(int* ioChan, int* modChan, int* module,
 								&gaindac, &delta_gaindac))!=DXP_SUCCESS){
         sprintf(info_string,
 			"DXP module %d Channel %d", *module, *modChan);
-		dxp_md_error("dxp_change_gains",info_string,&status);
+		dxp_log_error("dxp_change_gains",info_string,status);
         status=DXP_SUCCESS;
     }
 
@@ -2902,7 +3534,7 @@ static int dxp_change_gains(int* ioChan, int* modChan, int* module,
 			"Required GAINDAC setting of %x (bits) that is out of range", 
 			((unsigned int) lgaindac));
 		status=DXP_DETECTOR_GAIN;
-        dxp_md_error("dxp_change_gains",info_string,&status);
+        dxp_log_error("dxp_change_gains",info_string,status);
 		return status;
 	}
 
@@ -2924,21 +3556,21 @@ static int dxp_change_gains(int* ioChan, int* modChan, int* module,
 							"GAINDAC", &gaindac, dsp))!=DXP_SUCCESS){
 		sprintf(info_string,
 			"Error writing GAINDAC to mod %d chan %d", *module, *modChan);
-		dxp_md_error("dxp_change_gains",info_string,&status);
+		dxp_log_error("dxp_change_gains",info_string,status);
         return status;
     }
 	if((status=dxp_modify_dspsymbol(ioChan, modChan,
 							"THRESHOLD", &fast_threshold, dsp))!=DXP_SUCCESS){
         sprintf(info_string,
 			"Error writing THRESHOLD to mod %d chan %d", *module, *modChan);
-		dxp_md_error("dxp_change_gains",info_string,&status);
+		dxp_log_error("dxp_change_gains",info_string,status);
         return status;
     }
 	if((status=dxp_modify_dspsymbol(ioChan, modChan,
 							"SLOWTHRESH", &slow_threshold, dsp))!=DXP_SUCCESS){
         sprintf(info_string,
 			"Error writing SLOWTHRESH to mod %d chan %d", *module, *modChan);
-		dxp_md_error("dxp_change_gains",info_string,&status);
+		dxp_log_error("dxp_change_gains",info_string,status);
         return status;
     }
 
@@ -3035,7 +3667,7 @@ static int dxp_setup_asc(int* ioChan, int* modChan, int* module, float* adcRule,
 		sprintf(info_string,
 			"Required gain of %f (dB) that is out of range for the ASC", g_desired);
 		status=DXP_DETECTOR_GAIN;
-        dxp_md_error("dxp_setup_asc",info_string,&status);
+        dxp_log_error("dxp_setup_asc",info_string,status);
 		return status;
 	}
 
@@ -3050,7 +3682,7 @@ static int dxp_setup_asc(int* ioChan, int* modChan, int* module, float* adcRule,
 		sprintf(info_string,
 			"Error writting GAINDAC to module %d channel %d",
 			*module,*modChan);
-		dxp_md_error("dxp_setup_asc",info_string,&status);
+		dxp_log_error("dxp_setup_asc",info_string,status);
 		return status;
 	}
 /*
@@ -3061,7 +3693,7 @@ static int dxp_setup_asc(int* ioChan, int* modChan, int* module, float* adcRule,
 		sprintf(info_string,
 			"Error writting POLARITY to module %d channel %d",
 			*module,*modChan);
-		dxp_md_error("dxp_setup_asc",info_string,&status);
+		dxp_log_error("dxp_setup_asc",info_string,status);
 		return status;
 	}
 
@@ -3074,21 +3706,21 @@ static int dxp_setup_asc(int* ioChan, int* modChan, int* module, float* adcRule,
  *
  ******************************************************************************/
 static int dxp_calibrate_asc(int* mod, int* camChan, unsigned short* used, 
-							 Dsp_Info** dsp) 
+							 Board *board) 
 /* int *mod;					Input: Camac Module number to calibrate			*/
-/* int *camChan;				Input: Camac pointer								*/
+/* int *camChan;				Input: Camac pointer							*/
 /* unsigned short *used;		Input: bitmask of channel numbers to calibrate	*/
-/* Dsp_Info **dsp;				Input: Relavent DSP info							*/
+/* Board *board;				Input: Relavent Board info						*/
 {
 	int *itemp;
 	unsigned short *stemp;
-	Dsp_Info **dtemp;
+	Board *btemp;
 
 /* Assign input parameters to avoid compiler warnings */
 	itemp = mod;
 	itemp = camChan;
 	stemp = used;
-	dtemp = dsp;
+	btemp = board;
 
 /* No Calibration runs are performed for the DXP-4C 2X */
 
@@ -3110,12 +3742,12 @@ static int dxp_calibrate_asc(int* mod, int* camChan, unsigned short* used,
  *
  ******************************************************************************/
 static int dxp_calibrate_channel(int* mod, int* camChan, unsigned short* used, 
-								 int* calibtask, Dsp_Info** dsp)
+								 int* calibtask, Board *board)
 /* int *mod;						Input: Camac Module number to calibrate			*/
-/* int *camChan;					Input: Camac pointer								*/
+/* int *camChan;					Input: Camac pointer							*/
 /* unsigned short *used;			Input: bitmask of channel numbers to calibrate	*/
 /* int *calibtask;					Input: which calibration function				*/
-/* Dsp_Info **dsp;					Input: Relavent DSP info							*/
+/* Board *board;					Input: Relavent Board info						*/
 {
 
     int status=DXP_SUCCESS,status2,chan;
@@ -3136,25 +3768,25 @@ static int dxp_calibrate_channel(int* mod, int* camChan, unsigned short* used,
 
 /* Grab the addresses in the DSP for some symbols. */
     
-		status = dxp_loc("RUNTASKS", dsp[chan], &addr_RUNTASKS);
+		status = dxp_loc("RUNTASKS", board->dsp[chan], &addr_RUNTASKS);
 		if(status!=DXP_SUCCESS){
 			status = DXP_NOSYMBOL;
-			dxp_md_error("dxp_calibrate_channel","Unable to locate RUNTASKS",&status);
+			dxp_log_error("dxp_calibrate_channel","Unable to locate RUNTASKS",status);
 			return status;
 		}
 
 		if((status2=dxp_read_dspsymbol(camChan, &chan, "RUNTASKS", 
-								dsp[chan], &ltemp))!=DXP_SUCCESS){
+								board->dsp[chan], &ltemp))!=DXP_SUCCESS){
 			sprintf(info_string,"Error reading RUNTASKS from mod %d chan %d",
 				*mod,chan);
-			dxp_md_error("dxp_calibrate_channel",info_string,&status2);
+			dxp_log_error("dxp_calibrate_channel",info_string,status2);
 			return status2;
 		}
 		runtasks = (unsigned short) ltemp;
 
-		if((status2=dxp_begin_calibrate(camChan, &chan, calibtask, dsp[chan]))!=DXP_SUCCESS){
+		if((status2=dxp_begin_calibrate(camChan, &chan, calibtask, board))!=DXP_SUCCESS){
 			sprintf(info_string,"Error beginning calibration for mod %d",*mod);
-			dxp_md_error("dxp_calibrate_channel",info_string,&status2);
+			dxp_log_error("dxp_calibrate_channel",info_string,status2);
 			return status2;
 		}
 /*
@@ -3162,8 +3794,8 @@ static int dxp_calibrate_channel(int* mod, int* camChan, unsigned short* used,
  */
 	    dxp_md_wait(&one_second);
 		if((status2=dxp_end_run(camChan, &chan))!=DXP_SUCCESS){
-			dxp_md_error("dxp_calibrate_channel",
-					"Unable to end calibration run",&status2);
+			dxp_log_error("dxp_calibrate_channel",
+					"Unable to end calibration run",status2);
 			return status2;
 		}
 /*
@@ -3174,28 +3806,28 @@ static int dxp_calibrate_channel(int* mod, int* camChan, unsigned short* used,
 
 /* Read out the parameter memory into the Params array */
             
-		if((status2=dxp_read_dspparams(camChan, &chan, dsp[chan], params))!=DXP_SUCCESS){
+		if((status2=dxp_read_dspparams(camChan, &chan, board->dsp[chan], params))!=DXP_SUCCESS){
 			sprintf(info_string,
 				"error reading parameters for mod %d chan %d",*mod,chan);
-			dxp_md_error("dxp_calibrate_channel",info_string,&status2);
+			dxp_log_error("dxp_calibrate_channel",info_string,status2);
 			return status2;
 		}
 
 /* Check for errors reported by the DSP. */
 
-		if((status2=dxp_decode_error(params, dsp[chan], &runerror, &errinfo))!=DXP_SUCCESS){
-			dxp_md_error("dxp_calibrate_channel","Unable to decode errors",&status2);
+		if((status2=dxp_decode_error(params, board->dsp[chan], &runerror, &errinfo))!=DXP_SUCCESS){
+			dxp_log_error("dxp_calibrate_channel","Unable to decode errors",status2);
 			return status2;
 		}
 		if(runerror!=0){
 			status+=DXP_DSPRUNERROR;
 			sprintf(info_string,"DSP error detected for mod %d chan %d",
 				*mod,chan);
-			dxp_md_error("dxp_calibrate_channel",info_string,&status);
-			if((status2=dxp_clear_error(camChan, &chan, dsp[chan]))!=DXP_SUCCESS){
+			dxp_log_error("dxp_calibrate_channel",info_string,status);
+			if((status2=dxp_clear_error(camChan, &chan, board->dsp[chan]))!=DXP_SUCCESS){
 				sprintf(info_string,
 					"Unable to clear error for mod %d chan %d",*mod,chan);
-				dxp_md_error("dxp_calibrate_channel",info_string,&status2);
+				dxp_log_error("dxp_calibrate_channel",info_string,status2);
 				return status2;
 			}
 		}
@@ -3203,20 +3835,20 @@ static int dxp_calibrate_channel(int* mod, int* camChan, unsigned short* used,
 /* Call the primitive routine that checks the calibration to ensure
  * that all went well.  The results depend on the calibration performed. */
 
-		if((status += dxp_check_calibration(calibtask, params, dsp[chan]))!=DXP_SUCCESS){
+		if((status += dxp_check_calibration(calibtask, params, board->dsp[chan]))!=DXP_SUCCESS){
 			sprintf(info_string,"Calibration Error: mod %d chan %d",
 				*mod,chan);
-			dxp_md_error("dxp_calibrate_channel",info_string,&status);
+			dxp_log_error("dxp_calibrate_channel",info_string,status);
 		}
 
 
 /* Now write back the value previously stored in RUNTASKS */            
 			
 		if((status2=dxp_modify_dspsymbol(camChan, &chan, "RUNTASKS", 
-							&runtasks, dsp[chan]))!=DXP_SUCCESS){
+							&runtasks, board->dsp[chan]))!=DXP_SUCCESS){
 			sprintf(info_string,"Error writing RUNTASKS to mod %d chan %d",
 				*mod,chan);
-			dxp_md_error("dxp_calibrate_channel",info_string,&status2);
+			dxp_log_error("dxp_calibrate_channel",info_string,status2);
 			return status2;
 		}
     }
@@ -3351,14 +3983,4 @@ static int dxp_little_endian(VOID)
 
     return (endian);
 
-}
-
-/******************************************************************************
- *
- * Routine to get the ADC trace
- *
- ******************************************************************************/
-static int dxp_get_adc(int *ioChan, int *modChan, Dsp_Info *dsp, unsigned short *data)
-{
-	return DXP_SUCCESS;
 }

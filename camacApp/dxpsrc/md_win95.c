@@ -21,6 +21,7 @@
 #include "xerxes_errors.h"
 #include "xerxes_structures.h"
 #include "md_windows.h"
+#include "md_generic.h"
 #define MODE 4
 
 /* variables to store the IO channel information */
@@ -34,7 +35,8 @@ static int print_debug=0;
 /* maximum number of words able to transfer in a single call to dxp_md_io() */
 static unsigned int maxblk=0;
 
-#if !(defined(EXCLUDE_DXP4C) || defined(EXCLUDE_DXP4C2X))
+
+#if !(defined(EXCLUDE_DXP4C) && defined(EXCLUDE_DXP4C2X))
 /* typedef the actual DLL function call to be a pointer to a function returning a 
  * long integer */
 /*typedef long (*MYDLLFUNC)(short*,short,long,short,short*);*/
@@ -55,16 +57,27 @@ static unsigned short next_addr=0;
  * Routine to create pointers to the MD utility routines
  * 
  ******************************************************************************/
-int dxp_md_init_util(Xia_Util_Functions* funcs, char* type)
+XIA_MD_EXPORT int XIA_MD_API dxp_md_init_util(Xia_Util_Functions* funcs, char* type)
 /* Xia_Util_Functions *funcs;	*/
 /* char *type;					*/
 {
 	funcs->dxp_md_error_control = dxp_md_error_control;
-	funcs->dxp_md_error         = dxp_md_error;
 	funcs->dxp_md_alloc         = dxp_md_alloc;
 	funcs->dxp_md_free          = dxp_md_free;
 	funcs->dxp_md_puts          = dxp_md_puts;
 	funcs->dxp_md_wait          = dxp_md_wait;
+
+	funcs->dxp_md_error         = dxp_md_error;
+	funcs->dxp_md_warning       = dxp_md_warning;
+	funcs->dxp_md_info          = dxp_md_info;
+	funcs->dxp_md_debug         = dxp_md_debug;
+	funcs->dxp_md_output        = dxp_md_output;
+	funcs->dxp_md_suppress_log  = dxp_md_suppress_log;
+	funcs->dxp_md_enable_log    = dxp_md_enable_log;
+	funcs->dxp_md_set_log_level = dxp_md_set_log_level;
+	funcs->dxp_md_log	        = dxp_md_log;
+
+	out_stream = stdout;
 
 	return DXP_SUCCESS;
 }
@@ -74,22 +87,22 @@ int dxp_md_init_util(Xia_Util_Functions* funcs, char* type)
  * Routine to create pointers to the MD utility routines
  * 
  ******************************************************************************/
-int dxp_md_init_io(Xia_Io_Functions* funcs, char* type)
+XIA_MD_EXPORT int XIA_MD_API dxp_md_init_io(Xia_Io_Functions* funcs, char* type)
 /* Xia_Io_Functions *funcs;		*/
 /* char *type;					*/
 {
 	unsigned int i;
 	
 	for(i=0;i<strlen(type);i++) type[i]=(char) tolower(type[i]);
-#if !(defined(EXCLUDE_DXP4C) | defined(EXCLUDE_DXP4C2X))
-	if (strcmp(type,"camac")==0) {
+#if !(defined(EXCLUDE_DXP4C) && defined(EXCLUDE_DXP4C2X))
+	if (STREQ(type,"camac")) {
 		funcs->dxp_md_io         = dxp_md_io;
 		funcs->dxp_md_initialize = dxp_md_initialize;
 		funcs->dxp_md_open       = dxp_md_open;
 	} 
 #endif
 #ifndef EXCLUDE_DXPX10P
-	if (strcmp(type,"epp")==0) {
+	if (STREQ(type,"epp")) {
 		funcs->dxp_md_io         = dxp_md_epp_io;
 		funcs->dxp_md_initialize = dxp_md_epp_initialize;
 		funcs->dxp_md_open       = dxp_md_epp_open;
@@ -103,14 +116,14 @@ int dxp_md_init_io(Xia_Io_Functions* funcs, char* type)
 	return DXP_SUCCESS;
 }
 
-#if !(defined(EXCLUDE_DXP4C) || defined(EXCLUDE_DXP4C2X))
+#if !(defined(EXCLUDE_DXP4C) && defined(EXCLUDE_DXP4C2X))
 /*****************************************************************************
  * 
  * Initialize the system.  Alloocate the space for the library arrays, define
  * the pointer to the CAMAC library and the IO routine.
  * 
  *****************************************************************************/
-static int dxp_md_initialize(unsigned int* maxMod, char* dllname)
+XIA_MD_STATIC int XIA_MD_API dxp_md_initialize(unsigned int* maxMod, char* dllname)
 /* unsigned int *maxMod;					Input: maximum number of dxp modules allowed */
 /* char *dllname;							Input: name of the DLL						*/
 {
@@ -124,7 +137,7 @@ static int dxp_md_initialize(unsigned int* maxMod, char* dllname)
 		status = DXP_NOMEM;
 		sprintf(error_string,"Calling routine requests %d maximum modules: only %d available.", 
 			*maxMod, MAXMOD);
-        dxp_md_error("dxp_md_initialize",error_string,&status);
+        dxp_md_log_error("dxp_md_initialize", error_string, status);
         return status;
 	}
 
@@ -136,7 +149,7 @@ static int dxp_md_initialize(unsigned int* maxMod, char* dllname)
 	lstatus = xia_caminit(buf);
     if (lstatus!=0){
         sprintf(error_string,"camxfr error: status = 0x%lX, while trying to initialize DLL",lstatus);
-        dxp_md_error("dxp_md_initialize",error_string,&status);
+        dxp_md_log_error("dxp_md_initialize",error_string,status);
         status = DXP_MDINITIALIZE;
         return status;
     }
@@ -153,7 +166,7 @@ static int dxp_md_initialize(unsigned int* maxMod, char* dllname)
  * number (better known as a slot number).
  * 
  *****************************************************************************/
-static int dxp_md_open(char* ioname, int* camChan)
+XIA_MD_STATIC int XIA_MD_API dxp_md_open(char* ioname, int* camChan)
 /* char *ioname;						Input:  string used to specify this IO 
 												channel */
 /* int *camChan;						Output: returns a reference number for
@@ -167,7 +180,7 @@ static int dxp_md_open(char* ioname, int* camChan)
  * this operation 2 times. */
     
 	for(i=0;i<numDXP;i++){
-        if(strcmp(name[i],ioname)==0) {
+        if(STREQ(name[i],ioname)) {
             status=DXP_SUCCESS;
 			*camChan = i;
 			return status;
@@ -197,7 +210,7 @@ static int dxp_md_open(char* ioname, int* camChan)
  * length.  And the data itself is stored in data.
  * 
  *****************************************************************************/
-static int dxp_md_io(int* camChan, unsigned int* function, 
+XIA_MD_STATIC int XIA_MD_API dxp_md_io(int* camChan, unsigned int* function, 
 					 unsigned int* address, unsigned short* data,
 					 unsigned int* length)
 /* int *camChan;						Input: pointer to IO channel to access		*/
@@ -230,9 +243,9 @@ static int dxp_md_io(int* camChan, unsigned int* function,
 
 	lstatus = xia_camxfr(camadr, func, nbytes, mode, (short*) data);
     if ((lstatus!=0)&&(lstatus!=4)){
-        sprintf(error_string,"camxfr error: status = 0x%lX",lstatus);
-        dxp_md_error("dxp_md_io",error_string,&status);
         status = DXP_MDIO;
+        sprintf(error_string,"camxfr error: status = 0x%lX",lstatus);
+        dxp_md_log_error("dxp_md_io",error_string,status);
         return status;
     }
 
@@ -249,7 +262,7 @@ static int dxp_md_io(int* camChan, unsigned int* function,
  * the pointer to the CAMAC library and the IO routine.
  * 
  *****************************************************************************/
-static int dxp_md_epp_initialize(unsigned int* maxMod, char* dllname)
+XIA_MD_STATIC int XIA_MD_API dxp_md_epp_initialize(unsigned int* maxMod, char* dllname)
 /* unsigned int *maxMod;					Input: maximum number of dxp modules allowed */
 /* char *dllname;							Input: name of the DLL						*/
 {
@@ -263,7 +276,7 @@ static int dxp_md_epp_initialize(unsigned int* maxMod, char* dllname)
 		status = DXP_NOMEM;
 		sprintf(error_string,"Calling routine requests %d maximum modules: only %d available.", 
 			*maxMod, MAXMOD);
-        dxp_md_error("dxp_md_epp_initialize",error_string,&status);
+        dxp_md_log_error("dxp_md_epp_initialize",error_string,status);
         return status;
 	}
 
@@ -274,13 +287,16 @@ static int dxp_md_epp_initialize(unsigned int* maxMod, char* dllname)
 	rstat = sscanf(dllname,"%x",&port);
 	if (rstat!=1) {
 		status = DXP_NOMATCH;
-        dxp_md_error("dxp_md_epp_initialize",
-			"Unable to read the EPP port address",&status);
+        dxp_md_log_error("dxp_md_epp_initialize",
+			"Unable to read the EPP port address",status);
         return status;
 	}
+													 
+	sprintf(error_string, "EPP Port = %#x", port);
+	dxp_md_log_debug("dxp_md_epp_initialize", error_string);
 
-/* Call the EPPLIB.DLL routine */
-	rstat = DxpInitEPP(port);
+/* Call the EPPLIB.DLL routine */	
+	rstat = DxpInitEPP((int)port);
 
 /* Check for Success */
 	if (rstat==0) {
@@ -289,7 +305,7 @@ static int dxp_md_epp_initialize(unsigned int* maxMod, char* dllname)
 		status = DXP_INITIALIZE;
 		sprintf(error_string,
 			"Unable to initialize the EPP port: rstat=%d",rstat);
-        dxp_md_error("dxp_md_epp_initialize", error_string,&status);
+        dxp_md_log_error("dxp_md_epp_initialize", error_string,status);
         return status;
 	}
 
@@ -305,7 +321,7 @@ static int dxp_md_epp_initialize(unsigned int* maxMod, char* dllname)
  * number (better known as a slot number).
  * 
  *****************************************************************************/
-static int dxp_md_epp_open(char* ioname, int* camChan)
+XIA_MD_STATIC int XIA_MD_API dxp_md_epp_open(char* ioname, int* camChan)
 /* char *ioname;							Input:  string used to specify this IO 
 												channel */
 /* int *camChan;						Output: returns a reference number for
@@ -319,7 +335,7 @@ static int dxp_md_epp_open(char* ioname, int* camChan)
  * this operation 2 times. */
     
 	for(i=0;i<numDXP;i++){
-        if(strcmp(name[numMod],ioname)==0) {
+        if(STREQ(name[numMod],ioname)) {
             status=DXP_SUCCESS;
 			*camChan = i;
 			return status;
@@ -349,7 +365,7 @@ static int dxp_md_epp_open(char* ioname, int* camChan)
  * length.  And the data itself is stored in data.
  * 
  *****************************************************************************/
-static int dxp_md_epp_io(int* camChan, unsigned int* function, 
+XIA_MD_STATIC int XIA_MD_API dxp_md_epp_io(int* camChan, unsigned int* function, 
 					 unsigned int* address, unsigned short* data,
 					 unsigned int* length)
 /* int *camChan;						Input: pointer to IO channel to access		*/
@@ -415,16 +431,16 @@ static int dxp_md_epp_io(int* camChan, unsigned int* function,
 	} else {
         sprintf(error_string,"Unknown EPP address=%d",*address);
 		status = DXP_MDIO;
-        dxp_md_error("dxp_md_epp_io",error_string,&status);
+        dxp_md_log_error("dxp_md_epp_io",error_string,status);
         return status;
 	}
 
 	if (rstat!=0) {
 		status = DXP_MDIO;
-		sprintf(error_string,"Problem Performing I/O to Function: %d, address: %d",*function, *address);
-		dxp_md_error("dxp_md_epp_io",error_string,&status);
+		sprintf(error_string,"Problem Performing I/O to Function: %d, address: %#hx",*function, *address);
+		dxp_md_log_error("dxp_md_epp_io",error_string,status);
 		sprintf(error_string,"Trying to write to internal address: %d, length %d",next_addr, *length);
-		dxp_md_error("dxp_md_epp_io",error_string,&status);
+		dxp_md_log_error("dxp_md_epp_io",error_string,status);
 		return status;
 	}
 	
@@ -440,7 +456,7 @@ static int dxp_md_epp_io(int* camChan, unsigned int* function,
  * with an error_code=DXP_DEBUG, the message is printed.  
  * 
  *****************************************************************************/
-static void dxp_md_error_control(char* keyword, int* value)
+XIA_MD_STATIC void XIA_MD_API dxp_md_error_control(char* keyword, int* value)
 /* char *keyword;						Input: keyword to set for future use by dxp_md_error()	*/
 /* int *value;							Input: value to set the keyword to					*/
 {
@@ -459,39 +475,13 @@ static void dxp_md_error_control(char* keyword, int* value)
 
 /*****************************************************************************
  * 
- * Routine to handle error reporting.  Allows the user to pass errors to log
- * files or report the information in whatever fashion is desired.
- * 
- *****************************************************************************/
-static void dxp_md_error(char* routine, char* message, int* error_code)
-/* char *routine;					Input: Name of the calling routine		*/
-/* char *message;					Input: Message to report					*/
-/* int *error_code;					Input: Error code denoting type of error	*/
-{
-
-/* If the error_code is larger than DXP_DEBUG, then print the error only 
- * if debugging is requested */
-
-    if(*error_code>=DXP_DEBUG){
-        if(print_debug!=0) printf("%s : %s\n",routine,message);
-        return;
-    }
-
-/* Else print the error */
-
-    printf("%s:[%d] %s\n",routine,*error_code,message);
-
-}
-
-/*****************************************************************************
- * 
  * Routine to get the maximum number of words that can be block transfered at 
  * once.  This can change from system to system and from controller to 
  * controller.  A maxblk size of 0 means to write all data at once, regardless 
  * of transfer size.
  * 
  *****************************************************************************/
-static int dxp_md_get_maxblk(void)
+XIA_MD_STATIC int XIA_MD_API dxp_md_get_maxblk(void)
 {
 
     return maxblk;
@@ -506,7 +496,7 @@ static int dxp_md_get_maxblk(void)
  * of transfer size.
  * 
  *****************************************************************************/
-static int dxp_md_set_maxblk(unsigned int* blksiz)
+XIA_MD_STATIC int XIA_MD_API dxp_md_set_maxblk(unsigned int* blksiz)
 /* unsigned int *blksiz;			*/
 {
 	int status; 
@@ -515,7 +505,7 @@ static int dxp_md_set_maxblk(unsigned int* blksiz)
 		maxblk = *blksiz;
 	} else {
         status = DXP_NEGBLOCKSIZE;
-        dxp_md_error("dxp_md_set_maxblk","Block size must be positive or zero",&status);
+        dxp_md_log_error("dxp_md_set_maxblk","Block size must be positive or zero",status);
         return status;
 	}
     return DXP_SUCCESS;
@@ -528,7 +518,7 @@ static int dxp_md_set_maxblk(unsigned int* blksiz)
  * routines that are as precise as required for the purpose at hand.
  * 
  *****************************************************************************/
-static int dxp_md_wait(float* time)
+XIA_MD_STATIC int XIA_MD_API dxp_md_wait(float* time)
 /* float *time;							Input: Time to wait in seconds	*/
 {
 	int status=DXP_SUCCESS;
@@ -545,7 +535,7 @@ static int dxp_md_wait(float* time)
  * ANSI C standard routine malloc().  
  * 
  *****************************************************************************/
-static void *dxp_md_alloc(size_t length)
+XIA_MD_SHARED void* XIA_MD_API dxp_md_alloc(size_t length)
 /* size_t length;							Input: length of the memory to allocate
 													in units of size_t (defined to be a 
 													byte on most systems) */
@@ -561,7 +551,7 @@ static void *dxp_md_alloc(size_t length)
  * free().
  * 
  *****************************************************************************/
-static void dxp_md_free(void* array)
+XIA_MD_SHARED void XIA_MD_API dxp_md_free(void* array)
 /* void *array;							Input: pointer to the memory to free */
 {
 
@@ -576,7 +566,7 @@ static void dxp_md_free(void* array)
  * through the dxp_md_error() or dxp_md_puts() routines.
  * 
  *****************************************************************************/
-static int dxp_md_puts(char* s)
+XIA_MD_STATIC int XIA_MD_API dxp_md_puts(char* s)
 /* char *s;								Input: string to print or log	*/
 {
 
