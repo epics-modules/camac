@@ -238,6 +238,7 @@ STATIC int set_status(int card, int signal)
     int pos, csr;
     int rtn_state;
     double motorData;
+    BOOLEAN ls_active = OFF;
 
     cntrl = (struct E500controller *) motor_state[card]->DevicePrivate;
     motor_info = &(motor_state[card]->motor_info[signal]);
@@ -265,10 +266,16 @@ STATIC int set_status(int card, int signal)
     else
         motor_info->status |= RA_DONE;
 
-    if ((csr & E500_CCW_LIMIT) || (csr & E500_CW_LIMIT))
-        motor_info->status |= RA_OVERTRAVEL;
-    else
-        motor_info->status &= ~RA_OVERTRAVEL;
+    motor_info->status &= ~(RA_PLUS_LS | RA_MINUS_LS);
+    if (csr & E500_CCW_LIMIT) {
+        motor_info->status |= RA_MINUS_LS;
+        ls_active = ON;
+    }
+
+    if (csr & E500_CW_LIMIT) {
+        motor_info->status |= RA_PLUS_LS;
+        ls_active = ON;
+    }
 
     /* No home */
     motor_info->status &= ~RA_HOME;
@@ -306,8 +313,8 @@ STATIC int set_status(int card, int signal)
     if (!(motor_info->status & RA_DIRECTION))
         motor_info->velocity *= -1;
 
-    rtn_state = (!motor_info->no_motion_count ||
-                 (motor_info->status & (RA_OVERTRAVEL | RA_DONE | RA_PROBLEM))) ? 1 : 0;
+    rtn_state = (!motor_info->no_motion_count || ls_active == ON ||
+                 (motor_info->status & (RA_DONE | RA_PROBLEM))) ? 1 : 0;
 
     /* E500 does not support post move string. */
 
