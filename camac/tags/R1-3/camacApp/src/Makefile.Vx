@@ -1,0 +1,21 @@
+# Makefile.Vx
+TOP = ../../..
+include $(TOP)/config/CONFIG_APP
+#----------------------------------------
+#  ADD MACRO DEFINITIONS AFTER THIS LINE
+
+RECTYPES += camacRecord.h
+
+USR_CFLAGS = -DHW_HEADER="<ksc2917.h>"
+
+SRCS.c += ../camacLib.c ../camacRecord.c
+
+LIBOBJS += camacLib.o camacRecord.o
+LIBNAME = camacLib
+
+#Note that the command line that builds the
+#library $(LIBNAME) may be HUGE (>3kB)
+#
+include $(TOP)/config/RULES.Vx
+#----------------------------------------
+#  ADD RULES AFTER THIS LINE
