@@ -77,7 +77,7 @@ SCALERDSET devScalerCamac = {
         scaler_arm,
         scaler_done
 };
-epicsExportAddress(SCALERDSET, devScalerCamac);
+epicsExportAddress(dset, devScalerCamac);
 
 STATIC int num_cards=0;
 struct scaler_state {
