@@ -14,6 +14,7 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 # EPICS_BASE usually appears last so other apps can override stuff:
 EPICS_BASE=/corvette/usr/local/epics/base-3.14.4
 STD=/corvette/home/epics/3_14/std
+MPF=/corvette/home/epics/3_14/mpf2-4
 MOTOR=/corvette/home/epics/3_14/motor
 
 #Capfast users may need the following definitions
