@@ -1,12 +1,12 @@
 
 file {
-	name="C:\Program Files\EPICS\op\adl\camacApp\16element_dxp.adl"
+	name="j:\epics\devel\camac\camacApp\op\adl\16element_dxp.adl"
 	version=020306
 }
 display {
 	object {
-		x=185
-		y=339
+		x=820
+		y=452
 		width=580
 		height=340
 	}
@@ -888,4 +888,31 @@ text {
 		clr=14
 	}
 	textix="% Dead time"
+}
+"related display" {
+	object {
+		x=326
+		y=248
+		width=60
+		height=20
+	}
+	display[0] {
+		label="Spectra plots"
+		name="16element_baseline.adl"
+		args="P=$(P)dxp"
+	}
+	clr=14
+	bclr=4
+}
+text {
+	object {
+		x=391
+		y=248
+		width=40
+		height=20
+	}
+	"basic attribute" {
+		clr=14
+	}
+	textix="Baseline Plots"
 }
