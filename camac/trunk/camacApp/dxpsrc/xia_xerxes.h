@@ -138,28 +138,6 @@ XERXES_EXPORT int XERXES_API dxp_locate_system_files(unsigned int *, char **);
 XERXES_EXPORT int XERXES_API dxp_locate_channel_files(int *, unsigned int *, char **);
 XERXES_EXPORT int XERXES_API dxp_lock_resource(int *detChan, short *lock);
 
-XERXES_STATIC int XERXES_API dxp_get_btype(char *name, Board_Info **current);
-XERXES_STATIC int XERXES_API dxp_add_btype_library(Board_Info *current);
-XERXES_STATIC int XERXES_API dxp_init_iface_ds(void);
-XERXES_STATIC int XERXES_API dxp_init_dsp_ds(void);
-XERXES_STATIC int XERXES_API dxp_init_fippi_ds(void);
-XERXES_STATIC int XERXES_API dxp_init_defaults_ds(void);
-XERXES_STATIC int XERXES_API dxp_read_modules(FILE *);
-XERXES_STATIC int XERXES_API dxp_free_board(Board *board);
-XERXES_STATIC int XERXES_API dxp_free_iface(Interface *iface);
-XERXES_STATIC int XERXES_API dxp_free_dsp(Dsp_Info *dsp);
-XERXES_STATIC int XERXES_API dxp_free_fippi(Fippi_Info *fippi);
-XERXES_STATIC int XERXES_API dxp_free_params(Dsp_Params *params);
-XERXES_STATIC int XERXES_API dxp_free_defaults(Dsp_Defaults *defaults);
-XERXES_STATIC int XERXES_API dxp_free_binfo(Board_Info *binfo);
-XERXES_STATIC int XERXES_API dxp_add_fippi(char *, Board_Info *, Fippi_Info **);
-XERXES_STATIC int XERXES_API dxp_add_dsp(char *, Board_Info *, Dsp_Info **);
-XERXES_STATIC int XERXES_API dxp_add_defaults(char *, Board_Info *, Dsp_Defaults **);
-XERXES_STATIC int XERXES_API dxp_add_iface(char *dllname, char *iolib, Interface **iface);
-XERXES_STATIC int XERXES_API dxp_pick_filename(unsigned int, char *, char *);
-XERXES_STATIC int XERXES_API dxp_strnstrm(char *, char *, unsigned int *, unsigned int *);
-XERXES_STATIC int XERXES_API dxp_readout_run(Board *, int *, unsigned short [], unsigned short [], unsigned long []);
-XERXES_STATIC int XERXES_API dxp_do_readout(Board *, int *, unsigned short [], unsigned short [], unsigned long []);
 
 XERXES_IMPORT int DXP_API dxp_init_dxp4c2x(Functions *funcs);
 XERXES_IMPORT int DXP_API dxp_init_dxp4c(Functions *funcs);
@@ -169,9 +147,7 @@ XERXES_IMPORT int MD_API dxp_md_init_util(Xia_Util_Functions *funcs, char *type)
 XERXES_IMPORT int MD_API dxp_md_init_io(Xia_Io_Functions *funcs, char *type);
 
 /* Routines contained in xia_common.c.  Routines that are used across libraries but not exported */
-static FILE* dxp_find_file(const char *, const char *, char [MAXFILENAME_LEN]);
 
-XERXES_SHARED void XERXES_API dxp_log(int level, char *routine, char *message, int error);
 
 #else									/* Begin old style C prototypes */
 /*
@@ -267,27 +243,6 @@ XERXES_EXPORT int XERXES_API dxp_locate_system_files();
 XERXES_EXPORT int XERXES_API dxp_locate_channel_files();
 XERXES_EXPORT int XERXES_API dxp_lock_resource();
 
-XERXES_STATIC int XERXES_API dxp_get_btype();
-XERXES_STATIC int XERXES_API dxp_add_btype_library();
-XERXES_STATIC int XERXES_API dxp_read_modules();
-XERXES_STATIC int XERXES_API dxp_init_iface_ds();
-XERXES_STATIC int XERXES_API dxp_init_dsp_ds();
-XERXES_STATIC int XERXES_API dxp_init_fippi_ds();
-XERXES_STATIC int XERXES_API dxp_init_defaults_ds();
-XERXES_STATIC int XERXES_API dxp_free_board();
-XERXES_STATIC int XERXES_API dxp_free_iface();
-XERXES_STATIC int XERXES_API dxp_free_dsp();
-XERXES_STATIC int XERXES_API dxp_free_fippi();
-XERXES_STATIC int XERXES_API dxp_free_params();
-XERXES_STATIC int XERXES_API dxp_free_defaults();
-XERXES_STATIC int XERXES_API dxp_free_binfo();
-XERXES_STATIC int XERXES_API dxp_add_fippi();
-XERXES_STATIC int XERXES_API dxp_add_dsp();
-XERXES_STATIC int XERXES_API dxp_add_defaults();
-XERXES_STATIC int XERXES_API dxp_pick_filename();
-XERXES_STATIC int XERXES_API dxp_strnstrm();
-XERXES_STATIC int XERXES_API dxp_readout_run();
-
 XERXES_IMPORT int DXP_API dxp_init_dxp4c2x();
 XERXES_IMPORT int DXP_API dxp_init_dxp4c();
 XERXES_IMPORT int DXP_API dxp_init_dxpx10p();
@@ -296,9 +251,7 @@ XERXES_IMPORT int MD_API dxp_md_init_util();
 XERXES_IMPORT int MD_API dxp_md_init_io();
 
 /* Routines contained in xia_common.c.  Routines that are used across libraries but not exported */
-static FILE* dxp_find_file();
 
-XERXES_SHARED void XERXES_API dxp_log();
 #endif                                  /*   end if _XERXES_PROTO_ */
 
 /* If this is compiled by a C++ compiler, make it clear that these are C routines */
@@ -312,20 +265,20 @@ XERXES_SHARED void XERXES_API dxp_log();
 
 /* Added new logging routines 8/22/01 -- PJF */
 
-DXP_MD_ERROR_CONTROL dxp_md_error_control;
-DXP_MD_ERROR dxp_md_error;
-DXP_MD_WARNING dxp_md_warning;
-DXP_MD_INFO dxp_md_info;
-DXP_MD_DEBUG dxp_md_debug;
-DXP_MD_OUTPUT dxp_md_output;
-DXP_MD_SUPPRESS_LOG dxp_md_suppress_log;
-DXP_MD_ENABLE_LOG dxp_md_enable_log;
-DXP_MD_SET_LOG_LEVEL dxp_md_set_log_level;
-DXP_MD_LOG dxp_md_log;
-DXP_MD_ALLOC dxp_md_alloc;
-DXP_MD_FREE dxp_md_free;
-DXP_MD_PUTS dxp_md_puts;
-DXP_MD_WAIT dxp_md_wait;
+DXP_MD_ERROR_CONTROL xerxes_md_error_control;
+DXP_MD_ERROR xerxes_md_error;
+DXP_MD_WARNING xerxes_md_warning;
+DXP_MD_INFO xerxes_md_info;
+DXP_MD_DEBUG xerxes_md_debug;
+DXP_MD_OUTPUT xerxes_md_output;
+DXP_MD_SUPPRESS_LOG xerxes_md_suppress_log;
+DXP_MD_ENABLE_LOG xerxes_md_enable_log;
+DXP_MD_SET_LOG_LEVEL xerxes_md_set_log_level;
+DXP_MD_LOG xerxes_md_log;
+DXP_MD_ALLOC xerxes_md_alloc;
+DXP_MD_FREE xerxes_md_free;
+DXP_MD_PUTS xerxes_md_puts;
+DXP_MD_WAIT xerxes_md_wait;
 
 /* Here are the definitions for the exported variables that HanDeL needs */
 XERXES_EXPORT Interface    *iface_head;
@@ -338,10 +291,10 @@ XERXES_EXPORT Fippi_Info   *fippi_head;
 XERXES_EXPORT Dsp_Defaults *defaults_head;
 
 /* Logging macro wrappers */
-#define dxp_log_error(x, y, z)	dxp_md_log(MD_ERROR, (x), (y), (z), __FILE__, __LINE__)
-#define dxp_log_warning(x, y)		dxp_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
-#define dxp_log_info(x, y)			dxp_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
-#define dxp_log_debug(x, y)		dxp_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_error(x, y, z)	xerxes_md_log(MD_ERROR, (x), (y), (z), __FILE__, __LINE__)
+#define dxp_log_warning(x, y)		xerxes_md_log(MD_WARNING, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_info(x, y)			xerxes_md_log(MD_INFO, (x), (y), 0, __FILE__, __LINE__)
+#define dxp_log_debug(x, y)		xerxes_md_log(MD_DEBUG, (x), (y), 0, __FILE__, __LINE__)
 /* Useful Macros */
 #define STREQ(x, y)		(strcmp((x), (y)) == 0)
 

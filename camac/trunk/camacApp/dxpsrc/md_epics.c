@@ -11,7 +11,7 @@
  *    This file contains the interface between the ESONE CAMAC library and
  *    vxWorks system calls and the DXP primitive calls.
  */
-/* C Include files */
+/* System include files */
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
@@ -31,13 +31,18 @@
 #include "xerxes_structures.h"
 #include "md_epics.h"
 #include "md_generic.h"
-
+#include "xia_md.h"
 #define MODE 4
 
 /* variables to store the IO channel information, later accessed via a pointer*/
 static int *branch=NULL,*crate=NULL,*station=NULL;
 /* total number of modules in the system */
-static unsigned int numDXP=0,numEPP=0,numMod=0;
+static unsigned int numDXP=0;
+
+#ifndef EXCLUDE_DXPX10P
+static unsigned int numEPP=0,numMod=0;
+#endif
+
 /* error string used as a place holder for calls to dxp_md_error() */
 static char error_string[132];
 /* are we in debug mode? */
@@ -86,7 +91,10 @@ XIA_MD_EXPORT int XIA_MD_API dxp_md_init_util(Xia_Util_Functions* funcs, char* t
 	funcs->dxp_md_set_log_level = dxp_md_set_log_level;
 	funcs->dxp_md_log	        = dxp_md_log;
 
-	out_stream = stdout;
+	if (out_stream == NULL)
+	{
+		out_stream = stdout;
+	}
 
 	return DXP_SUCCESS;
 }
@@ -467,7 +475,8 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_epp_io(int* camChan, unsigned int* function,
 /* Control port*/
 	} else if (*address==2) {
 /*		dest = cport;
-		*length = 1; */
+		*length = 1;
+ */
 /* Status port*/
 	} else if (*address==3) {
 /*		dest = sport;
@@ -493,6 +502,7 @@ XIA_MD_STATIC int XIA_MD_API dxp_md_epp_io(int* camChan, unsigned int* function,
     return status;
 }
 #endif
+
 /*****************************************************************************
  *
  * Routine to control the error reporting operation.  Currently the only
@@ -579,7 +589,7 @@ static int dxp_md_wait(float* time)
  * ANSI C standard routine malloc().
  *
  *****************************************************************************/
-XIA_MD_STATIC void* XIA_MD_API dxp_md_alloc(size_t length)
+XIA_MD_SHARED void* XIA_MD_API dxp_md_alloc(size_t length)
 /* size_t length;                   Input: length of the memory to allocate
                                            in units of size_t (defined to be a
                                            byte on most systems) */
@@ -595,7 +605,7 @@ XIA_MD_STATIC void* XIA_MD_API dxp_md_alloc(size_t length)
  * free().
  *
  *****************************************************************************/
-XIA_MD_STATIC void XIA_MD_API dxp_md_free(void* array)
+XIA_MD_SHARED void XIA_MD_API dxp_md_free(void* array)
 /* void *array;                         Input: pointer to the memory to free */
 {
 
@@ -610,12 +620,10 @@ XIA_MD_STATIC void XIA_MD_API dxp_md_free(void* array)
  * through the dxp_md_error() or dxp_md_puts() routines.
  *
  *****************************************************************************/
-static int dxp_md_puts(char* s)
+XIA_MD_STATIC int XIA_MD_API dxp_md_puts(char* s)
 /* char *s;                             Input: string to print or log   */
 {
 
   return printf("%s", s);
 
 }
-
-#include "md_log_epics.c"

@@ -1,4 +1,4 @@
-/* 
+/*
  * xerxes.c
  *   
  *   Copyright 1996 X-ray Instrumentation Associates
@@ -236,7 +236,78 @@
 #include <xia_xerxes.h>
 #include <xerxes_errors.h>
 
-static char info_string[400],line[132],*token,*delim=" ,=\t\r\n";
+
+/** Static Xerxes Prototypes **/
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+#ifdef _XERXES_PROTO_
+XERXES_STATIC int XERXES_API dxp_get_btype(char *name, Board_Info **current);
+XERXES_STATIC int XERXES_API dxp_add_btype_library(Board_Info *current);
+XERXES_STATIC int XERXES_API dxp_init_iface_ds(void);
+XERXES_STATIC int XERXES_API dxp_init_dsp_ds(void);
+XERXES_STATIC int XERXES_API dxp_init_fippi_ds(void);
+XERXES_STATIC int XERXES_API dxp_init_defaults_ds(void);
+XERXES_STATIC int XERXES_API dxp_read_modules(FILE *);
+XERXES_STATIC int XERXES_API dxp_free_board(Board *board);
+XERXES_STATIC int XERXES_API dxp_free_iface(Interface *iface);
+XERXES_STATIC int XERXES_API dxp_free_dsp(Dsp_Info *dsp);
+XERXES_STATIC int XERXES_API dxp_free_fippi(Fippi_Info *fippi);
+XERXES_STATIC int XERXES_API dxp_free_params(Dsp_Params *params);
+XERXES_STATIC int XERXES_API dxp_free_defaults(Dsp_Defaults *defaults);
+XERXES_STATIC int XERXES_API dxp_free_binfo(Board_Info *binfo);
+XERXES_STATIC int XERXES_API dxp_add_fippi(char *, Board_Info *, Fippi_Info **);
+XERXES_STATIC int XERXES_API dxp_add_dsp(char *, Board_Info *, Dsp_Info **);
+XERXES_STATIC int XERXES_API dxp_add_defaults(char *, Board_Info *, Dsp_Defaults **);
+XERXES_STATIC int XERXES_API dxp_add_iface(char *dllname, char *iolib, Interface **iface);
+XERXES_STATIC int XERXES_API dxp_pick_filename(unsigned int, char *, char *);
+XERXES_STATIC int XERXES_API dxp_strnstrm(char *, char *, unsigned int *, unsigned int *);
+XERXES_STATIC int XERXES_API dxp_readout_run(Board *, int *, unsigned short [], unsigned short [], unsigned long []);
+XERXES_STATIC int XERXES_API dxp_do_readout(Board *, int *, unsigned short [], unsigned short [], unsigned long []);
+
+static FILE* dxp_find_file(const char *, const char *, char [MAXFILENAME_LEN]);
+
+#else /* _XERXES_PROTO_ */
+
+XERXES_STATIC int XERXES_API dxp_get_btype();
+XERXES_STATIC int XERXES_API dxp_add_btype_library();
+XERXES_STATIC int XERXES_API dxp_read_modules();
+XERXES_STATIC int XERXES_API dxp_init_iface_ds();
+XERXES_STATIC int XERXES_API dxp_init_dsp_ds();
+XERXES_STATIC int XERXES_API dxp_init_fippi_ds();
+XERXES_STATIC int XERXES_API dxp_init_defaults_ds();
+XERXES_STATIC int XERXES_API dxp_free_board();
+XERXES_STATIC int XERXES_API dxp_free_iface();
+XERXES_STATIC int XERXES_API dxp_free_dsp();
+XERXES_STATIC int XERXES_API dxp_free_fippi();
+XERXES_STATIC int XERXES_API dxp_free_params();
+XERXES_STATIC int XERXES_API dxp_free_defaults();
+XERXES_STATIC int XERXES_API dxp_free_binfo();
+XERXES_STATIC int XERXES_API dxp_add_fippi();
+XERXES_STATIC int XERXES_API dxp_add_dsp();
+XERXES_STATIC int XERXES_API dxp_add_defaults();
+XERXES_STATIC int XERXES_API dxp_pick_filename();
+XERXES_STATIC int XERXES_API dxp_strnstrm();
+XERXES_STATIC int XERXES_API dxp_readout_run();
+
+static FILE* dxp_find_file();
+#endif /* _XERXES_PROTO_ */
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
+
+
+
+
+/* Define the length of the error reporting string info_string */
+#define INFO_LEN 400
+/* Define the length of the line string used to read in files */
+#define LINE_LEN 132
+
+static char *delim=" ,=\t\r\n";
 /* Register definition for zero and one */
 static int zero=0;
 /* Shorthand notation telling routines to act on all channels of the DXP (-1 currently). */
@@ -320,6 +391,7 @@ static Dsp_Defaults *working_defaults = NULL;
 XERXES_EXPORT int XERXES_API dxp_init_library(void)
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 /* First thing is to load the utils structure.  This is needed 
  * to call allocation of any memory in general as well as any
@@ -352,6 +424,7 @@ XERXES_EXPORT int XERXES_API dxp_init_library(void)
 XERXES_EXPORT int XERXES_API dxp_initialize(void)
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 /* First thing is to load the utils structure.  This is needed 
  * to call allocation of any memory in general as well as any
@@ -364,6 +437,8 @@ XERXES_EXPORT int XERXES_API dxp_initialize(void)
 		printf("%s\n",info_string);
 		return status;
 	}
+
+	dxp_log_debug("dxp_initialize", "Preparing to do init. tasks");
 
 /* Read the configuration file */
 	if((status=dxp_read_config("XIA_CONFIG"))!=DXP_SUCCESS){
@@ -408,58 +483,60 @@ XERXES_EXPORT int XERXES_API dxp_install_utils(const char *utilname)
 		strcpy(lstr, "NULL");
 	}
 
+	printf("Preparing to init. func. pointers");
+
 /* Call the MD layer init function for the utility routines */
 	dxp_md_init_util(&util_funcs, lstr);
 /* Now build up some information...slowly */
-	dxp_md_alloc         = util_funcs.dxp_md_alloc;
-	dxp_md_free          = util_funcs.dxp_md_free;
-	dxp_md_error_control = util_funcs.dxp_md_error_control;
-	dxp_md_error         = util_funcs.dxp_md_error;
-	dxp_md_warning       = util_funcs.dxp_md_warning;
-	dxp_md_info          = util_funcs.dxp_md_info;
-	dxp_md_debug         = util_funcs.dxp_md_debug;
-	dxp_md_output        = util_funcs.dxp_md_output;
-	dxp_md_suppress_log  = util_funcs.dxp_md_suppress_log;
-	dxp_md_enable_log	 = util_funcs.dxp_md_enable_log;
-	dxp_md_set_log_level = util_funcs.dxp_md_set_log_level;
-	dxp_md_log           = util_funcs.dxp_md_log;
-	dxp_md_wait          = util_funcs.dxp_md_wait;
-	dxp_md_puts          = util_funcs.dxp_md_puts;
+	xerxes_md_alloc         = util_funcs.dxp_md_alloc;
+	xerxes_md_free          = util_funcs.dxp_md_free;
+	xerxes_md_error_control = util_funcs.dxp_md_error_control;
+	xerxes_md_error         = util_funcs.dxp_md_error;
+	xerxes_md_warning       = util_funcs.dxp_md_warning;
+	xerxes_md_info          = util_funcs.dxp_md_info;
+	xerxes_md_debug         = util_funcs.dxp_md_debug;
+	xerxes_md_output        = util_funcs.dxp_md_output;
+	xerxes_md_suppress_log  = util_funcs.dxp_md_suppress_log;
+	xerxes_md_enable_log	 = util_funcs.dxp_md_enable_log;
+	xerxes_md_set_log_level = util_funcs.dxp_md_set_log_level;
+	xerxes_md_log           = util_funcs.dxp_md_log;
+	xerxes_md_wait          = util_funcs.dxp_md_wait;
+	xerxes_md_puts          = util_funcs.dxp_md_puts;
 
 /* Now for the Utils structure */
 	if (utils!=NULL) {
-		dxp_md_free(utils->dllname);
-		dxp_md_free(utils->funcs);
-		dxp_md_free(utils);
+		xerxes_md_free(utils->dllname);
+		xerxes_md_free(utils->funcs);
+		xerxes_md_free(utils);
 	}
 /* Allocate and assign memory for the Utils structure */
-	utils = (Utils *) dxp_md_alloc(sizeof(Utils));
-	utils->dllname = (char *) dxp_md_alloc((strlen(utilname)+1)*sizeof(char));
+	utils = (Utils *) xerxes_md_alloc(sizeof(Utils));
+	utils->dllname = (char *) xerxes_md_alloc((strlen(utilname)+1)*sizeof(char));
 	strcpy(utils->dllname, utilname);
-	utils->funcs = (Xia_Util_Functions *) dxp_md_alloc(sizeof(Xia_Util_Functions));
+	utils->funcs = (Xia_Util_Functions *) xerxes_md_alloc(sizeof(Xia_Util_Functions));
 	
 #ifdef XIA_SPECIAL_MEM	
-	utils->funcs->dxp_md_alloc         	= dxp_md_alloc;
-	utils->funcs->dxp_md_free          	= dxp_md_free;
-#endif /* XIA_SPECIAL_MEM */
+	utils->funcs->dxp_md_alloc         	= xerxes_md_alloc;
+	utils->funcs->dxp_md_free          	= xerxes_md_free;
 
-#ifdef XIA_STANDARD_MEM
+#else /* XIA_SPECIAL_MEM */
+
 	utils->funcs->dxp_md_alloc			  	= malloc;
 	utils->funcs->dxp_md_free			  	= free;
-#endif /* XIA_STANDARD_MEM */
+#endif /* XIA_SPECIAL_MEM */
 
-	utils->funcs->dxp_md_error_control 	= dxp_md_error_control;
-	utils->funcs->dxp_md_error         	= dxp_md_error;
-	utils->funcs->dxp_md_warning       	= dxp_md_warning;
-	utils->funcs->dxp_md_info          	= dxp_md_info;
-	utils->funcs->dxp_md_debug         	= dxp_md_debug;
-	utils->funcs->dxp_md_output        	= dxp_md_output;
-	utils->funcs->dxp_md_suppress_log  	= dxp_md_suppress_log;
-	utils->funcs->dxp_md_enable_log	  	= dxp_md_enable_log;
-	utils->funcs->dxp_md_set_log_level 	= dxp_md_set_log_level;
-	utils->funcs->dxp_md_log           	= dxp_md_log;
-	utils->funcs->dxp_md_wait          	= dxp_md_wait;
-	utils->funcs->dxp_md_puts          	= dxp_md_puts;
+	utils->funcs->dxp_md_error_control 	= xerxes_md_error_control;
+	utils->funcs->dxp_md_error         	= xerxes_md_error;
+	utils->funcs->dxp_md_warning       	= xerxes_md_warning;
+	utils->funcs->dxp_md_info          	= xerxes_md_info;
+	utils->funcs->dxp_md_debug         	= xerxes_md_debug;
+	utils->funcs->dxp_md_output        	= xerxes_md_output;
+	utils->funcs->dxp_md_suppress_log  	= xerxes_md_suppress_log;
+	utils->funcs->dxp_md_enable_log	  	= xerxes_md_enable_log;
+	utils->funcs->dxp_md_set_log_level 	= xerxes_md_set_log_level;
+	utils->funcs->dxp_md_log           	= xerxes_md_log;
+	utils->funcs->dxp_md_wait          	= xerxes_md_wait;
+	utils->funcs->dxp_md_puts          	= xerxes_md_puts;
 
 	return DXP_SUCCESS;
 }
@@ -472,6 +549,7 @@ XERXES_EXPORT int XERXES_API dxp_install_utils(const char *utilname)
 XERXES_EXPORT int XERXES_API dxp_init_ds(void)
 {
 	int status = DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Board_Info *current = btypes_head;
 	Board_Info *next = NULL;
@@ -496,12 +574,12 @@ XERXES_EXPORT int XERXES_API dxp_init_ds(void)
 	
 /* Make sure the info structure is empty */
 	if (info!=NULL) {
-		if (info->preamp  != NULL) dxp_md_free(info->preamp);
-		if (info->modules != NULL) dxp_md_free(info->modules);
-		dxp_md_free(info);
+		if (info->preamp  != NULL) xerxes_md_free(info->preamp);
+		if (info->modules != NULL) xerxes_md_free(info->modules);
+		xerxes_md_free(info);
 	}
 /* Now allocate memory for the system level information */
-	info = (System_Info*) dxp_md_alloc(sizeof(System_Info));
+	info = (System_Info*) xerxes_md_alloc(sizeof(System_Info));
 	info->preamp = NULL;
 	info->modules= NULL;
 	info->btypes = NULL;
@@ -526,6 +604,7 @@ XERXES_EXPORT int XERXES_API dxp_init_ds(void)
 XERXES_EXPORT int XERXES_API dxp_init_boards_ds(void)
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	
 	Board *next;
 	Board *current = system_head;
@@ -696,6 +775,8 @@ static int XERXES_API dxp_init_defaults_ds(void)
 int XERXES_API dxp_read_config(char *cname)
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
+	char line[LINE_LEN],*token;
 	int len, start, finish;
 	unsigned int i;
 
@@ -705,6 +786,8 @@ int XERXES_API dxp_read_config(char *cname)
 	char newFile[MAXFILENAME_LEN];
 
 	char *values[1];
+
+	dxp_log_debug("dxp_read_config", "Preapring to read config");
 
 /* Find the file that contains the XIA system configuration information */
     if((fp=dxp_find_file(cname,"r",newFile))==NULL){
@@ -757,7 +840,7 @@ int XERXES_API dxp_read_config(char *cname)
 /* Allocate memory for the 2nd token */
 		len = finish-start+1;
 /* Now copy the value associated with this item */
-		values[0] = (char *) dxp_md_alloc((len+1)*sizeof(char));
+		values[0] = (char *) xerxes_md_alloc((len+1)*sizeof(char));
 /* Copy the value into the array. End the string with a NULL character. */
 		strncpy(values[0], line+start, len);
 		values[0][len] = '\0';
@@ -782,12 +865,13 @@ int XERXES_API dxp_read_config(char *cname)
 int XERXES_API dxp_add_system_item(char *ltoken, char **values)
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int len;
 	unsigned int j;
 
 	char *strTmp = '\0';
 
-	strTmp = (char *)dxp_md_alloc((strlen(ltoken) + 1) * sizeof(char));
+	strTmp = (char *)xerxes_md_alloc((strlen(ltoken) + 1) * sizeof(char));
 	strcpy(strTmp, ltoken);
 
 /* Now Proceed to process the entry */
@@ -806,19 +890,19 @@ int XERXES_API dxp_add_system_item(char *ltoken, char **values)
 		if ((status=dxp_add_btype(strTmp, values[0], NULL))!=DXP_SUCCESS) {
 			sprintf(info_string,"Problems adding board type %s",strTmp);
 			dxp_log_error("dxp_add_system_item",info_string,status);
-			dxp_md_free((void *)strTmp);
+			xerxes_md_free((void *)strTmp);
 			return DXP_SUCCESS;
 		}
 	} else if (STREQ(strTmp,"preamp")) {
 /* Now copy the filename for the preamp configuration file */
-		info->preamp = (char *) dxp_md_alloc((len+1)*sizeof(char));
+		info->preamp = (char *) xerxes_md_alloc((len+1)*sizeof(char));
 /* Copy the filename into the structure.  End the string with 
  * a NULL character. */
 		info->preamp = strncpy(info->preamp, values[0], len);
 		info->preamp[len] = '\0';
 	} else if (STREQ(strTmp,"modules")) {
 /* Now copy the filename for the modules configuration file */
-		info->modules = (char *) dxp_md_alloc((len+1)*sizeof(char));
+		info->modules = (char *) xerxes_md_alloc((len+1)*sizeof(char));
 /* Copy the filename into the structure.  End the string with 
  * a NULL character. */
 		info->modules = strncpy(info->modules, values[0], len);
@@ -827,11 +911,11 @@ int XERXES_API dxp_add_system_item(char *ltoken, char **values)
 	    status = DXP_INPUT_UNDEFINED;
 	    sprintf(info_string,"Unable to add token: %s", strTmp);
 	    dxp_log_error("dxp_add_system_item",info_string,status);
-		dxp_md_free((void *)strTmp);
+		xerxes_md_free((void *)strTmp);
 		return status;
 	}
 
-	dxp_md_free((void *)strTmp);
+	xerxes_md_free((void *)strTmp);
 	return status;
 }
 
@@ -843,6 +927,7 @@ int XERXES_API dxp_add_system_item(char *ltoken, char **values)
 int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	unsigned int len, j;
 	unsigned int nchan;
 
@@ -959,7 +1044,7 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
  * is ignored */
         
 		nchan = (unsigned int) strtol(values[1],NULL,10);
-		detChan = (int *) dxp_md_alloc(nchan*sizeof(int));
+		detChan = (int *) xerxes_md_alloc(nchan*sizeof(int));
 		for(j=0;j<nchan;j++){
 			chanid = (int) strtol(values[j+2],NULL,10);
 			if (chanid>=0) {
@@ -977,19 +1062,19 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 			while (working_board->next!=NULL) {
 				working_board = working_board->next;
 			}
-			working_board->next = (Board *) dxp_md_alloc(sizeof(Board));
+			working_board->next = (Board *) xerxes_md_alloc(sizeof(Board));
 			working_board = working_board->next;
 		} else {
-			system_head = (Board *) dxp_md_alloc(sizeof(Board));
+			system_head = (Board *) xerxes_md_alloc(sizeof(Board));
 			working_board = system_head;
 		}
 		working_board->ioChan= ioChan;
 		working_board->used	= used;
 /* Allocate memory for DetChan array */	
-		working_board->detChan = (int *) dxp_md_alloc(nchan*sizeof(int));
+		working_board->detChan = (int *) xerxes_md_alloc(nchan*sizeof(int));
 		memcpy(working_board->detChan, detChan, nchan*sizeof(int));
 /* Free Memory before i forget */
-		dxp_md_free(detChan);
+		xerxes_md_free(detChan);
 
 /* more assignments */
 		working_board->mod	= numDxpMod;
@@ -998,7 +1083,7 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 		working_board->iface	= working_iface;
 /* Allocate memory for the iostring containing slot information, etc... */
 		working_board->iostring = (char *)
-			dxp_md_alloc((strlen(values[0])+1)*sizeof(char));
+			xerxes_md_alloc((strlen(values[0])+1)*sizeof(char));
 		strcpy(working_board->iostring, values[0]);
 		memset(working_board->state, 0, sizeof(working_board->state));
 /* 
@@ -1015,22 +1100,22 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 
 /* More memory assignments */
 		working_board->params = (unsigned short **) 
-			dxp_md_alloc(nchan*sizeof(unsigned short *));
+			xerxes_md_alloc(nchan*sizeof(unsigned short *));
 		for (j=0;j<working_board->nchan;j++) working_board->params[j] = NULL;
 		working_board->chanstate = (Chan_State *) 
-			dxp_md_alloc(nchan*sizeof(Chan_State));
+			xerxes_md_alloc(nchan*sizeof(Chan_State));
 /* Set all Chan_State vars to 0 */
 		memset(working_board->chanstate, 0, nchan*sizeof(Chan_State));
 		working_board->dsp = (Dsp_Info **) 
-			dxp_md_alloc(nchan*sizeof(Dsp_Info *));
+			xerxes_md_alloc(nchan*sizeof(Dsp_Info *));
 		working_board->fippi= (Fippi_Info **) 
-			dxp_md_alloc(nchan*sizeof(Fippi_Info *));
+			xerxes_md_alloc(nchan*sizeof(Fippi_Info *));
 		working_board->user_fippi= (Fippi_Info **) 
-			dxp_md_alloc(nchan*sizeof(Fippi_Info *));
+			xerxes_md_alloc(nchan*sizeof(Fippi_Info *));
 		working_board->defaults = (Dsp_Defaults **) 
-			dxp_md_alloc(nchan*sizeof(Dsp_Defaults *));
+			xerxes_md_alloc(nchan*sizeof(Dsp_Defaults *));
 		working_board->preamp = (Preamp_Info *) 
-			dxp_md_alloc(nchan*sizeof(Preamp_Info));
+			xerxes_md_alloc(nchan*sizeof(Preamp_Info));
 		working_board->mmu = working_mmu;
 /* Fill in some default information */
 		for (j=0;j<working_board->nchan;j++) {
@@ -1046,7 +1131,7 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 /* Allocate memory for the params array, and zero the entries */
 				if (working_dsp!=NULL) {
 					working_board->params[j] = (unsigned short *) 
-						dxp_md_alloc((working_board->dsp[j]->params->nsymbol)*sizeof(unsigned short));
+						xerxes_md_alloc((working_board->dsp[j]->params->nsymbol)*sizeof(unsigned short));
 					memset(working_board->params[j], 0, 
 						working_board->dsp[j]->params->nsymbol*sizeof(unsigned short));
 				}
@@ -1081,10 +1166,10 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 			for (j=0;j<working_board->nchan;j++) {
 				working_board->dsp[j] = working_dsp;
 /* Check if we are overwriting a previous DSP definition, if so, free the memory */
-				if (working_board->params[j]!=NULL) dxp_md_free(working_board->params[j]);
+				if (working_board->params[j]!=NULL) xerxes_md_free(working_board->params[j]);
 /* Allocate memory for the params array */
 				working_board->params[j] = (unsigned short *) 
-					dxp_md_alloc((working_board->dsp[j]->params->nsymbol)*sizeof(unsigned short));
+					xerxes_md_alloc((working_board->dsp[j]->params->nsymbol)*sizeof(unsigned short));
 				memset(working_board->params[j], 0, working_board->dsp[j]->params->nsymbol*sizeof(unsigned short));
 /* Set the dspstate value to 2, indicating that the DSP needs update */
 				working_board->chanstate[j].dspdownloaded = 2;
@@ -1118,10 +1203,10 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 /* Set the dspstate value to 2, indicating that the DSP needs update */
 		working_board->chanstate[chanid].dspdownloaded = 2;
 /* Check if we are overwriting a previous DSP definition, if so, free the memory */
-		if (working_board->params[chanid]!=NULL) dxp_md_free(working_board->params[chanid]);
+		if (working_board->params[chanid]!=NULL) xerxes_md_free(working_board->params[chanid]);
 /* Allocate memory for the params array */
 		working_board->params[chanid] = (unsigned short *) 
-			dxp_md_alloc((working_board->dsp[chanid]->params->nsymbol)*sizeof(unsigned short));
+			xerxes_md_alloc((working_board->dsp[chanid]->params->nsymbol)*sizeof(unsigned short));
 		memset(working_board->params[chanid], 0, working_board->dsp[chanid]->params->nsymbol*sizeof(unsigned short));
 /* We need to define a new FIPPI default */
 	} else if (STREQ(ltoken, "default_fippi")) {
@@ -1289,7 +1374,116 @@ int XERXES_API dxp_add_board_item(char *ltoken, char **values)
 	return status;
 }
 
-#include <xia_common.c>
+/******************************************************************************
+ *
+ * Routine to open a new file.  
+ * Try to open the file directly first.
+ * Then try to open the file in the directory pointed to 
+ *     by XIAHOME.
+ * Finally try to open the file as an environment variable.
+ *
+ ******************************************************************************/
+static FILE* dxp_find_file(const char* filename, const char* mode, char newFile[MAXFILENAME_LEN])
+/* const char *filename;			Input: filename to open			*/
+/* const char *mode;				Input: Mode to use when opening	*/
+/* char *newFile;					Output: Full filename of file (translated env vars)	*/
+{
+	FILE *fp=NULL;
+	char *name=NULL, *name2=NULL;
+	char *home=NULL;
+	
+	unsigned int len = 0;
+
+
+/* Try to open file directly */
+	if((fp=fopen(filename,mode))!=NULL){
+	  len = MAXFILENAME_LEN>(strlen(filename)+1) ? strlen(filename) : MAXFILENAME_LEN;
+	  strncpy(newFile, filename, len);
+	  newFile[len] = '\0';
+	  return fp;
+	}
+/* Try to open the file with the path XIAHOME */
+	if ((home=getenv("XIAHOME"))!=NULL) {
+		name = (char *) xerxes_md_alloc(sizeof(char)*
+							(strlen(home)+strlen(filename)+2));
+		sprintf(name, "%s/%s", home, filename);
+		if((fp=fopen(name,mode))!=NULL){
+			len = MAXFILENAME_LEN>(strlen(name)+1) ? strlen(name) : MAXFILENAME_LEN;
+			strncpy(newFile, name, len);
+			newFile[len] = '\0';
+			xerxes_md_free(name);
+			return fp;
+		}
+		xerxes_md_free(name);
+		name = NULL;
+	}
+/* Try to open the file with the path DXPHOME */
+	if ((home=getenv("DXPHOME"))!=NULL) {
+		name = (char *) xerxes_md_alloc(sizeof(char)*
+							(strlen(home)+strlen(filename)+2));
+		sprintf(name, "%s/%s", home, filename);
+		if((fp=fopen(name,mode))!=NULL){
+			len = MAXFILENAME_LEN>(strlen(name)+1) ? strlen(name) : MAXFILENAME_LEN;
+			strncpy(newFile, name, len);
+			newFile[len] = '\0';
+			xerxes_md_free(name);
+			return fp;
+		}
+		xerxes_md_free(name);
+		name = NULL;
+	}
+/* Try to open the file as an environment variable */
+	if ((name=getenv(filename))!=NULL) {
+		if((fp=fopen(name,mode))!=NULL){
+			len = MAXFILENAME_LEN>(strlen(name)+1) ? strlen(name) : MAXFILENAME_LEN;
+			strncpy(newFile, name, len);
+			newFile[len] = '\0';
+			return fp;
+		}
+		name = NULL;
+	}
+/* Try to open the file with the path XIAHOME and pointing 
+ * to a file as an environment variable */
+	if ((home=getenv("XIAHOME"))!=NULL) {
+		if ((name2=getenv(filename))!=NULL) {
+		
+			name = (char *) xerxes_md_alloc(sizeof(char)*
+								(strlen(home)+strlen(name2)+2));
+			sprintf(name, "%s/%s", home, name2);
+			if((fp=fopen(name,mode))!=NULL) {
+				len = MAXFILENAME_LEN>(strlen(name)+1) ? strlen(name) : MAXFILENAME_LEN;
+				strncpy(newFile, name, len);
+				newFile[len] = '\0';
+				xerxes_md_free(name);
+				return fp;
+			}
+			xerxes_md_free(name);
+			name = NULL;
+		}
+	}
+/* Try to open the file with the path DXPHOME and pointing 
+ * to a file as an environment variable */
+	if ((home=getenv("DXPHOME"))!=NULL) {
+		if ((name2=getenv(filename))!=NULL) {
+		
+			name = (char *) xerxes_md_alloc(sizeof(char)*
+								(strlen(home)+strlen(name2)+2));
+			sprintf(name, "%s/%s", home, name2);
+			if((fp=fopen(name,mode))!=NULL) {
+				len = MAXFILENAME_LEN>(strlen(name)+1) ? strlen(name) : MAXFILENAME_LEN;
+				strncpy(newFile, name, len);
+				newFile[len] = '\0';
+				xerxes_md_free(name);
+				return fp;
+			}
+			xerxes_md_free(name);
+			name = NULL;
+		}
+	}
+
+	return NULL;
+}
+
 
 /******************************************************************************
  *
@@ -1305,6 +1499,7 @@ XERXES_EXPORT int XERXES_API dxp_find_filename(const char* filename, const char*
 {
 	FILE *fp=NULL;
 	int status = DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	
 	unsigned int len = 0;
 
@@ -1344,6 +1539,7 @@ int XERXES_API dxp_locate_system_files(unsigned int *maxlen, char **files)
 /* char *files;					Output: List of filenames used by XerXes	*/
 {
 	int status = DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	FILE *fp=NULL;
 	char *filename=NULL;
 	char newFile[200];
@@ -1460,6 +1656,7 @@ int XERXES_API dxp_locate_channel_files(int *detChan, unsigned int *maxlen, char
 /* char *files;					Output: List of filenames used by XerXes	*/
 {
 	int status = DXP_SUCCESS, i;
+	char info_string[INFO_LEN];
 	FILE *fp=NULL;
 	char newFile[200];
 	char tmpname[5];
@@ -1500,52 +1697,52 @@ int XERXES_API dxp_locate_channel_files(int *detChan, unsigned int *maxlen, char
 
 /* Try to find the dsp file	*/
     if((fp=dxp_find_file(chosen->dsp[modChan]->filename,"r",newFile))==NULL){ 
-        status = DXP_OPEN_FILE;
-	    sprintf(info_string,"Unable to locate the DSP firmware file");
-		dxp_log_error("dxp_locate_files",info_string,status);
-	} else {
-		fclose(fp);
-		if (strlen(newFile)>(*maxlen+1)) {
-			len = *maxlen;
-			start = strlen(newFile) - *maxlen;
-		} else {
-			len = strlen(newFile);
-			start = 0;
-		}
-		strncpy(files[lindex], newFile+start, len);
-		files[lindex][len] = 0;
-		lindex++;
-	}
+      status = DXP_OPEN_FILE;
+      sprintf(info_string,"Unable to locate the DSP firmware file");
+      dxp_log_error("dxp_locate_files",info_string,status);
+    } else {
+      fclose(fp);
+      if (strlen(newFile)>(*maxlen+1)) {
+	len = *maxlen;
+	start = strlen(newFile) - *maxlen;
+      } else {
+	len = strlen(newFile);
+	start = 0;
+      }
+      strncpy(files[lindex], newFile+start, len);
+      files[lindex][len] = 0;
+      lindex++;
+    }
 
 /* Copy 4 characters of filename for NULL check */
-	if (chosen->defaults[modChan]->filename==NULL) {
-		strcpy(tmpname,"NULL");
-	} else {
-		for (i=0;i<5;i++) tmpname[i] = (char) toupper(chosen->defaults[modChan]->filename[i]);
-	}
+    if (chosen->defaults[modChan]->filename==NULL) {
+      strcpy(tmpname,"NULL");
+    } else {
+      for (i=0;i<5;i++) tmpname[i] = (char) toupper(chosen->defaults[modChan]->filename[i]);
+    }
 /* Try to find the defaults file	*/
-    if((fp=dxp_find_file(chosen->defaults[modChan]->filename,"r",newFile))==NULL){ 
-		fclose(fp);
-		if (strlen(newFile)>(*maxlen+1)) {
-			len = *maxlen;
-			start = strlen(newFile) - *maxlen;
-		} else {
-			len = strlen(newFile);
-			start = 0;
-		}
-		strncpy(files[lindex], newFile+start, len);
-		files[lindex][len] = 0;
-		lindex++;
+    if((fp=dxp_find_file(chosen->defaults[modChan]->filename,"r",newFile))!=NULL){ 
+      fclose(fp);
+      if (strlen(newFile)>(*maxlen+1)) {
+	len = *maxlen;
+	start = strlen(newFile) - *maxlen;
+      } else {
+	len = strlen(newFile);
+	start = 0;
+      }
+      strncpy(files[lindex], newFile+start, len);
+      files[lindex][len] = 0;
+      lindex++;
     } else if (STREQ(tmpname,"NULL")){ 
-		strcpy(files[lindex], tmpname);
-		lindex++;
-	} else {
-        status = DXP_OPEN_FILE;
-	    sprintf(info_string,"Unable to locate the default DSP parameters file");
-		dxp_log_error("dxp_locate_files",info_string,status);
-	}
+      strcpy(files[lindex], tmpname);
+      lindex++;
+    } else {
+      status = DXP_OPEN_FILE;
+      sprintf(info_string,"Unable to locate the default DSP parameters file");
+      dxp_log_error("dxp_locate_files",info_string,status);
+    }
 	
-	return status;
+    return status;
 }
 
 /******************************************************************************
@@ -1556,8 +1753,10 @@ int XERXES_API dxp_locate_channel_files(int *detChan, unsigned int *maxlen, char
 static int XERXES_API dxp_read_modules(FILE* fp)
 /* FILE *fp;						Input: FILE pointer to modules configuration	*/
 {
-    int status;
-    char *cstatus=" ";
+	int status;
+	char info_string[INFO_LEN];
+	char line[LINE_LEN],*token;
+	char *cstatus=" ";
 
 	unsigned int j, len;
 	unsigned int n, m, nchan;
@@ -1649,7 +1848,7 @@ static int XERXES_API dxp_read_modules(FILE* fp)
 /* Is this a new module in the system */
 		} else if (STREQ(token, "module")) {
 /* Pull out the information for where in the system the module sits 
- * and then open the crate via the dxp_md_open() routine.  This routine is 
+ * and then open the crate via the xerxes_md_open() routine.  This routine is 
  * expected to return a number for ioChan that identifies this module's
  * location in the array used by the machine dependent functions to 
  * identify how to talk to this module. */
@@ -1796,7 +1995,8 @@ static int XERXES_API dxp_read_modules(FILE* fp)
 int XERXES_API dxp_assign_channel(VOID)
 {
 	int status;
-    FILE *fp=NULL;
+	char info_string[INFO_LEN];
+	FILE *fp=NULL;
 
 	unsigned int i, len;
 	char strtmp[5];
@@ -1845,6 +2045,7 @@ static int XERXES_API dxp_free_board(Board* board)
 /* Board *board;							Input: pointer to structure to free	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	unsigned short i;
 
 	if (board==NULL) {
@@ -1856,41 +2057,41 @@ static int XERXES_API dxp_free_board(Board* board)
 
 /* Free the detChan array */
 	if (board->detChan!=NULL)
-		dxp_md_free(board->detChan);
+		xerxes_md_free(board->detChan);
 
 /* Free the iostring entry */
 	if (board->iostring!=NULL) 
-		dxp_md_free(board->iostring);
+		xerxes_md_free(board->iostring);
 
 /* Free the params array */
 	if (board->params!=NULL) {
 		for (i=0; i<board->nchan; i++) {
 			if (board->params[i]!=NULL) {
-				dxp_md_free(board->params[i]);
+				xerxes_md_free(board->params[i]);
 				board->params[i] = NULL;
 			}
 		}
-		dxp_md_free(board->params);
+		xerxes_md_free(board->params);
 	}
 
 /* Free the Chan_State Array*/
 	if (board->chanstate!=NULL)
-		dxp_md_free(board->chanstate);
+		xerxes_md_free(board->chanstate);
 
 /* Free the Dsp Array*/
 	if (board->dsp!=NULL)
-		dxp_md_free(board->dsp);
+		xerxes_md_free(board->dsp);
 
 /* Free the Fippi Array*/
 	if (board->fippi!=NULL)
-		dxp_md_free(board->fippi);
+		xerxes_md_free(board->fippi);
 
 /* Free the Defaults Array*/
 	if (board->defaults!=NULL)
-		dxp_md_free(board->defaults);
+		xerxes_md_free(board->defaults);
 
 /* Free the Board structure */
-	dxp_md_free(board);
+	xerxes_md_free(board);
 	board = NULL;
 
 	return status;
@@ -1905,6 +2106,7 @@ static int XERXES_API dxp_free_iface(Interface *iface)
 /* Interface *iface;					Input: pointer to structure to free	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	if (iface ==NULL) {
 		status = DXP_NOMEM;
@@ -1913,12 +2115,12 @@ static int XERXES_API dxp_free_iface(Interface *iface)
         return status;
 	}
 
-	if (iface->dllname != NULL) dxp_md_free(iface->dllname);
-	if (iface->ioname  != NULL) dxp_md_free(iface->ioname);
-	if (iface->funcs   != NULL) dxp_md_free(iface->funcs);
+	if (iface->dllname != NULL) xerxes_md_free(iface->dllname);
+	if (iface->ioname  != NULL) xerxes_md_free(iface->ioname);
+	if (iface->funcs   != NULL) xerxes_md_free(iface->funcs);
 
 /* Free the Interface structure */
-	dxp_md_free(iface);
+	xerxes_md_free(iface);
 	iface = NULL;
 
 	return status;
@@ -1933,6 +2135,7 @@ static int XERXES_API dxp_free_binfo(Board_Info *binfo)
 /* Board_Info *binfo;					Input: pointer to structure to free	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	if (binfo==NULL) {
 		status = DXP_NOMEM;
@@ -1941,12 +2144,12 @@ static int XERXES_API dxp_free_binfo(Board_Info *binfo)
         return status;
 	}
 
-	if (binfo->pointer != NULL) dxp_md_free(binfo->pointer);
-	if (binfo->name    != NULL) dxp_md_free(binfo->name);
-	if (binfo->funcs   != NULL) dxp_md_free(binfo->funcs);
+	if (binfo->pointer != NULL) xerxes_md_free(binfo->pointer);
+	if (binfo->name    != NULL) xerxes_md_free(binfo->name);
+	if (binfo->funcs   != NULL) xerxes_md_free(binfo->funcs);
 
 /* Free the Board_Info structure */
-	dxp_md_free(binfo);
+	xerxes_md_free(binfo);
 	binfo = NULL;
 
 	return status;
@@ -1961,6 +2164,7 @@ static int XERXES_API dxp_free_dsp(Dsp_Info *dsp)
 /* Dsp_Info *dsp;					Input: pointer to structure to free	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	if (dsp==NULL) {
 		status = DXP_NOMEM;
@@ -1970,14 +2174,14 @@ static int XERXES_API dxp_free_dsp(Dsp_Info *dsp)
 	}
 
 	if (dsp->filename!=NULL) 
-			dxp_md_free(dsp->filename);
+			xerxes_md_free(dsp->filename);
 	if (dsp->data!=NULL) 
-			dxp_md_free(dsp->data);
+			xerxes_md_free(dsp->data);
 	if (dsp->params!=NULL)
 		dxp_free_params(dsp->params);
 
 /* Free the Dsp_Info structure */
-	dxp_md_free(dsp);
+	xerxes_md_free(dsp);
 	dsp = NULL;
 
 	return status;
@@ -1992,6 +2196,7 @@ static int XERXES_API dxp_free_fippi(Fippi_Info *fippi)
 /* Fippi_Info *fippi;					Input: pointer to structure to free	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	if (fippi==NULL) {
 		status = DXP_NOMEM;
@@ -2001,12 +2206,12 @@ static int XERXES_API dxp_free_fippi(Fippi_Info *fippi)
 	}
 
 	if (fippi->filename!=NULL) 
-				dxp_md_free(fippi->filename);
+				xerxes_md_free(fippi->filename);
 	if (fippi->data!=NULL) 
-				dxp_md_free(fippi->data);
+				xerxes_md_free(fippi->data);
 
 /* Free the Fippi_Info structure */
-	dxp_md_free(fippi);
+	xerxes_md_free(fippi);
 	fippi = NULL;
 
 	return status;
@@ -2021,6 +2226,7 @@ static int XERXES_API dxp_free_params(Dsp_Params *params)
 /* Dsp_Params *params;					Input: pointer to structure to free	*/
 {
 	int j,status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	if (params==NULL) {
 		status = DXP_NOMEM;
@@ -2032,13 +2238,13 @@ static int XERXES_API dxp_free_params(Dsp_Params *params)
 	if (params->parameters!=NULL) {
 		for (j=0;j<params->nsymbol;j++) {
 			if (params->parameters[j].pname!=NULL)
-					dxp_md_free(params->parameters[j].pname);
+					xerxes_md_free(params->parameters[j].pname);
 		}
-		dxp_md_free(params->parameters);
+		xerxes_md_free(params->parameters);
 	}
 
 /* Free the Dsp_Params structure */
-	dxp_md_free(params);
+	xerxes_md_free(params);
 	params = NULL;
 
 	return status;
@@ -2053,6 +2259,7 @@ static int XERXES_API dxp_free_defaults(Dsp_Defaults *defaults)
 /* Dsp_Defaults *defaults;					Input: pointer to structure to free	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	if (defaults==NULL) {
 		status = DXP_NOMEM;
@@ -2062,15 +2269,15 @@ static int XERXES_API dxp_free_defaults(Dsp_Defaults *defaults)
 	}
 
 	if (defaults->filename!=NULL)
-				dxp_md_free(defaults->filename);
+				xerxes_md_free(defaults->filename);
 	if (defaults->data!=NULL)
-				dxp_md_free(defaults->data);
+				xerxes_md_free(defaults->data);
 	if (defaults->params!=NULL) {
 		dxp_free_params(defaults->params);
 	}
 
 /* Free the Dsp_Defaults structure */
-	dxp_md_free(defaults);
+	xerxes_md_free(defaults);
 	defaults = NULL;
 
 	return status;
@@ -2088,6 +2295,7 @@ int XERXES_API dxp_del_board(char* type, char* iolib, char* ifacelib, char* iost
 /* char *iostring;				Input: string to pass to the iface library	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Board *current = system_head, *prev = NULL;
 
@@ -2132,6 +2340,7 @@ int XERXES_API dxp_del_btype(char* name)
 /* char *name;					Input: board type	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Board_Info *current = btypes_head, *prev = NULL;
 
@@ -2167,6 +2376,7 @@ int XERXES_API dxp_del_dsp(char* filename)
 /* char *filename;			Input: filename associated with DPS	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Dsp_Info *current = dsp_head, *prev = NULL;
 
@@ -2202,6 +2412,7 @@ int XERXES_API dxp_del_fippi(char* filename)
 /* char *filename;			Input: filename associated with FIPPI	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Fippi_Info *current = fippi_head, *prev = NULL;
 
@@ -2237,6 +2448,7 @@ int XERXES_API dxp_del_defaults(char* filename)
 /* char *filename;			Input: filename associated with Defaults	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Dsp_Defaults *current = defaults_head, *prev = NULL;
 
@@ -2278,6 +2490,7 @@ int XERXES_API dxp_add_board(char* type, char* iolib, char* ifacelib, char* iost
 /* int *detChan;				Input: Array of detector channel numbers		*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	unsigned short used;
 	int ioChan;
 	unsigned short j;
@@ -2343,7 +2556,7 @@ int XERXES_API dxp_add_board(char* type, char* iolib, char* ifacelib, char* iost
 	used = 0;
 
 /* Pull out the information for where in the system the module sits 
- * and then open the crate via the dxp_md_open() routine.  This routine is 
+ * and then open the crate via the xerxes_md_open() routine.  This routine is 
  * expected to return a number for ioChan that identifies this module's
  * location in the array used by the machine dependent functions to 
  * identify how to talk to this module. */
@@ -2368,10 +2581,10 @@ int XERXES_API dxp_add_board(char* type, char* iolib, char* ifacelib, char* iost
 
 /* Create an entry in the linked list, checking to see if it is the first */
 	if (system_head==NULL) {
-		system_head = (Board *) dxp_md_alloc(sizeof(Board));
+		system_head = (Board *) xerxes_md_alloc(sizeof(Board));
 		current = system_head;
 	} else {
-		current->next = (Board *) dxp_md_alloc(sizeof(Board));
+		current->next = (Board *) xerxes_md_alloc(sizeof(Board));
 		current = current->next;
 	}
 	current->ioChan= ioChan;
@@ -2381,7 +2594,7 @@ int XERXES_API dxp_add_board(char* type, char* iolib, char* ifacelib, char* iost
 	current->btype	= btype;
 	current->iface	= iface;
 	current->iostring = (char *)
-		dxp_md_alloc((strlen(iostring)+1)*sizeof(char));
+		xerxes_md_alloc((strlen(iostring)+1)*sizeof(char));
 	strcpy(current->iostring, iostring);
 /* 
  * Initialize the interface.  Note that if multiple boards use the same
@@ -2418,6 +2631,7 @@ static int XERXES_API dxp_get_btype(char* name, Board_Info** match)
 /* Board_Info **match;			Output: pointer the correct structure	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Board_Info *current = btypes_head;
 
@@ -2450,6 +2664,7 @@ int XERXES_API dxp_add_btype(char* name, char* pointer, char* dllname)
 /* char *dllname;						Input: name of the board type library*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 
 	Board_Info *prev = NULL;
 	Board_Info *current = btypes_head;
@@ -2474,14 +2689,14 @@ int XERXES_API dxp_add_btype(char* name, char* pointer, char* dllname)
 /* No match in the existing list, add a new entry */
 	if (btypes_head==NULL) {
 /* Initialize the Header entry in the btypes linked list */
-		btypes_head = (Board_Info*) dxp_md_alloc(sizeof(Board_Info));
+		btypes_head = (Board_Info*) xerxes_md_alloc(sizeof(Board_Info));
 		btypes_head->type = 0;
 		current = btypes_head;
 /* Assign the head entry of board types to the global structure */
 		info->btypes = btypes_head;
 	} else {
 /* Not First time, allocate memory for next member of linked list */
-		prev->next = (Board_Info*) dxp_md_alloc(sizeof(Board_Info));
+		prev->next = (Board_Info*) xerxes_md_alloc(sizeof(Board_Info));
 		current = prev->next;
 		current->type = prev->type+1;
 	}
@@ -2490,7 +2705,7 @@ int XERXES_API dxp_add_btype(char* name, char* pointer, char* dllname)
 /* Set the next pointer to NULL */
 	current->next = NULL;
 /* This a new board type. */
-	current->name = (char *) dxp_md_alloc((strlen(name)+1)*sizeof(char));
+	current->name = (char *) xerxes_md_alloc((strlen(name)+1)*sizeof(char));
 /* Copy the tag into the structure.  End the string with 
  * a NULL character. */
 	strcpy(current->name, name);
@@ -2498,7 +2713,7 @@ int XERXES_API dxp_add_btype(char* name, char* pointer, char* dllname)
 /* Check to make sure a pointer was defined */
 	if (pointer!=NULL) {
 /* Now copy the pointer to use for this type configuration */
-		current->pointer = (char *) dxp_md_alloc((strlen(pointer)+1)*sizeof(char));
+		current->pointer = (char *) xerxes_md_alloc((strlen(pointer)+1)*sizeof(char));
 /* Copy the filename into the structure.  End the string with 
  * a NULL character. */
 		strcpy(current->pointer, pointer);
@@ -2526,7 +2741,8 @@ int XERXES_API dxp_add_btype(char* name, char* pointer, char* dllname)
  ******************************************************************************/
 int XERXES_API dxp_get_board_type(int *detChan, char *name)
 {
-    int status;
+	int status;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
@@ -2553,10 +2769,10 @@ static int XERXES_API dxp_add_btype_library(Board_Info* current)
 /* Board_Info *current;			Input: pointer to structure	*/
 {
 	int status=DXP_SUCCESS;
-
+	char info_string[INFO_LEN];
 
 /* Allocate the memory for the function pointer structure */
-	current->funcs = (Functions *) dxp_md_alloc(sizeof(Functions));
+	current->funcs = (Functions *) xerxes_md_alloc(sizeof(Functions));
 
 /* Assign the function pointers */
 #ifndef EXCLUDE_DXP4C
@@ -2602,6 +2818,7 @@ static int XERXES_API dxp_add_dsp(char* filename, Board_Info* board, Dsp_Info** 
 /* Dsp_Info **passed;					Output: Pointer to the structure		*/
 {
 	int status;
+	char info_string[INFO_LEN];
 	unsigned int i;
 
 	Dsp_Info *temp_dsp = NULL, *prev = NULL;
@@ -2622,32 +2839,32 @@ static int XERXES_API dxp_add_dsp(char* filename, Board_Info* board, Dsp_Info** 
 /* No match in the existing list, add a new entry */
 	if (dsp_head==NULL) {
 /* First time, allocate memory for head of linked list */
-		dsp_head = (Dsp_Info *) dxp_md_alloc(sizeof(Dsp_Info));
+		dsp_head = (Dsp_Info *) xerxes_md_alloc(sizeof(Dsp_Info));
 		current = dsp_head;
 	} else {
 /* Not First time, allocate memory for next member of linked list */
-		prev->next = (Dsp_Info *) dxp_md_alloc(sizeof(Dsp_Info));
+		prev->next = (Dsp_Info *) xerxes_md_alloc(sizeof(Dsp_Info));
 		current = prev->next;
 	}
 /* Set the next pointer to NULL */
 	current->next = NULL;
 /* Must allocate memory for the filename in the structure */
-	current->filename = (char *) dxp_md_alloc((strlen(filename)+1)*sizeof(char));
+	current->filename = (char *) xerxes_md_alloc((strlen(filename)+1)*sizeof(char));
 	strcpy(current->filename, filename);
 
 /* Now allocate memory and fill the program information 
  * with the driver routine */
-	temp_dsp = (Dsp_Info *) dxp_md_alloc(sizeof(Dsp_Info));
-	temp_dsp->params = (Dsp_Params *) dxp_md_alloc(sizeof(Dsp_Params));
-	temp_dsp->filename = (char *) dxp_md_alloc((strlen(filename)+1)*sizeof(char));
+	temp_dsp = (Dsp_Info *) xerxes_md_alloc(sizeof(Dsp_Info));
+	temp_dsp->params = (Dsp_Params *) xerxes_md_alloc(sizeof(Dsp_Params));
+	temp_dsp->filename = (char *) xerxes_md_alloc((strlen(filename)+1)*sizeof(char));
 	strcpy(temp_dsp->filename, filename);
 
 /* Fill in the default lengths */
 	if ((status=board->funcs->dxp_get_dspinfo(temp_dsp))!=DXP_SUCCESS) {
 /* Free up memory, since there was an error */
 		dxp_free_dsp(temp_dsp);
-		dxp_md_free(current->filename);
-		dxp_md_free(current);
+		xerxes_md_free(current->filename);
+		xerxes_md_free(current);
 		if (prev!=NULL)	prev->next = NULL;
 /* Write out error message */
 		sprintf(info_string,"Unable to get DSP information");
@@ -2656,10 +2873,10 @@ static int XERXES_API dxp_add_dsp(char* filename, Board_Info* board, Dsp_Info** 
 	}
 
 /* Now finish allocating memory */
-	temp_dsp->data = (unsigned short *) dxp_md_alloc(temp_dsp->maxproglen*sizeof(unsigned short));
-	temp_dsp->params->parameters = (Parameter *) dxp_md_alloc(temp_dsp->params->maxsym*sizeof(Parameter));
+	temp_dsp->data = (unsigned short *) xerxes_md_alloc(temp_dsp->maxproglen*sizeof(unsigned short));
+	temp_dsp->params->parameters = (Parameter *) xerxes_md_alloc(temp_dsp->params->maxsym*sizeof(Parameter));
 	for (i=0;i<temp_dsp->params->maxsym;i++) {
-		temp_dsp->params->parameters[i].pname  = (char *) dxp_md_alloc(temp_dsp->params->maxsymlen*sizeof(char));
+		temp_dsp->params->parameters[i].pname  = (char *) xerxes_md_alloc(temp_dsp->params->maxsymlen*sizeof(char));
 		temp_dsp->params->parameters[i].address = 0;
 		temp_dsp->params->parameters[i].access  = 0;
 		temp_dsp->params->parameters[i].lbound  = 0;
@@ -2671,8 +2888,8 @@ static int XERXES_API dxp_add_dsp(char* filename, Board_Info* board, Dsp_Info** 
 /* Free up memory, since there was an error */
 		temp_dsp->params->nsymbol = temp_dsp->params->maxsym;
 		dxp_free_dsp(temp_dsp);
-		dxp_md_free(current->filename);
-		dxp_md_free(current);
+		xerxes_md_free(current->filename);
+		xerxes_md_free(current);
 		if (prev!=NULL) prev->next = NULL;
 /* Write out error message */
 		sprintf(info_string,"Unable to load new DSP file");
@@ -2685,18 +2902,18 @@ static int XERXES_API dxp_add_dsp(char* filename, Board_Info* board, Dsp_Info** 
  */
 	current->maxproglen = temp_dsp->maxproglen;
 	current->proglen = temp_dsp->proglen;
-	current->data = (unsigned short *) dxp_md_alloc((temp_dsp->proglen)*sizeof(unsigned short));
+	current->data = (unsigned short *) xerxes_md_alloc((temp_dsp->proglen)*sizeof(unsigned short));
 	memcpy(current->data, temp_dsp->data, (temp_dsp->proglen)*sizeof(unsigned short));
 
-	current->params = (Dsp_Params *) dxp_md_alloc(sizeof(Dsp_Params));
+	current->params = (Dsp_Params *) xerxes_md_alloc(sizeof(Dsp_Params));
 	current->params->nsymbol   = temp_dsp->params->nsymbol;
 	current->params->maxsymlen = temp_dsp->params->maxsymlen;
 	current->params->maxsym    = temp_dsp->params->maxsym;
 	current->params->parameters= (Parameter *) 
-		dxp_md_alloc((current->params->nsymbol)*sizeof(Parameter));
+		xerxes_md_alloc((current->params->nsymbol)*sizeof(Parameter));
 	for (i=0;i<current->params->nsymbol;i++) {
 		current->params->parameters[i].pname = (char *) 
-			dxp_md_alloc((strlen(temp_dsp->params->parameters[i].pname)+1)*sizeof(char));
+			xerxes_md_alloc((strlen(temp_dsp->params->parameters[i].pname)+1)*sizeof(char));
 		strcpy(current->params->parameters[i].pname, temp_dsp->params->parameters[i].pname);
 		current->params->parameters[i].address = temp_dsp->params->parameters[i].address;
 		current->params->parameters[i].access  = temp_dsp->params->parameters[i].access;
@@ -2727,6 +2944,7 @@ static int XERXES_API dxp_add_fippi(char* filename, Board_Info* board, Fippi_Inf
 /* Fippi_Info **passed;				Output: Pointer to the structure		*/
 {
 	int status;
+	char info_string[INFO_LEN];
 
 	Fippi_Info *temp_fippi = NULL, *prev= NULL;
 	Fippi_Info *current = fippi_head;
@@ -2746,30 +2964,30 @@ static int XERXES_API dxp_add_fippi(char* filename, Board_Info* board, Fippi_Inf
 /* No match in the existing list, add a new entry */
 	if (fippi_head==NULL) {
 /* First time, allocate memory for head of linked list */
-		fippi_head = (Fippi_Info *) dxp_md_alloc(sizeof(Fippi_Info));
+		fippi_head = (Fippi_Info *) xerxes_md_alloc(sizeof(Fippi_Info));
 		current = fippi_head;
 	} else {
 /* Not First time, allocate memory for next member of linked list */
-		prev->next = (Fippi_Info *) dxp_md_alloc(sizeof(Fippi_Info));
+		prev->next = (Fippi_Info *) xerxes_md_alloc(sizeof(Fippi_Info));
 		current = prev->next;
 	}
 /* Set the next pointer to NULL */
 	current->next = NULL;
-	current->filename = (char *) dxp_md_alloc((strlen(filename)+1)*sizeof(char));
+	current->filename = (char *) xerxes_md_alloc((strlen(filename)+1)*sizeof(char));
 	strcpy(current->filename, filename);
 
 /* Now allocate memory and fill the program information 
  * with the driver routine */
-	temp_fippi = (Fippi_Info *) dxp_md_alloc(sizeof(Fippi_Info));
-	temp_fippi->filename = (char *) dxp_md_alloc((strlen(filename)+1)*sizeof(char));
+	temp_fippi = (Fippi_Info *) xerxes_md_alloc(sizeof(Fippi_Info));
+	temp_fippi->filename = (char *) xerxes_md_alloc((strlen(filename)+1)*sizeof(char));
 	strcpy(temp_fippi->filename, filename);
 
 /* Fill in the default lengths */
 	if ((status=board->funcs->dxp_get_fipinfo(temp_fippi))!=DXP_SUCCESS) {
 /* Free up memory, since there was an error */
-		dxp_md_free(temp_fippi);
-		dxp_md_free(current->filename);
-		dxp_md_free(current);
+		xerxes_md_free(temp_fippi);
+		xerxes_md_free(current->filename);
+		xerxes_md_free(current);
 		if (prev!=NULL) prev->next = NULL;
 /* Write out error message */
 		sprintf(info_string,"Unable to get FIPPI information");
@@ -2779,12 +2997,12 @@ static int XERXES_API dxp_add_fippi(char* filename, Board_Info* board, Fippi_Inf
 
 /* Finish allocating memory */
 	temp_fippi->data = (unsigned short *) 
-		dxp_md_alloc((temp_fippi->maxproglen)*sizeof(unsigned short));
+		xerxes_md_alloc((temp_fippi->maxproglen)*sizeof(unsigned short));
 	if ((status=board->funcs->dxp_get_fipconfig(temp_fippi))!=DXP_SUCCESS) {
 /* Free up memory, since there was an error */
 		dxp_free_fippi(temp_fippi);
-		dxp_md_free(current->filename);
-		dxp_md_free(current);
+		xerxes_md_free(current->filename);
+		xerxes_md_free(current);
 		if (prev!=NULL) prev->next = NULL;
 /* Write out error message */
 		sprintf(info_string,"Unable to load new FIPPI file");
@@ -2797,7 +3015,7 @@ static int XERXES_API dxp_add_fippi(char* filename, Board_Info* board, Fippi_Inf
  * midlevel layer */
 	current->maxproglen = temp_fippi->maxproglen;
 	current->proglen = temp_fippi->proglen;
-	current->data = (unsigned short *) dxp_md_alloc((temp_fippi->proglen)*sizeof(unsigned short));
+	current->data = (unsigned short *) xerxes_md_alloc((temp_fippi->proglen)*sizeof(unsigned short));
 	memcpy(current->data, temp_fippi->data, (temp_fippi->proglen)*sizeof(unsigned short));
 
 /* Ok, the memory is copied into the local library memory space, now free the memory
@@ -2822,6 +3040,7 @@ static int XERXES_API dxp_add_defaults(char* filename, Board_Info* board, Dsp_De
 /* Dsp_Defaults **passed;				Output: Pointer to the structure		*/
 {
 	int status;
+	char info_string[INFO_LEN];
 	unsigned int i, len;
 
 	Dsp_Defaults *temp_defaults = NULL, *prev = NULL;
@@ -2844,31 +3063,31 @@ static int XERXES_API dxp_add_defaults(char* filename, Board_Info* board, Dsp_De
 /* No match in the existing list, add a new entry */
 	if (defaults_head==NULL) {
 /* First time, allocate memory for head of linked list */
-		defaults_head = (Dsp_Defaults *) dxp_md_alloc(sizeof(Dsp_Defaults));
+		defaults_head = (Dsp_Defaults *) xerxes_md_alloc(sizeof(Dsp_Defaults));
 		current = defaults_head;
 	} else {
 /* Not First time, allocate memory for next member of linked list */
-		prev->next = (Dsp_Defaults *) dxp_md_alloc(sizeof(Dsp_Defaults));
+		prev->next = (Dsp_Defaults *) xerxes_md_alloc(sizeof(Dsp_Defaults));
 		current = prev->next;
 	}
 /* Set the next pointer to NULL */
 	current->next = NULL;
-	current->filename = (char *) dxp_md_alloc((strlen(filename)+1)*sizeof(char));
+	current->filename = (char *) xerxes_md_alloc((strlen(filename)+1)*sizeof(char));
 	current->filename = strcpy(current->filename, filename);
 
 /* Now allocate memory and fill the program information 
  * with the driver routine */
-	temp_defaults = (Dsp_Defaults *) dxp_md_alloc(sizeof(Dsp_Defaults));
-	temp_defaults->params = (Dsp_Params *) dxp_md_alloc(sizeof(Dsp_Params));
-	temp_defaults->filename = (char *) dxp_md_alloc((strlen(filename)+1)*sizeof(char));
+	temp_defaults = (Dsp_Defaults *) xerxes_md_alloc(sizeof(Dsp_Defaults));
+	temp_defaults->params = (Dsp_Params *) xerxes_md_alloc(sizeof(Dsp_Params));
+	temp_defaults->filename = (char *) xerxes_md_alloc((strlen(filename)+1)*sizeof(char));
 	strcpy(temp_defaults->filename, filename);
 
 /* Fill in the default lengths */
 	if ((status=board->funcs->dxp_get_defaultsinfo(temp_defaults))!=DXP_SUCCESS) {
 /* Free up memory, since there was an error */
 		dxp_free_defaults(temp_defaults);
-		dxp_md_free(current->filename);
-		dxp_md_free(current);
+		xerxes_md_free(current->filename);
+		xerxes_md_free(current);
 		if (prev!=NULL) prev->next = NULL;
 /* Write out error message */
 		sprintf(info_string,"Unable to get DSP Defaults information");
@@ -2877,15 +3096,15 @@ static int XERXES_API dxp_add_defaults(char* filename, Board_Info* board, Dsp_De
 	}
 
 /* Finish allocating memory */
-	temp_defaults->data = (unsigned short *) dxp_md_alloc(temp_defaults->params->maxsym*sizeof(unsigned short));
+	temp_defaults->data = (unsigned short *) xerxes_md_alloc(temp_defaults->params->maxsym*sizeof(unsigned short));
 
 /** temp_defaults->data should probably be set to something!! 11/13/01--PJF */
 	memset((void *)temp_defaults->data, 0x0000, sizeof(temp_defaults->data)); 
 
 	temp_defaults->params->parameters = (Parameter *) 
-						dxp_md_alloc(temp_defaults->params->maxsym*sizeof(Parameter));
+						xerxes_md_alloc(temp_defaults->params->maxsym*sizeof(Parameter));
 	for (i=0;i<temp_defaults->params->maxsym;i++)
-		temp_defaults->params->parameters[i].pname = (char *) dxp_md_alloc(temp_defaults->params->maxsymlen*sizeof(char));
+		temp_defaults->params->parameters[i].pname = (char *) xerxes_md_alloc(temp_defaults->params->maxsymlen*sizeof(char));
 
 	if (filename==NULL) {
 		strcpy(strtmp, "NULL");
@@ -2899,8 +3118,8 @@ static int XERXES_API dxp_add_defaults(char* filename, Board_Info* board, Dsp_De
 /* Free up memory, since there was an error */
 			temp_defaults->params->nsymbol = temp_defaults->params->maxsym;
 			dxp_free_defaults(temp_defaults);
-			dxp_md_free(current->filename);
-			dxp_md_free(current);
+			xerxes_md_free(current->filename);
+			xerxes_md_free(current);
 			if (prev!=NULL)	prev->next = NULL;
 /* Write out error message */
 			sprintf(info_string,"Unable to load new Defaults file");
@@ -2914,23 +3133,23 @@ static int XERXES_API dxp_add_defaults(char* filename, Board_Info* board, Dsp_De
 /* Now Copy the temp_defaults structure into the defaults structure, this will
  * move the memory allocated in the driver layer into the permanent
  * midlevel layer */
-	current->params = (Dsp_Params *) dxp_md_alloc(sizeof(Dsp_Params));
+	current->params = (Dsp_Params *) xerxes_md_alloc(sizeof(Dsp_Params));
 	current->params->nsymbol   = temp_defaults->params->nsymbol;
 	current->params->maxsymlen = temp_defaults->params->maxsymlen;
 	current->params->maxsym    = temp_defaults->params->maxsym;
 	if (temp_defaults->params->nsymbol != 0) {
 		current->params->parameters = (Parameter *) 
-				dxp_md_alloc((temp_defaults->params->nsymbol)*sizeof(Parameter));
+				xerxes_md_alloc((temp_defaults->params->nsymbol)*sizeof(Parameter));
 		for (i=0;i<current->params->nsymbol;i++) {
 			current->params->parameters[i].pname = (char *) 
-				dxp_md_alloc((strlen(temp_defaults->params->parameters[i].pname)+1)*sizeof(char));
+				xerxes_md_alloc((strlen(temp_defaults->params->parameters[i].pname)+1)*sizeof(char));
 			strcpy(current->params->parameters[i].pname, temp_defaults->params->parameters[i].pname);
 			current->params->parameters[i].address = 0;
 			current->params->parameters[i].access = 0;
 			current->params->parameters[i].lbound = 0;
 			current->params->parameters[i].ubound = 0;
 		}
-		current->data = (unsigned short *) dxp_md_alloc((temp_defaults->params->nsymbol)*sizeof(unsigned short));
+		current->data = (unsigned short *) xerxes_md_alloc((temp_defaults->params->nsymbol)*sizeof(unsigned short));
 		memcpy(current->data, temp_defaults->data, (temp_defaults->params->nsymbol)*sizeof(unsigned short));
 	
 	} else {
@@ -2962,6 +3181,7 @@ static int XERXES_API dxp_add_iface(char* dllname, char* iolib, Interface** ifac
 /* Interface **iface;				Output: Pointer to the structure			*/
 {
 	int status;
+	char info_string[INFO_LEN];
 	unsigned int maxMod = MAXDXP;
 
 	Interface *prev = NULL;
@@ -2982,24 +3202,24 @@ static int XERXES_API dxp_add_iface(char* dllname, char* iolib, Interface** ifac
 /* No match in the existing list, add a new entry */
 	if (iface_head==NULL) {
 /* First time, allocate memory for head of linked list */
-		iface_head = (Interface *) dxp_md_alloc(sizeof(Interface));
+		iface_head = (Interface *) xerxes_md_alloc(sizeof(Interface));
 		current = iface_head;
 	} else {
 /* Not First time, allocate memory for next member of linked list */
-		prev->next = (Interface *) dxp_md_alloc(sizeof(Interface));
+		prev->next = (Interface *) xerxes_md_alloc(sizeof(Interface));
 		current = prev->next;
 	}
 /* Set the next pointer to NULL */
 	current->next = NULL;
 /* Copy the name of the DLL into the structure */
-	current->dllname = (char *) dxp_md_alloc((strlen(dllname)+1)*sizeof(char));
+	current->dllname = (char *) xerxes_md_alloc((strlen(dllname)+1)*sizeof(char));
 	strcpy(current->dllname, dllname);
 /* Copy in the ioname variable for future reference */
-	current->ioname = (char *) dxp_md_alloc((strlen(iolib)+1)*sizeof(char));
+	current->ioname = (char *) xerxes_md_alloc((strlen(iolib)+1)*sizeof(char));
 	strcpy(current->ioname, iolib);
 
 /* Allocate memory for the function structure */
-	current->funcs = (Xia_Io_Functions *) dxp_md_alloc(sizeof(Xia_Io_Functions));
+	current->funcs = (Xia_Io_Functions *) xerxes_md_alloc(sizeof(Xia_Io_Functions));
 /* Retrieve the function pointers from the MD appropriate MD routine */
 	dxp_md_init_io(current->funcs, current->dllname);
 	
@@ -3066,6 +3286,7 @@ static int XERXES_API dxp_strnstrm(char* string, char* ltoken, unsigned int* n,
 /* unsigned int *m;			Output: Ending location of the search*/
 {
 	unsigned int i;
+	char info_string[INFO_LEN];
 	int status = DXP_SUCCESS;
 
 /* start the search */
@@ -3178,6 +3399,7 @@ int XERXES_API dxp_reset_channel(int* detChan)
 /* int *detChan;					*/
 {
 	int status=DXP_SUCCESS, i, len;
+	char info_string[INFO_LEN];
 	int modChan, ioChan;
 	unsigned short used;
 /* Temporary holding for the preamp file name */
@@ -3285,8 +3507,9 @@ int XERXES_API dxp_dspdefaults(int* detChan)
 /* int *detChan;					Input: detector channel to set defaults	*/
 {
 	unsigned int i;
-    unsigned short addr;
-    int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
+	unsigned short addr;
+	int status=DXP_SUCCESS;
 	int ioChan, modChan;
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
@@ -3337,8 +3560,8 @@ int XERXES_API dxp_dspdefaults(int* detChan)
  ******************************************************************************/
 int XERXES_API dxp_fipconfig(VOID)
 {
-
-    int status;
+	int status;
+	char info_string[INFO_LEN];
 	int i, found;
 	int mod;
 /* Pointer to the linked list of Boards */
@@ -3430,8 +3653,8 @@ int XERXES_API dxp_replace_fipconfig(int* detChan, char* filename)
 /* int *detChan;							Input: detector channel to load     */
 /* char *filename;							Input: location of the new FiPPi    */
 {
-
-    int status;
+	int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;
 	unsigned short used;
 /* Pointer to the chosen Board */
@@ -3495,6 +3718,7 @@ int XERXES_API dxp_reset_fipconfig(int* detChan)
 /* int *detChan;					Input: Detector Channel number	*/
 {
 	int status;
+	char info_string[INFO_LEN];
 	int modChan, ioChan;
 	unsigned short used;
 	Board *chosen = NULL;
@@ -3547,6 +3771,7 @@ int XERXES_API dxp_reset_dspconfig(int* detChan)
 /* int *detChan;					Input: Detector Channel number	*/
 {
     int status;
+	char info_string[INFO_LEN];
 	int modChan, ioChan;
 	Board *chosen = NULL;
 	
@@ -3598,6 +3823,7 @@ int XERXES_API dxp_dspconfig(VOID)
 {
 
     int status,chan;
+	char info_string[INFO_LEN];
 	int ioChan, used, mod;
 /* Pointer to the current Board */
 	Board *current = system_head;
@@ -3608,8 +3834,10 @@ int XERXES_API dxp_dspconfig(VOID)
 /* What BUSY value are we waiting on? */
 	unsigned short value=0;
 	
+
+	dxp_log_debug("dxp_dspconfig", "Preapring to call dxp_download_dspconfig");
+
 /* Loop over all the modules in the system. */
-    
 	while (current != NULL) {
 		ioChan = current->ioChan;
 		used    = current->used;
@@ -3626,6 +3854,9 @@ int XERXES_API dxp_dspconfig(VOID)
 					dxp_log_error("dxp_dspconfig",info_string,status);
 					return status;
 				}
+
+				dxp_log_debug("dxp_dspconfig", "Downloaded DSP");
+
 				broadcast_dsp = current->dsp[chan];
 /* DSP is downloaded for this channel, set its state */
 				current->chanstate[chan].dspdownloaded = 1;
@@ -3656,7 +3887,10 @@ int XERXES_API dxp_dspconfig(VOID)
 		}
 
 /* Now wait for 2 seconds to allow DSP initialization to complete */
-		dxp_md_wait(&two);
+
+		dxp_log_debug("dxp_dspconfig", "Preparing to wait");
+
+		xerxes_md_wait(&two);
 
 /* Now check the status of the BUSY parameter for all channels */
         for(chan = 0;chan<(int) current->nchan;chan++){
@@ -3669,6 +3903,8 @@ int XERXES_API dxp_dspconfig(VOID)
 				return status;
 			}
 		}
+
+		dxp_log_debug("dxp_dspconfig", "Done checking BUSY");
 
 /* Now Read all the parameters and test spectrm memory */		
 		for (chan = 0;chan<(int) current->nchan;chan++) {
@@ -3689,6 +3925,8 @@ int XERXES_API dxp_dspconfig(VOID)
 		current = current->next;
     }
 
+	 dxp_log_debug("dxp_dspconfig", "Returning from dxp_dspconfig");
+
     return DXP_SUCCESS;
 }
 
@@ -3706,6 +3944,7 @@ int XERXES_API dxp_replace_dspconfig(int* detChan, char* filename)
 {
 
     int ioChan, modChan, status;
+	char info_string[INFO_LEN];
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
 
@@ -3760,6 +3999,7 @@ int XERXES_API dxp_put_dspparams(VOID)
 {
 
     int status;
+	char info_string[INFO_LEN];
 	int ioChan; 
 	unsigned short used;
 	unsigned int chan;
@@ -3801,6 +4041,7 @@ int XERXES_API dxp_replace_dspparams(int* detChan)
 {
 
     int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;
 /* Pointer to chosen Board */
 	Board *chosen=NULL;
@@ -3834,6 +4075,7 @@ int XERXES_API dxp_upload_dspparams(int* detChan)
 /* int *detChan;					Input: detector channel to download to	*/
 {
     int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
@@ -3964,6 +4206,7 @@ int XERXES_API dxp_nspec(int* detChan, unsigned int* nspec)
 /* unsigned int *nspec;			Output: The number of bins in the spectrum	*/
 {
     int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
@@ -3992,6 +4235,7 @@ int XERXES_API dxp_nbase(int* detChan, unsigned int* nbase)
 /* unsigned int *nbase;			Output: The number of bins in the baseline */
 {
 	int status = DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
@@ -4020,6 +4264,7 @@ int XERXES_API dxp_nevent(int* detChan, unsigned int* nevent)
 /* unsigned int *nevent;			Output: The number of samples in event memory*/
 {
 	int status = DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
@@ -4079,6 +4324,7 @@ int XERXES_API dxp_enable_LAM(int* detChan)
 /* int *detChan;					Input: Detector Channel number	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan, ioChan;
 	Board *chosen = NULL;
 	
@@ -4135,6 +4381,7 @@ int XERXES_API dxp_disable_LAM(int* detChan)
 /* int *detChan;					Input: Detector Channel number	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan, ioChan;
 	Board *chosen = NULL;
 	
@@ -4189,6 +4436,7 @@ int XERXES_API dxp_reset_LAM(int* detChan)
 /* int *detChan;					Input: Detector Channel number	*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan, ioChan;
 	Board *chosen = NULL;
 	
@@ -4250,6 +4498,7 @@ int XERXES_API dxp_start_run(unsigned short* gate, unsigned short* resume)
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, detChan, runactive;
 /* Pointer to the current Board */
 	Board *current = system_head;
@@ -4314,6 +4563,7 @@ int XERXES_API dxp_start_run(unsigned short* gate, unsigned short* resume)
 int XERXES_API dxp_resume_run()
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 /* Set resume to true */
 	unsigned short resume = 1;
 
@@ -4337,6 +4587,7 @@ int XERXES_API dxp_stop_run(VOID)
 {
 
     int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan;
 /* Pointer to the current Board */
 	Board *current = system_head;
@@ -4377,6 +4628,7 @@ int XERXES_API dxp_start_one_run(int *detChan, unsigned short* gate, unsigned sh
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4444,6 +4696,7 @@ int XERXES_API dxp_start_one_run(int *detChan, unsigned short* gate, unsigned sh
 int XERXES_API dxp_resume_one_run(int *detChan)
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 /* Set resume to true */
 	unsigned short resume = 1;
 
@@ -4468,6 +4721,7 @@ int XERXES_API dxp_stop_one_run(int *detChan)
 {
 
     int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4509,6 +4763,7 @@ int XERXES_API dxp_isrunning(int *detChan, int *ret)
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan, runactive;
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4558,6 +4813,7 @@ int XERXES_API dxp_isrunning_any(int *detChan, int *ret)
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int runactive, i;
 /* Pointer to the Chosen Channel */
 	Board *current=system_head;
@@ -4608,6 +4864,7 @@ int XERXES_API dxp_start_control_task(int *detChan, short *type,
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4681,6 +4938,7 @@ int XERXES_API dxp_stop_control_task(int *detChan)
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4723,6 +4981,7 @@ int XERXES_API dxp_control_task_info(int *detChan, short *type, int *info)
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4758,6 +5017,7 @@ int XERXES_API dxp_get_control_task_data(int *detChan, short *type, void *data)
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4821,6 +5081,7 @@ int XERXES_API dxp_get_symbol_index(int* detChan, char* name, unsigned short* sy
 {
 	
 	int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4859,6 +5120,7 @@ int XERXES_API dxp_get_one_dspsymbol(int* detChan, char* name, unsigned short* v
 {
 	
 	int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4923,6 +5185,7 @@ int XERXES_API dxp_get_dspsymbol(int* detChan, char* name, unsigned long* value)
 {
 	
 	int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -4977,6 +5240,7 @@ int XERXES_API dxp_set_one_dspsymbol(int* detChan, char* name, unsigned short* v
 {
 	
 	int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -5029,6 +5293,7 @@ int XERXES_API dxp_set_dspsymbol(char* name, unsigned short* value)
 {
 
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int i;
 /* Pointer to the Current Channel */
 	Board *current = system_head;
@@ -5083,6 +5348,7 @@ int XERXES_API dxp_symbolname_list(int* detChan, char** list)
 /* char **list;						Output: List of DSP symbol names */
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 	int i;	
 /* Pointer to the Chosen Channel */
@@ -5123,6 +5389,7 @@ int XERXES_API dxp_symbolname_by_index(int* detChan, unsigned short *lindex, cha
 /* char *name;						Output: Name of DSP symbol				*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -5178,6 +5445,7 @@ int XERXES_API dxp_symbolname_limits(int* detChan, unsigned short *access,
 /* unsigned short *ubound;		Output: upper bound for each DSP parameter			*/
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 	unsigned short i;
 /* Pointer to the Chosen Channel */
@@ -5240,6 +5508,7 @@ int XERXES_API dxp_max_symbols(int* detChan, unsigned short* nsymbols)
 /* unsigned short *nsymbols;			Output: The number of symbols in the list */
 {
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;
@@ -5268,6 +5537,7 @@ int XERXES_API dxp_mem_dump(int* detChan)
 /* int *detChan;						Input: detector channel of to dump        */
 {
 	int status;
+	char info_string[INFO_LEN];
 	int ioChan, modChan;		/* IO channel and module channel numbers */
 /* Pointer to the Chosen Board */
 	Board *chosen=NULL;
@@ -5311,6 +5581,7 @@ int XERXES_API dxp_readout_detector_run(int* detChan, unsigned short params[],
 {
 
 	int status;
+	char info_string[INFO_LEN];
 
 	int ioChan, modChan;
 /* Pointer to the Chosen Board */
@@ -5401,6 +5672,7 @@ static int XERXES_API dxp_do_readout(Board* board, int* modChan, unsigned short 
 /* unsigned long spectrum[];			Output: spectrum                    */
 {
 	unsigned int i;
+	char info_string[INFO_LEN];
 	int status, error;
 	unsigned short runerror,errinfo; 
 
@@ -5479,6 +5751,7 @@ int XERXES_API dxp_calibrate(int* calibtask)
 /* int *calibtask;							Input: which calibration function */
 {
     int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 /* Pointer to the Current Board */
 	Board *current=system_head;
 
@@ -5515,6 +5788,7 @@ int XERXES_API dxp_calibrate_one_channel(int *detChan, int* calibtask)
 /* int *calibtask;							Input: which calibration function */
 {
     int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the Chosen Board */
 	Board *chosen=NULL;
@@ -5563,6 +5837,7 @@ int XERXES_API dxp_write_spectra(int* luns, int* lunb)
 /* int *lunb;							Input: logical unit no. for baseline */
 {
     int mod=0,chan=0,status=DXP_SUCCESS,echan;
+	char info_string[INFO_LEN];
 
 	unsigned int i, j;
 
@@ -5598,12 +5873,12 @@ int XERXES_API dxp_write_spectra(int* luns, int* lunb)
 
 /* Allocate memory for the baseline and spectrum memory */
 
-    if ((spectra=(unsigned long **)dxp_md_alloc(numDxpChan*sizeof(unsigned long *)))==NULL) {
+    if ((spectra=(unsigned long **)xerxes_md_alloc(numDxpChan*sizeof(unsigned long *)))==NULL) {
 		status=DXP_NOMEM;
 		dxp_log_error("write_spectra","Out of Memory",status);
 		return status;
 	}
-    if ((baseline=(unsigned short **)dxp_md_alloc(numDxpChan*sizeof(unsigned short *)))==NULL) {
+    if ((baseline=(unsigned short **)xerxes_md_alloc(numDxpChan*sizeof(unsigned short *)))==NULL) {
 		status=DXP_NOMEM;
 		dxp_log_error("write_spectra","Out of Memory",status);
 		return status;
@@ -5635,13 +5910,13 @@ int XERXES_API dxp_write_spectra(int* luns, int* lunb)
 											current->params[chan]);
 	
 				if ((spectra[echan]=(unsigned long *)
-								dxp_md_alloc(maxspec*sizeof(unsigned long)))==NULL) {
+								xerxes_md_alloc(maxspec*sizeof(unsigned long)))==NULL) {
 					status=DXP_NOMEM;
 					dxp_log_error("write_spectra","Out of Memory",status);
 					return status;
 				}
 				if ((baseline[echan]=(unsigned short *)
-								dxp_md_alloc(maxbase*sizeof(unsigned short)))==NULL) {
+								xerxes_md_alloc(maxbase*sizeof(unsigned short)))==NULL) {
 					status=DXP_NOMEM;
 					dxp_log_error("write_spectra","Out of Memory",status);
 					return status;
@@ -5661,14 +5936,14 @@ int XERXES_API dxp_write_spectra(int* luns, int* lunb)
 					while (current!=NULL) {
 					    for(i=0;i<current->nchan;i++){
 							if ((current->detChan[i])<0) continue;
-						    dxp_md_free(spectra[echan]);
-							dxp_md_free(baseline[echan]);
+						    xerxes_md_free(spectra[echan]);
+							xerxes_md_free(baseline[echan]);
 							echan++;
 						}
 						current = current->next;
 				    }
-					dxp_md_free(spectra);
-					dxp_md_free(baseline);
+					xerxes_md_free(spectra);
+					xerxes_md_free(baseline);
 
                     return status;
                 }
@@ -5686,14 +5961,14 @@ int XERXES_API dxp_write_spectra(int* luns, int* lunb)
 					while (current!=NULL) {
 					    for(i=0;i<current->nchan;i++){
 							if ((current->detChan[i])<0) continue;
-						    dxp_md_free(spectra[echan]);
-							dxp_md_free(baseline[echan]);
+						    xerxes_md_free(spectra[echan]);
+							xerxes_md_free(baseline[echan]);
 							echan++;
 						}
 						current = current->next;
 				    }
-					dxp_md_free(spectra);
-					dxp_md_free(baseline);
+					xerxes_md_free(spectra);
+					xerxes_md_free(baseline);
 
 					return status;
 				}
@@ -5814,14 +6089,14 @@ int XERXES_API dxp_write_spectra(int* luns, int* lunb)
 	while (current!=NULL) {
 	    for(i=0;i<current->nchan;i++){
 			if ((current->detChan[i])<0) continue;
-	        dxp_md_free(spectra[echan]);
-			dxp_md_free(baseline[echan]);
+	        xerxes_md_free(spectra[echan]);
+			xerxes_md_free(baseline[echan]);
 			echan++;
 		}
 		current = current->next;
     }
-    dxp_md_free(spectra);
-    dxp_md_free(baseline);
+    xerxes_md_free(spectra);
+    xerxes_md_free(baseline);
 
     return DXP_SUCCESS;
 }
@@ -5840,6 +6115,7 @@ int XERXES_API dxp_save_dspparams(int* detChan, int* lun)
 /* int *lun;							Input: logical unit number to write to */
 {
 	int status = DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ioChan, modChan, nsymb;
 	char *symbolname=NULL;
 	FILE *fout;
@@ -5890,14 +6166,14 @@ int XERXES_API dxp_save_dspparams(int* detChan, int* lun)
  * Now write out the list
  */
 /* Allocate memory for the symbolname */
-	symbolname = (char *) dxp_md_alloc(MAXSYMBOL_LEN*sizeof(char));
+	symbolname = (char *) xerxes_md_alloc(MAXSYMBOL_LEN*sizeof(char));
 
 	nsymb = chosen->dsp[modChan]->params->nsymbol;
 	for (i=0; i < nsymb; i++) {
 
 /* Get the symbolname */
 		if((status=chosen->btype->funcs->dxp_symbolname(&i, chosen->dsp[modChan], symbolname))!=DXP_SUCCESS){
-			dxp_md_free(symbolname);
+			xerxes_md_free(symbolname);
 			sprintf(info_string,"Error getting symbol #%d", i);
 			dxp_log_error("dxp_save_dspparams",info_string,status);
 			return status;
@@ -5908,7 +6184,7 @@ int XERXES_API dxp_save_dspparams(int* detChan, int* lun)
 	}
 
 /* Free memory */
-	dxp_md_free(symbolname);
+	xerxes_md_free(symbolname);
 
 /* Write an ender section */
     fprintf(fout,"* \r\n");
@@ -5932,6 +6208,7 @@ int XERXES_API dxp_save_config(int* lun)
 {
 
     int chan;
+	char info_string[INFO_LEN];
     int status;
 	unsigned short i, nsymb;
 	unsigned short nsymbols;
@@ -6083,9 +6360,11 @@ int XERXES_API dxp_restore_config(int* lun)
 /* int *lun;				Input: logical unit number configuration file  */
 {
    
+	char info_string[INFO_LEN];
+	char line[LINE_LEN],*token;
     FILE *fp;  
-    char *cstatus, temp_line[132];
-	char strtmp[132];
+   char *cstatus, temp_line[LINE_LEN];
+	char strtmp[LINE_LEN];
     int status;
 	unsigned short i, j;
     unsigned short *addr=NULL,*params=NULL,nparam;
@@ -6124,9 +6403,9 @@ int XERXES_API dxp_restore_config(int* lun)
 	dxp_pick_filename(strlen(token)+1, temp_line, strtmp);
 /* Now assign the preamp file name to the global structure */
 	if (info->preamp != NULL) {
-		dxp_md_free(info->preamp);
+		xerxes_md_free(info->preamp);
 	}
-	info->preamp = (char *) dxp_md_alloc((strlen(strtmp)+1)*sizeof(char));
+	info->preamp = (char *) xerxes_md_alloc((strlen(strtmp)+1)*sizeof(char));
 	strcpy(info->preamp, strtmp);
 /*  
  *   Read previously saved modules portion of the configuration file
@@ -6188,8 +6467,8 @@ int XERXES_API dxp_restore_config(int* lun)
 		nsymbols = (unsigned short) strtoul(token,NULL,10);  
 
 /* Allocate memory for the addr array */
-		if (addr!=NULL) dxp_md_free(addr);
-		addr = (unsigned short *) dxp_md_alloc(sizeof(unsigned short) * nsymbols);
+		if (addr!=NULL) xerxes_md_free(addr);
+		addr = (unsigned short *) xerxes_md_alloc(sizeof(unsigned short) * nsymbols);
 		if (addr == NULL) {
 			status = DXP_NOMEM;
 			sprintf(info_string,"Unable to allocate memory for the address array for detector channel %d", detChan);
@@ -6198,8 +6477,8 @@ int XERXES_API dxp_restore_config(int* lun)
 		}
 		memset(addr, 0, sizeof(addr));
 /* Now for the parameter array */
-		if (params!=NULL) dxp_md_free(params);
-		params = (unsigned short *) dxp_md_alloc(sizeof(unsigned short) * nsymbols);
+		if (params!=NULL) xerxes_md_free(params);
+		params = (unsigned short *) xerxes_md_alloc(sizeof(unsigned short) * nsymbols);
 		if (params == NULL) {
 			status = DXP_NOMEM;
 			sprintf(info_string,"Unable to allocate memory for the parameter array for detector channel %d", detChan);
@@ -6216,8 +6495,8 @@ int XERXES_API dxp_restore_config(int* lun)
 				if(isalnum(*token)!=0){  
 					status = chosen->btype->funcs->dxp_loc(token, chosen->dsp[modChan], &addr[nparam]);
 					if (status != DXP_SUCCESS) {
-						if (addr!=NULL) dxp_md_free(addr);
-						if (params!=NULL) dxp_md_free(params);
+						if (addr!=NULL) xerxes_md_free(addr);
+						if (params!=NULL) xerxes_md_free(params);
 						sprintf(info_string,"Unrecognized parameter: Make sure the DSP firmware has not changed");  
 						dxp_log_error("restore_config",info_string,status);  
 						return status;  
@@ -6256,22 +6535,22 @@ int XERXES_API dxp_restore_config(int* lun)
 
 /* Clean up */
 		if (addr!=NULL) {
-			dxp_md_free(addr);
+			xerxes_md_free(addr);
 			addr = NULL;
 		}
 		if (params !=NULL) {
-			dxp_md_free(params);
+			xerxes_md_free(params);
 			params = NULL;
 		}
     }  
     
 	if (status!=DXP_SUCCESS){  
 		if (addr!=NULL) {
-			dxp_md_free(addr);
+			xerxes_md_free(addr);
 			addr = NULL;
 		}
 		if (params !=NULL) {
-			dxp_md_free(params);
+			xerxes_md_free(params);
 			params = NULL;
 		}
         sprintf(info_string,"Failure occurred restoring detector chan %d", detChan);  
@@ -6298,6 +6577,7 @@ int XERXES_API dxp_open_file(int* lun, char* name, int* mode)
 								/*         2: open existing file for input       */
 {
     int status,i;
+	char info_string[INFO_LEN];
     char *type=NULL;
     static int first=1;
 /*
@@ -6359,6 +6639,7 @@ int XERXES_API dxp_close_file(int* lun)
 {
 
     int i,status;
+	char info_string[INFO_LEN];
 
     if(((*lun)<-1)||((*lun)>=MAXFILE)){
         status = DXP_BAD_PARAM;
@@ -6416,6 +6697,7 @@ int XERXES_API dxp_download_one_params(int* detChan, int* nparam, unsigned short
 {
 
     int ioChan, modChan, status;
+	char info_string[INFO_LEN];
 	unsigned short i;
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
@@ -6461,6 +6743,7 @@ int XERXES_API dxp_download_params(int* nparam, unsigned short addr[],
 {
 
     int status;
+	char info_string[INFO_LEN];
 	int j;
 	unsigned short i;
 /* Pointer to the current Board */
@@ -6511,6 +6794,7 @@ int XERXES_API dxp_upload_channel(int* detChan, unsigned short* nparam,
 {
 
     int status;
+	char info_string[INFO_LEN];
 	unsigned short i;
 	char name[20];
 
@@ -6557,6 +6841,7 @@ int XERXES_API dxp_check_decimation(unsigned short* decimation, unsigned short* 
 /* unsigned short *different;		Output: 0 if all are same, else 1 */
 {
 
+	char info_string[INFO_LEN];
     unsigned int chan;
 	int status, ichan;
     unsigned long value;
@@ -6603,8 +6888,8 @@ int XERXES_API dxp_get_statistics(int* detChan, double* livetime, double* icr,
 /* double *ocr;						Output: output count rate (Kcounts/sec)	*/
 /* unsigned long *nevents;				Output: number of events in last run		*/
 {
-
-    int status;
+	int status;
+	char info_string[INFO_LEN];
 
 	unsigned int evts, under, over, fast, base;
 
@@ -6737,7 +7022,8 @@ int XERXES_API dxp_fitgauss0(long spectrum[], int* lower, int* upper, float* pos
 /* float *fwhm;						Output: fit result - full width half max*/
 {
 
-    int s0,status=DXP_SPECTRUM,i;
+	int s0,status=DXP_SPECTRUM,i;
+	char info_string[INFO_LEN];
     double s1,sx,sy,sxx,sxy,det,a,b,fact,x,y,wt;
     long cut1=10;					/* minummm number of events in bin			*/
     int cut2=3;						/* minimum number of bins used in fit		*/ 
@@ -6799,6 +7085,7 @@ int XERXES_API dxp_modify_gains(float* gainchange)
 
 	unsigned int chan;
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int ichan;
 /* Pointer to the current Board */
 	Board *current=system_head;
@@ -6844,6 +7131,7 @@ int XERXES_API dxp_modify_one_gains(int* detChan, float* gainchange)
 
 	int modChan;
 	int status=DXP_SUCCESS;
+	char info_string[INFO_LEN];
 /* Pointer to the chosen Board */
 	Board *chosen=NULL;
 
@@ -6900,6 +7188,8 @@ int XERXES_API dxp_initialize_ASC(float* adcRule, float* energy)
 {
 
 	int status, i, len;
+	char info_string[INFO_LEN];
+	char line[LINE_LEN],*token;
     int detChan,ioChan,dxpChan;
     char *fstatus=" ";
     FILE *fp;
@@ -7040,7 +7330,8 @@ int XERXES_API dxp_det_to_elec(int* detChan, Board** passed, int* dxpChan)
 {
 
 	unsigned int chan;
-    int status;
+	int status;
+	char info_string[INFO_LEN];
 
 /* Point the current Board to the first Board in the system */
 	Board *current = system_head;
@@ -7077,7 +7368,8 @@ int XERXES_API dxp_elec_to_det(int* ioChan, int* dxpChan, int* detChan)
 /* int *detChan;					Output: detector channel			*/
 {
 
-    int status;
+	int status;
+	char info_string[INFO_LEN];
 /* Pointer to current Board */
 	Board *current=system_head;
 
@@ -7116,17 +7408,18 @@ int XERXES_API dxp_elec_to_det(int* ioChan, int* dxpChan, int* detChan)
  ******************************************************************************/
 void XERXES_API dxp_version(VOID)
 {
+	char info_string[INFO_LEN];
 	int version=CODE_VERSION;
 	int revision = CODE_REVISION;
 /*	char type[20] = LATEST_BOARD_TYPE;
 	char brevision[5] = LATEST_BOARD_VERSION;
 */
 	sprintf(info_string, "\r\nCode version %d.%d\r\n", version, revision);
-	dxp_md_puts(info_string);
+	xerxes_md_puts(info_string);
 /*	sprintf(info_string, "Works with board type %s\r\n", type);
-	dxp_md_puts(info_string);
+	xerxes_md_puts(info_string);
 	sprintf(info_string, "Works with board revision %s\r\n", brevision);
-	dxp_md_puts(info_string);
+	xerxes_md_puts(info_string);
 */
 	return;
 }
@@ -7139,6 +7432,7 @@ void XERXES_API dxp_version(VOID)
 int XERXES_API dxp_lock_resource(int *detChan, short *lock)
 {
 	int status = DXP_SUCCESS;
+	char info_string[INFO_LEN];
 	int modChan;
 /* Pointer to the Chosen Channel */
 	Board *chosen=NULL;

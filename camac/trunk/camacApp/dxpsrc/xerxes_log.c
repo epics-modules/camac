@@ -18,9 +18,11 @@
 #include "xerxesdef.h"
 #include "xia_xerxes.h"
 #include "xerxes_errors.h"
+#include "md_generic.h"
+
+#define INFO_LEN	400
 
 /* Static variables */
-char info_string[400];
 
 /*****************************************************************************
  *
@@ -29,11 +31,11 @@ char info_string[400];
  *****************************************************************************/
 XERXES_EXPORT int XERXES_API dxp_enable_log(void)
 {
-	if (dxp_md_enable_log==NULL) { 
+	if (xerxes_md_enable_log==NULL) { 
 		dxp_install_utils("NULL");
 	}
 
-	return dxp_md_enable_log();
+	return xerxes_md_enable_log();
 }
 
 /*****************************************************************************
@@ -43,11 +45,11 @@ XERXES_EXPORT int XERXES_API dxp_enable_log(void)
  *****************************************************************************/
 XERXES_EXPORT int XERXES_API dxp_suppress_log(void)
 {
-	if (dxp_md_suppress_log==NULL) { 
+	if (xerxes_md_suppress_log==NULL) { 
 		dxp_install_utils("NULL");
 	}
 
-	return dxp_md_suppress_log();
+	return xerxes_md_suppress_log();
 }
 
 /*****************************************************************************
@@ -59,11 +61,11 @@ XERXES_EXPORT int XERXES_API dxp_suppress_log(void)
 XERXES_EXPORT int XERXES_API dxp_set_log_level(int *level)
 /* int *level;							Input: Level to set the logging to   */
 {
-	if (dxp_md_set_log_level==NULL) { 
+	if (xerxes_md_set_log_level==NULL) { 
 		dxp_install_utils("NULL");
 	}
 
-	return dxp_md_set_log_level(*level);
+	return xerxes_md_set_log_level(*level);
 }
 
 /*****************************************************************************
@@ -75,11 +77,18 @@ XERXES_EXPORT int XERXES_API dxp_set_log_level(int *level)
 XERXES_EXPORT int XERXES_API dxp_set_log_output(char *filename)
 /* char *filename;					Input: name of file to redirect reporting */
 {
-	if (dxp_md_output==NULL) { 
+	char info_string[INFO_LEN];
+
+	if (xerxes_md_output==NULL) {
+
+		printf("xerxes_md_output == NULL");
 		dxp_install_utils("NULL");
 	}
 
-	dxp_md_output(filename);
+	sprintf(info_string, "&xerxes_md_output = %#p", xerxes_md_output);
+	dxp_log_debug("dxp_set_log_output", info_string);
+
+	xerxes_md_output(filename);
 
 	return DXP_SUCCESS;
 }
