@@ -2,6 +2,9 @@ grecord(dxp,"$(P)$(R)")
 {
 # Input field
     field(INP,"$(INP)")
+
+# Process at initialization
+    field(PINI,"YES")
     
 # ASC parameters - 9 total
     field(A01L,"COARSEGAIN")
