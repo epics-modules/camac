@@ -11,21 +11,11 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #If using the sequencer, point SNCSEQ at its top directory:
 #SNCSEQ=/corvette/usr/local/epics/seq-2.0.4
 
-# For scalerRecord
-STD=/home/oxygen/MOONEY/epics/synApps_5_0/support/std
-
-# For transform record
-CALC=/home/oxygen/MOONEY/epics/synApps_5_0/support/calc/2-3
-
-# For recDynLink for swait record from calc
-SSCAN=/home/oxygen/MOONEY/epics/synApps_5_0/support/sscan
-
-# For motor record
-MOTOR=/home/oxygen/MOONEY/epics/synApps_5_0/support/motor_CVS
-
-MPF=/home/oxygen/MOONEY/epics/synApps_5_0/support/mpf/2-4-2
 # EPICS_BASE usually appears last so other apps can override stuff:
-EPICS_BASE=/net/beams/export/local/epics/baseR3.14.5
+EPICS_BASE=/corvette/usr/local/epics/base-3.14.4
+STD=/corvette/home/epics/3_14/std
+MPF=/corvette/home/epics/3_14/mpf2-4
+MOTOR=/corvette/home/epics/3_14/motor
 
 #Capfast users may need the following definitions
 #CAPFAST_TEMPLATES=

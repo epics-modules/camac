@@ -230,12 +230,10 @@ STATIC int set_status(int card, int signal)
     int rtn_state;
     double motorData;
     bool ls_active = false;
-    msta_field status;
 
     cntrl = (struct E500controller *) motor_state[card]->DevicePrivate;
     motor_info = &(motor_state[card]->motor_info[signal]);
     nodeptr = motor_info->motor_motion;
-    status.All = motor_info->status.All;
 
     /* Lock access to global data structure */
     epicsMutexLock(cntrl->E500Lock);
@@ -250,36 +248,35 @@ STATIC int set_status(int card, int signal)
     if (pos & 0x800000) pos = pos | 0xff000000;
 
     if (cntrl->direction[signal] == 1)
-        status.Bits.RA_DIRECTION = 1;
+        motor_info->status |= RA_DIRECTION;
     else
-        status.Bits.RA_DIRECTION=0;
+        motor_info->status &= ~RA_DIRECTION;
 
     if (csr & E500_BUSY)
-        status.Bits.RA_DONE=0;
+        motor_info->status &= ~RA_DONE;
     else
-        status.Bits.RA_DONE=1;
+        motor_info->status |= RA_DONE;
 
-    status.Bits.RA_PLUS_LS=0;
-    status.Bits.RA_MINUS_LS=0;
+    motor_info->status &= ~(RA_PLUS_LS | RA_MINUS_LS);
     if (csr & E500_CCW_LIMIT) {
-        status.Bits.RA_MINUS_LS=1;
+        motor_info->status |= RA_MINUS_LS;
         ls_active = true;
     }
 
     if (csr & E500_CW_LIMIT) {
-        status.Bits.RA_PLUS_LS=1;
+        motor_info->status |= RA_PLUS_LS;
         ls_active = true;
     }
 
     /* No home */
-    status.Bits.RA_HOME=0;
+    motor_info->status &= ~RA_HOME;
 
-    status.Bits.EA_POSITION=0;
+    motor_info->status &= ~EA_POSITION;
 
     /* encoder status */
-    status.Bits.EA_SLIP=0;
-    status.Bits.EA_SLIP_STALL=0;
-    status.Bits.EA_HOME=0;
+    motor_info->status &= ~EA_SLIP;
+    motor_info->status &= ~EA_SLIP_STALL;
+    motor_info->status &= ~EA_HOME;
 
     /* Motor position */
     motorData = pos;
@@ -297,29 +294,28 @@ STATIC int set_status(int card, int signal)
         motor_info->no_motion_count = 0;
     }
 
-    status.Bits.RA_PROBLEM=0;
+    motor_info->status &= ~RA_PROBLEM;
 
     /* Parse motor velocity? */
     /* NEEDS WORK */
 
     motor_info->velocity = 0;
 
-    if (status.Bits.RA_DIRECTION==0)
+    if (!(motor_info->status & RA_DIRECTION))
         motor_info->velocity *= -1;
 
     rtn_state = (!motor_info->no_motion_count || ls_active == true ||
-                 (status.Bits.RA_DONE | status.Bits.RA_PROBLEM)) ? 1 : 0;
+                 (motor_info->status & (RA_DONE | RA_PROBLEM))) ? 1 : 0;
 
     /* E500 does not support post move string. */
 
     if (cntrl->status == E500_COMM_ERR)
-        status.Bits.CNTRL_COMM_ERR=1;
+        motor_info->status |= CNTRL_COMM_ERR;
     else
-        status.Bits.CNTRL_COMM_ERR=0;
+        motor_info->status &= ~CNTRL_COMM_ERR;
 
     /* Free the lock */
     epicsMutexUnlock(cntrl->E500Lock);
-    motor_info->status.All = status.All;
     return(rtn_state);
 }
 
@@ -521,7 +517,7 @@ STATIC int motor_init()
             {
                 struct mess_info *motor_info = &brdptr->motor_info[motor_index];
 
-                motor_info->status.All = 0;
+                motor_info->status = 0;
                 motor_info->no_motion_count = 0;
                 motor_info->encoder_position = 0;
                 motor_info->position = 0;
