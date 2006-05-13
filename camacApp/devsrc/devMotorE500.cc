@@ -29,19 +29,6 @@ extern struct driver_table E500_access;
 #define MIN(a,b) ((a)<(b) ? (a) : (b))
 #define ABS(f) ((f)>0 ? (f) : -(f))
 
-#ifdef NODEBUG
-#define Debug(L,FMT,V) ;
-#else
-#define Debug(L,FMT,V...) {  if(L <= devE500Debug) \
-                        { printf("%s(%d):",__FILE__,__LINE__); \
-                          printf(FMT,##V); } }
-#endif
-
-/* Debugging levels:
- *      devE500Debug >= 3  Print new part of command and command string so far
- *                          at the end of E500_build_trans
- */
-
 
 /* ----------------Create the dsets for devE500----------------- */
 STATIC struct driver_table *drvtabptr;
@@ -102,11 +89,17 @@ STATIC long E500_init(int after)
 {
     long rtnval;
 
-    Debug(1, "E500_init, after=%d\n", after);
+    if (devE500Debug >= 1) { 
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500_init, after=%d\n", after);
+    }
     if (after == 0)
     {
         drvtabptr = &E500_access;
-        Debug(1, "E500_init, calling driver initialization\n");
+        if (devE500Debug >= 1) { 
+            printf("%s(%d):",__FILE__,__LINE__);
+            printf("E500_init, calling driver initialization\n");
+        }
         (drvtabptr->init)();
     }
 
@@ -170,8 +163,11 @@ STATIC RTN_STATUS E500_build_trans(motor_cmnd command, double *parms, struct mot
     motor_call = &(trans->motor_call);
     card = motor_call->card;
     signal = motor_call->signal;
-    Debug(1, "E500_build_trans: card=%d, signal=%d, command=%d, data=%d\n", 
-                    card, signal, command, ival);
+    if (devE500Debug >= 1) { 
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500_build_trans: card=%d, signal=%d, command=%d, data=%d\n", 
+               card, signal, command, ival);
+    }
     brdptr = (*trans->tabptr->card_array)[card];
     if (brdptr == NULL)
         return(rtnval = ERROR);
@@ -197,7 +193,10 @@ STATIC RTN_STATUS E500_build_trans(motor_cmnd command, double *parms, struct mot
     csr = cntrl->csr[signal];
     bcna = cntrl->bcna[signal];
     bcna8 = cntrl->bcna8[signal];
-    Debug(1, "E500_build_trans: csr=%x, bcna=%x, bcna8=%x\n", csr, bcna, bcna8);
+    if (devE500Debug >= 1) { 
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500_build_trans: csr=%x, bcna=%x, bcna8=%x\n", csr, bcna, bcna8);
+    }
 
     switch (command)
     {
@@ -317,7 +316,10 @@ STATIC RTN_STATUS E500_build_trans(motor_cmnd command, double *parms, struct mot
         if (djog > 8388607) djog = 8388607;
         if (djog < -8388608) djog = -8388608;
         ijog = (int)djog;
-        Debug(1, "E500_build_trans: jogp=%d\n", ijog);
+        if (devE500Debug >= 1) { 
+            printf("%s(%d):",__FILE__,__LINE__);
+            printf("E500_build_trans: jogp=%d\n", ijog);
+        }
         /* Program number of steps to move */
         E500WaitForQ(16, bcna, &ijog);
         /* Build + move */
