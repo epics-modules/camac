@@ -25,15 +25,6 @@
 
 #define STATIC static
 
-/*----------------debugging-----------------*/
-#ifdef NODEBUG
-#define Debug(L,FMT,V) ;
-#else
-#define Debug(L,FMT,V...) {  if(L <= drvE500Debug) \
-                        { printf("%s(%d):",__FILE__,__LINE__); \
-                          printf(FMT,##V); } }
-#endif
-
 /* --- Local data. --- */
 int E500_num_cards = 0;
 volatile int drvE500Debug = 0;
@@ -138,7 +129,10 @@ static long init()
     /* Check for setup */
     if (E500_num_cards <= 0)
     {
-        Debug(1, "init(): E500 driver disabled. E500Setup() missing from startup script.\n");
+        if (drvE500Debug >= 1) {
+            printf("%s(%d):",__FILE__,__LINE__);
+            printf("init(): E500 driver disabled. E500Setup() missing from startup script.\n");
+        }
     }
     return ((long) 0);
 }
@@ -158,7 +152,10 @@ STATIC void start_status(int card)
 {
     int itera;
 
-    Debug(2, "start_status: card=%d\n", card);
+    if (drvE500Debug >= 2) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("start_status: card=%d\n", card);
+    }
     if (card >= 0)
     {
         readE500Status(card);
@@ -240,11 +237,17 @@ STATIC int set_status(int card, int signal)
     /* Lock access to global data structure */
     epicsMutexLock(cntrl->E500Lock);
 
-    Debug(2, "E500:set_status entry: card=%d, signal=%d\n", card, signal);
+    if (drvE500Debug >= 2) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500:set_status entry: card=%d, signal=%d\n", card, signal);
+    }
     /* Parse the status from the CSR and position */
     csr = cntrl->csrRegister[signal];
     pos = cntrl->posRegister[signal];
-    Debug(2, "E500:set_status entry: csr=%x, pos=%x(%d)\n", csr, pos, pos);
+    if (drvE500Debug >= 2) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500:set_status entry: csr=%x, pos=%x(%d)\n", csr, pos, pos);
+    }
 
     /* If the position is negative sign extend position to 32 bits */
     if (pos & 0x800000) pos = pos | 0xff000000;
@@ -363,8 +366,11 @@ int E500WaitForQ(int f, int bcna, int *data)
         epicsThreadSleep(.01);
         cfsa(f, bcna, data, &q);
     }
-    Debug(1, "E500WaitForQ: f=%d, bcna=%x, data=%d (%x), q=%d\n",
-                            f, bcna, *data, *data, q);
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500WaitForQ: f=%d, bcna=%x, data=%d (%x), q=%d\n",
+               f, bcna, *data, *data, q);
+    }
     if (cntr >= E500_TIMEOUT)
         return(ERROR);
     else
@@ -416,8 +422,11 @@ int E500Config(int card,        /* card being configured */
     struct E500controller *cntrl;
     int i;
 
-    Debug(1, "E500Config: card=%d, branch=%d, crate=%d, slot=%d\n",
-                            card, branch, crate, slot);
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500Config: card=%d, branch=%d, crate=%d, slot=%d\n",
+               card, branch, crate, slot);
+    }
     if (card < 0 || card >= E500_num_cards)
         return (ERROR);
 
@@ -433,7 +442,10 @@ int E500Config(int card,        /* card being configured */
         cdreg(&cntrl->bcna[i], branch, crate, slot, i);
         cdreg(&cntrl->bcna8[i], branch, crate, slot, i+8);
     }
-    Debug(1, "E500Config: bcna[0]=%x\n", cntrl->bcna[0]);
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500Config: bcna[0]=%x\n", cntrl->bcna[0]);
+    }
     return (0);
 }
 
@@ -459,7 +471,10 @@ STATIC int motor_init()
     initialized = true;   /* Indicate that driver is initialized. */
 
     /* Check for setup */
-    Debug(1, "E500:motor_init: num_cards=%d\n", E500_num_cards);
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500:motor_init: num_cards=%d\n", E500_num_cards);
+    }
     if (E500_num_cards <= 0)
         return (ERROR);
 
@@ -480,8 +495,11 @@ STATIC int motor_init()
         status = E500WaitForQ(25, cntrl->bcna[2], &dummy);
         status = E500WaitForQ(1, cntrl->bcna[0], &dummy);
         if ((status != OK) || ((dummy & 0xfff) != 500)) errind = true;
-        Debug(1, "E500:motor_init: card_index=%d, errind=%d\n",
-                card_index, errind);
+        if (drvE500Debug >= 1) {
+            printf("%s(%d):",__FILE__,__LINE__);
+            printf("E500:motor_init: card_index=%d, errind=%d\n",
+                   card_index, errind);
+        }
 
         if (errind == false)
         {
@@ -516,7 +534,10 @@ STATIC int motor_init()
             cclm(cntrl->lam, 1);
 
             start_status(card_index);
-            Debug(1, "E500:motor_init: called start_status OK\n");
+            if (drvE500Debug >= 1) {
+                printf("%s(%d):",__FILE__,__LINE__);
+                printf("E500:motor_init: called start_status OK\n");
+            }
             for (motor_index = 0; motor_index<E500_NUM_CHANNELS; motor_index++)
             {
                 struct mess_info *motor_info = &brdptr->motor_info[motor_index];
@@ -531,16 +552,21 @@ STATIC int motor_init()
                 cntrl->slew[motor_index] = 100;
                 cntrl->accel[motor_index] = 50;
                 /* Read status of each motor */
-                Debug(1,
-                    "  E500:motor_init: calling set_status for motor %d\n",
-                            motor_index);
+                if (drvE500Debug >= 1) {
+                    printf("%s(%d):",__FILE__,__LINE__);
+                    printf("  E500:motor_init: calling set_status for motor %d\n",
+                           motor_index);
+                }
                 set_status(card_index, motor_index);
             }
         }
         else
             motor_state[card_index] = (struct controller *) NULL;
     }
-    Debug(1, "E500:motor_init: done with start_status and set_status\n");
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500:motor_init: done with start_status and set_status\n");
+    }
 
     any_motor_in_motion = 0;
 
@@ -550,12 +576,18 @@ STATIC int motor_init()
     free_list.head = (struct mess_node *) NULL;
     free_list.tail = (struct mess_node *) NULL;
 
-    Debug(1, "E500:motor_init: spawning E500_motor task\n");
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500:motor_init: spawning E500_motor task\n");
+    }
     epicsThreadCreate((char *) "E500_motor", epicsThreadPriorityMedium,
                        epicsThreadGetStackSize(epicsThreadStackSmall), 
                        (EPICSTHREADFUNC) motor_task, (void *) &targs);
 
-    Debug(1, "E500:motor_init: returning\n");
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500:motor_init: returning\n");
+    }
     return (OK);
 }
 
@@ -571,7 +603,10 @@ STATIC void E500LamCallback(struct E500controller *cntrl)
     /* Lock the global data */
     epicsMutexLock(cntrl->E500Lock);
 
-    Debug(1, "E500LamCallback entry\n");
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500LamCallback entry\n");
+    }
 
     /* Load the CSR registers, F25 A1*/
     status = E500WaitForQ(25, cntrl->bcna[1], &dummy);
@@ -581,17 +616,26 @@ STATIC void E500LamCallback(struct E500controller *cntrl)
      * but is not busy then it must have completed a motion.  Mask the LAM for
      * this channel */
     status = E500WaitForQ(0, cntrl->bcna[0], &csr0);
-    Debug(1, "E500LamCallback csr[0]=%x\n", csr0);
+    if (drvE500Debug >= 1) {
+        printf("%s(%d):",__FILE__,__LINE__);
+        printf("E500LamCallback csr[0]=%x\n", csr0);
+    }
     mask = 1<<16;
     for (i=0; i<E500_NUM_CHANNELS; i++) {
         if (csr0 & mask) {
             /* This channel is asserting a LAM.
              * Read its CSR and see if it is busy. */
-            Debug(1, "E500LamCallback LAM asserted on channel %d\n", i);
+            if (drvE500Debug >= 1) {
+                printf("%s(%d):",__FILE__,__LINE__);
+                printf("E500LamCallback LAM asserted on channel %d\n", i);
+            }
             status = E500WaitForQ(0, cntrl->bcna[i], &csr);
             if ((csr & E500_BUSY) == 0) {
                 /* Not busy, so this motor must have stopped. Mask its LAM */
-                Debug(1, "E500LamCallback LAM masked on channel %d\n", i);
+                if (drvE500Debug >= 1) {
+                    printf("%s(%d):",__FILE__,__LINE__);
+                    printf("E500LamCallback LAM masked on channel %d\n", i);
+                }
                 csr = cntrl->csr[i];
                 csr |= E500_LAM_MASK;
                 E500WaitForQ(17, cntrl->bcna[i], &csr);

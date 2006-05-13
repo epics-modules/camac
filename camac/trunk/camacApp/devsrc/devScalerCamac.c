@@ -40,13 +40,6 @@ CAMAC modules will be supported in the future.
 
 /*** Debug support ***/
 #define STATIC static
-#ifdef NODEBUG
-#define Debug(l,f,v) ;
-#else
-#define Debug(l,FMT,V...) {  if(l <= devScalerCamacDebug) \
-         { printf("%s(%d):",__FILE__,__LINE__); \
-         printf(FMT,##V); } }
-#endif
 
 /* Define types of timers and counters */
 #define RTC018 0
@@ -141,7 +134,10 @@ STATIC long scaler_init(int after)
 {
    int card, i;
 
-   Debug(2,"scaler_init(): entry, after = %d\n", after);
+   if (devScalerCamacDebug >= 2) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_init(): entry, after = %d\n", after);
+   }
    if (after) return(0);
 
    for (card=0; card<num_cards; card++) {
@@ -171,7 +167,10 @@ STATIC long scaler_init_record(struct scalerRecord *psr)
       return(S_dev_badBus);
    }
 
-   Debug(5,"scaler_init_record: card %d\n", card);
+   if (devScalerCamacDebug >= 5) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_init_record: card %d\n", card);
+   }
    if (!scaler_state[card]->card_exists)
    {
       recGblRecordError(S_dev_badCard,(void *)psr,
@@ -208,7 +207,10 @@ STATIC long scaler_get_ioint_info(
    struct scalerRecord *psr = (struct scalerRecord *)prec;
    int card = psr->out.value.vmeio.card;
    
-   Debug(5,"scaler_get_ioint_info: cmd = %d\n", cmd);
+   if (devScalerCamacDebug >= 5) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_get_ioint_info: cmd = %d\n", cmd);
+   }
    *ppvt = scaler_state[card]->ioscanpvt;
    return(0);
 }
@@ -220,7 +222,10 @@ STATIC long scaler_reset(int card)
 {
    int i;
    
-   Debug(5,"scaler_reset: card %d\n", card);
+   if (devScalerCamacDebug >= 5) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_reset: card %d\n", card);
+   }
    if ((card+1) > num_cards) return(ERROR);
    
    /* reset board */
@@ -243,7 +248,10 @@ STATIC long scaler_reset(int card)
 ****************************************************/
 STATIC void timerCallback(struct scaler_state *ss)
 {
-   Debug(1, "timerCallback, entry\n");
+   if (devScalerCamacDebug >= 1) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("timerCallback, entry\n");
+   }
    /* Process the record */
    callbackRequest((CALLBACK *)ss->pcallback);
 }
@@ -257,7 +265,10 @@ STATIC void counterCallback(struct scaler_state *ss)
 {
    int i, counts, dummy, q;
    
-   Debug(1, "counterCallback, entry\n");
+   if (devScalerCamacDebug >= 1) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("counterCallback, entry\n");
+   }
    /* There is a problem with the QS-450.  F(10)A(0) is supposed to clear the
     * overflow LAMs, but it does not, at least on my module (broken?).  The
     * only way to clear the LAM is to read and clear the overflowed channel. */
@@ -291,7 +302,10 @@ STATIC long scaler_read(int card, long *val)
    int counting=1;
    int counts;
 
-   Debug(4,"scaler_read: card %d\n", card);
+   if (devScalerCamacDebug >= 4) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_read: card %d\n", card);
+   }
    if ((card+1) > num_cards) return(ERROR);
 
    ss = scaler_state[card];
@@ -304,8 +318,11 @@ STATIC long scaler_read(int card, long *val)
          ticks = ~ticks & 0x0000ffff;  /* Ones complement, trim to 16 bits */
          if (ticks == 0) counting = 0;
          val[0] = (ss->presetCount - ticks) * ss->preScale;
-         Debug(5, "scaler_read: card #%d, ticks=%d, val[0]=%ld\n", card, 
-                  ticks, val[0]);
+         if (devScalerCamacDebug >= 4) {
+            printf("%s(%d):",__FILE__,__LINE__);
+            printf("scaler_read: card #%d, ticks=%d, val[0]=%ld\n", card, 
+                   ticks, val[0]);
+         }
          break;
    }
    switch(ss->counter_type) {
@@ -318,14 +335,20 @@ STATIC long scaler_read(int card, long *val)
             counts += ss->overflow_counts[i];
             if ((preset > 0) && (counts >= preset)) counting = 0;
             val[i+1] = counts;
-            Debug(10,"scaler_read: ...(preset %d = 0x%lx)\n", i, preset);
-            Debug(10,"scaler_read: ...(chan %d = 0x%x)\n\n", i, counts);
+            if (devScalerCamacDebug >= 10) {
+               printf("%s(%d):",__FILE__,__LINE__);
+               printf("scaler_read: ...(preset %d = 0x%lx)\n", i, preset);
+               printf("scaler_read: ...(chan %d = 0x%x)\n\n", i, counts);
+            }
          }
          break;
    }
    
    /* If acquisition has completed issue callback request */
-   Debug(5,"scaler_read: counting = %d\n", counting);
+   if (devScalerCamacDebug >= 5) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_read: counting = %d\n", counting);
+   }
    if ( (ss->prev_counting == 1) && (counting == 0)) {
       ss->done = 1;
       callbackRequest((CALLBACK *)ss->pcallback);
@@ -343,8 +366,11 @@ STATIC long scaler_write_preset(int card, int signal, long val)
    struct scaler_state *ss;
    int n;
    
-   Debug(5,"scaler_write_preset: card=%d signal=%d, val=%ld\n", 
-                     card, signal, val);
+   if (devScalerCamacDebug >= 5) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_write_preset: card=%d signal=%d, val=%ld\n", 
+             card, signal, val);
+   }
    
    if ((card+1) > num_cards) return(ERROR);
    if ((signal+1) > MAX_SCALER_CHANNELS) return(ERROR);
@@ -366,8 +392,11 @@ STATIC long scaler_write_preset(int card, int signal, long val)
             }
             ss->freqDiv = 1<<n;
             ss->presetCount = (div / ss->preScale) + 0.5;
-            Debug(5, "write_preset: preScale=%d, freqDiv=%d, presetCount=%d\n", 
-               ss->preScale, ss->freqDiv, ss->presetCount);
+            if (devScalerCamacDebug >= 5) {
+               printf("%s(%d):",__FILE__,__LINE__);
+               printf("write_preset: preScale=%d, freqDiv=%d, presetCount=%d\n", 
+                      ss->preScale, ss->freqDiv, ss->presetCount);
+            }
       }
    }
    return(0);
@@ -386,7 +415,10 @@ STATIC long scaler_arm(int card, int val)
    int q;
    int ival;
    
-   Debug(5,"scaler_arm: card=%d, val=%d\n", card, val);
+   if (devScalerCamacDebug >= 5) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("scaler_arm: card=%d, val=%d\n", card, val);
+   }
    if ((card+1) > num_cards) return(ERROR);
    ss = scaler_state[card];
 
@@ -598,7 +630,10 @@ int CAMACScalerConfig(int card,       /* logical card */
    }
    scaler_state[card]->card_exists = (timerExists && counterExists);
 
-   Debug(2, "CAMACScalerConfig: card #%d, card_exists=%d\n", card, 
-                  scaler_state[card]->card_exists);
+   if (devScalerCamacDebug >= 2) {
+      printf("%s(%d):",__FILE__,__LINE__);
+      printf("CAMACScalerConfig: card #%d, card_exists=%d\n", card, 
+             scaler_state[card]->card_exists);
+   }
    return (OK);
 }
