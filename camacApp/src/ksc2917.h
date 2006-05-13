@@ -68,9 +68,10 @@
  */
 #define	MIN_DMA_CLOCK_TICKS 3		/* 3 clock ticks	    */
 
-/* Debug support */
-#define Debug(l,FMT,V...) {if (l <= ksc2917Debug) \
-                           errlogPrintf(FMT,##V);}
+/* Debug support 
+ * This macro only works for a single argument 
+*/
+#define Debug(l,FMT,ARG) {if (l <= ksc2917Debug) errlogPrintf(FMT,ARG);}
 volatile int ksc2917Debug = 0;
  
 /*=====================
@@ -614,8 +615,8 @@ STATUS hw_checkBlockStatus (int f, int ext, hwInfo *phwInfo)
    * If there are any error bits set in the CSR invoke the error 
    * recovery procedure.
    */
-   Debug(2, "hw_checkBlockStatus, interrupt = %d, csr=%x\n", 
-   	phwInfo->int_type, csr);
+   Debug(2, "hw_checkBlockStatus, interrupt = %d", phwInfo->int_type);
+   Debug(2, "csr = %x\n", csr);
    if (csr & (MASK_csr_error | MASK_csr_timeout))
       status = hw_errorRecovery (f, ext, phwInfo, &csr);
 
@@ -1225,7 +1226,8 @@ STATUS  hw_cfblock (int f, int *extb, hwInfo *phwInfo, int *intc, int cb[4],
    }
    /* Compute VME address for DMA 	*/
    vme_addr      = (unsigned int)intc | (unsigned int)phwInfo->dma_offset;
-   Debug(1, "hw_cfblock: intc = %p, vme_addr = %x\n", intc, vme_addr);
+   Debug(1, "hw_cfblock: intc = %p", intc);
+   Debug(1, "vme_addr = %x\n", vme_addr);
    /* This address gets put into 3 different registers.			*/
    /*   Bits 24-31 go in amr (along with address modifier)		*/
    /*   Bits 16-23 go in machi						*/
@@ -1272,7 +1274,7 @@ STATUS  hw_cfblock (int f, int *extb, hwInfo *phwInfo, int *intc, int cb[4],
       ksc2917_csr = MASK_csr_go;
       status = semTake(phwInfo->ready, phwInfo->dma_timeout);
    }
-   Debug(2, "  After DMA operation\n");
+   Debug(2, "%s", "  After DMA operation\n");
    Debug(2, "hw_cfblock: cser = %x\n", ksc2917_cser);
    Debug(2, "hw_cfblock: csr = %x\n", ksc2917_csr);
    ksc2917_icr_dma  &= ~MASK_icr_intena;/* Disable DMA interrupts	*/
@@ -1333,7 +1335,8 @@ STATUS  hw_csblock (int f, int *extb, hwInfo *phwInfo, short *intc, int cb[4],
    }
    /* Compute VME address for DMA 					*/
    vme_addr      = (unsigned int)intc | (unsigned int)phwInfo->dma_offset;
-   Debug(1, "hw_csblock: intc = %p, vme_addr = %x\n", intc, vme_addr);
+   Debug(1, "hw_csblock: intc = %p", intc);
+   Debug(1, "vme_addr = %x\n", vme_addr);
    /* This address gets put into 3 different registers.			*/
    /*   Bits 24-31 go in amr (along with address modifier)		*/
    /*   Bits 16-23 go in machi						*/
@@ -1379,7 +1382,7 @@ STATUS  hw_csblock (int f, int *extb, hwInfo *phwInfo, short *intc, int cb[4],
       ksc2917_csr = MASK_csr_go;
       status = semTake(phwInfo->ready, phwInfo->dma_timeout);
    }
-   Debug(2, "  After DMA operation\n");
+   Debug(2, "%s", "  After DMA operation\n");
    Debug(2, "hw_csblock: cser = %x\n", ksc2917_cser);
    Debug(2, "hw_csblock: csr = %x\n", ksc2917_csr);
    ksc2917_icr_dma  &= ~MASK_icr_intena;/* Disable DMA interrupts	*/
