@@ -12,19 +12,19 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #SNCSEQ=/corvette/usr/local/epics/seq-2.0.11
 
 # For scalerRecord
-STD=/corvette/home/epics/devel/std/2-5-3
+STD=/corvette/home/epics/devel/std/2-5-5beta
 
 # For transform record
-CALC=/corvette/home/epics/devel/calc/2-6-2
+CALC=/corvette/home/epics/devel/calc/2-6-7
 
 # For recDynLink for swait record from calc
-SSCAN=/corvette/home/epics/devel/sscan/2-5-3
+SSCAN=/corvette/home/epics/devel/sscan/2-6-2
 
 # For motor record
-MOTOR=/corvette/home/epics/devel/motor/5-9
+MOTOR=/corvette/home/epics/devel/motor/6-4beta
 
 # EPICS_BASE usually appears last so other apps can override stuff:
-EPICS_BASE=/corvette/usr/local/epics/base-3.14.8
+EPICS_BASE=/corvette/usr/local/epics/base-3.14.10
 
 #Capfast users may need the following definitions
 #CAPFAST_TEMPLATES=
