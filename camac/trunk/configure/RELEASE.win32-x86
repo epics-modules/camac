@@ -15,16 +15,16 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 STD=J:/epics/devel/std/2-7
 
 # For transform record
-CALC=J:/epics/devel/calc/2-7
+CALC=J:/epics/devel/calc/2-8
 
 # For recDynLink for swait record from calc
-SSCAN=J:/epics/devel/sscan/2-6-3
+SSCAN=J:/epics/devel/sscan/2-6-6
 
 # For motor record
-MOTOR=J:/epics/devel/motor/6-4beta
+MOTOR=J:/epics/devel/motor/6-4-4
 
 # EPICS_BASE usually appears last so other apps can override stuff:
-EPICS_BASE=H:/epics/base-3.14.10
+EPICS_BASE=H:/epics/base-3.14.11
 
 #Capfast users may need the following definitions
 #CAPFAST_TEMPLATES=
