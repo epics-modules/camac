@@ -12,16 +12,16 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #SNCSEQ=/corvette/usr/local/epics/seq-2.0.11
 
 # For scalerRecord
-STD=/corvette/home/epics/devel/std/2-7
+STD=/corvette/home/epics/devel/std-2-7
 
 # For transform record
-CALC=/corvette/home/epics/devel/calc/2-8
+CALC=/corvette/home/epics/devel/calc-2-8
 
 # For recDynLink for swait record from calc
-SSCAN=/corvette/home/epics/devel/sscan/2-6-6
+SSCAN=/corvette/home/epics/devel/sscan-2-6-6
 
 # For motor record
-MOTOR=/corvette/home/epics/devel/motor/6-4-4
+MOTOR=/corvette/home/epics/devel/motor-6-4-4
 
 # EPICS_BASE usually appears last so other apps can override stuff:
 EPICS_BASE=/corvette/usr/local/epics/base-3.14.11
