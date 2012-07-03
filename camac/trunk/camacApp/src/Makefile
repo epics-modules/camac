@@ -25,4 +25,6 @@ INC += camacLib.h
 include $(TOP)/configure/RULES
 #----------------------------------------
 #  ADD RULES AFTER THIS LINE
-
+# Parallel build sometimes fails.
+# Make dependences on new records explicit.
+camacRecord$(OBJ): $(COMMON_DIR)/camacRecord.h
