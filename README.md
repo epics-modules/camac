@@ -13,5 +13,6 @@ From DSP
 * QS-450 quad scaler
 
 Additional information:
+* [Home page](http://cars.uchicago.edu/software/epics/camac.html)
 * [Documentation](http://cars.uchicago.edu/software/epics/camac.html).
 * [Release notes](http://cars.uchicago.edu/software/epics/camacReleaseNotes.html).
