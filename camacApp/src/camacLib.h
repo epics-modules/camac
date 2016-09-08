@@ -425,6 +425,8 @@ void  ctgl   (int ext, int *l);
 void  ctlm   (int lam, int *l);
 void  ctstat (int *k);
 
+long int camacLibInit(void);
+
 int   camacLockBranch (int ext);
 int   camacUnlockBranch (int ext);
 
