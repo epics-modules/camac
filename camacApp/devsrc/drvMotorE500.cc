@@ -22,6 +22,7 @@
 #include        "motor.h"
 #include        "drvMotorE500.h"
 #include        "camacLib.h"
+#include        "iocsh.h"
 
 #define STATIC static
 
@@ -646,3 +647,35 @@ STATIC void E500LamCallback(struct E500controller *cntrl)
     /* Unlock the global data */
     epicsMutexUnlock(cntrl->E500Lock);
 }
+
+static const iocshArg E500SetupArg0 = {"max controllers", iocshArgInt};
+static const iocshArg E500SetupArg1 = {"num axes", iocshArgInt};
+static const iocshArg E500SetupArg2 = {"poll rate (hz)", iocshArgInt};
+
+static const iocshArg * const E500SetupArgs[3] = {&E500SetupArg0, &E500SetupArg1, &E500SetupArg2};
+static const iocshFuncDef E500SetupFuncDef = {"E500Setup", 3, E500SetupArgs};
+
+static void E500SetupCallFunc(const iocshArgBuf *arg)
+{
+    E500Setup(arg[0].ival, arg[1].ival, arg[2].ival);
+}
+
+static const iocshArg E500ConfigArg0 = {"controller", iocshArgInt};
+static const iocshArg E500ConfigArg1 = {"branch", iocshArgInt};
+static const iocshArg E500ConfigArg2 = {"crate", iocshArgInt};
+static const iocshArg E500ConfigArg3 = {"slot", iocshArgInt};
+
+static const iocshArg * const E500ConfigArgs[4] = {&E500ConfigArg0, &E500ConfigArg1, &E500ConfigArg2, &E500ConfigArg3};
+static const iocshFuncDef E500ConfigFuncDef = {"E500Config", 4, E500ConfigArgs};
+
+static void E500ConfigCallFunc(const iocshArgBuf *arg)
+{
+    E500Config(arg[0].ival, arg[1].ival, arg[2].ival, arg[3].ival);
+}
+
+static void E500Registrar(void) {
+    iocshRegister(&E500SetupFuncDef, E500SetupCallFunc);
+    iocshRegister(&E500ConfigFuncDef, E500ConfigCallFunc);
+}
+
+epicsExportRegistrar(E500Registrar);

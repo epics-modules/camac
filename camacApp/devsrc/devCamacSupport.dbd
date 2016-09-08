@@ -11,3 +11,6 @@ device(scaler,VME_IO,devScalerCamac,"CAMAC scaler")
 # DRIVER SUPPORT
 ################
 driver(drvE500)
+
+registrar(CAMACScalerRegistrar)
+registrar(E500Registrar)
