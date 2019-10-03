@@ -9,24 +9,27 @@ TEMPLATE_TOP=$(EPICS_BASE)/templates/makeBaseApp/top
 #INSTALL_LOCATION_APP=<fullpathname>
 
 SUPPORT=/corvette/home/epics/devel
--include $(TOP)/../configure/SUPPORT.$(EPICS_HOST_ARCH)
 
 # For scalerRecord
-STD=$(SUPPORT)/std-3-4-1
+STD=$(SUPPORT)/std-3-6
 
 # For transform record
-CALC=$(SUPPORT)/calc-3-7
+CALC=$(SUPPORT)/calc-3-7-3
 
 # For recDynLink for swait record from calc
-SSCAN=$(SUPPORT)/sscan-2-11-1
+SSCAN=$(SUPPORT)/sscan-2-11-3
 
 # For motor record
-MOTOR=$(SUPPORT)/motor-6-9
+MOTOR=$(SUPPORT)/motor-7-0
 
 # EPICS_BASE usually appears last so other apps can override stuff:
-EPICS_BASE=/corvette/usr/local/epics-devel/base-7.0.2
--include $(TOP)/../configure/EPICS_BASE.$(EPICS_HOST_ARCH)
+EPICS_BASE=/corvette/usr/local/epics-devel/base-7.0.3
 
 #Capfast users may need the following definitions
 #CAPFAST_TEMPLATES=
 #SCH2EDIF_PATH=
+
+-include $(TOP)/../RELEASE.local
+-include $(TOP)/../RELEASE.$(EPICS_HOST_ARCH).local
+-include $(TOP)/configure/RELEASE.local
+
