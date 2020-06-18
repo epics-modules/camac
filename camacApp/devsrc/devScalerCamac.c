@@ -32,6 +32,7 @@ CAMAC modules will be supported in the future.
 #include        <camacLib.h>
 #include        "scalerRecord.h"
 #include        "devScaler.h"
+#include        "iocsh.h"
 
 #ifndef vxWorks
 #define ERROR -1
@@ -637,3 +638,41 @@ int CAMACScalerConfig(int card,       /* logical card */
    }
    return (OK);
 }
+
+
+static const iocshArg CAMACScalerSetupArg0 = {"max cards", iocshArgInt};
+
+static const iocshArg * const CAMACScalerSetupArgs[1] = {&CAMACScalerSetupArg0};
+static const iocshFuncDef CAMACScalerSetupFuncDef = {"CAMACScalerSetup", 1, CAMACScalerSetupArgs};
+
+static void CAMACScalerSetupCallFunc(const iocshArgBuf *arg)
+{
+    CAMACScalerSetup(arg[0].ival);
+}
+
+static const iocshArg CAMACScalerConfigArg0 = {"card", iocshArgInt};
+static const iocshArg CAMACScalerConfigArg1 = {"branch", iocshArgInt};
+static const iocshArg CAMACScalerConfigArg2 = {"crate", iocshArgInt};
+static const iocshArg CAMACScalerConfigArg3 = {"timer type", iocshArgInt};
+static const iocshArg CAMACScalerConfigArg4 = {"timer slot", iocshArgInt};
+static const iocshArg CAMACScalerConfigArg5 = {"counter type", iocshArgInt};
+static const iocshArg CAMACScalerConfigArg6 = {"counter slot", iocshArgInt};
+
+static const iocshArg * const CAMACScalerConfigArgs[7] = {&CAMACScalerConfigArg0, &CAMACScalerConfigArg1, 
+                                                          &CAMACScalerConfigArg2, &CAMACScalerConfigArg3, 
+                                                          &CAMACScalerConfigArg4, &CAMACScalerConfigArg5, 
+                                                          &CAMACScalerConfigArg6};
+static const iocshFuncDef CAMACScalerConfigFuncDef = {"CAMACScalerConfig", 7, CAMACScalerConfigArgs};
+
+static void CAMACScalerConfigCallFunc(const iocshArgBuf *arg)
+{
+    CAMACScalerConfig(arg[0].ival, arg[1].ival, arg[2].ival, arg[3].ival, arg[4].ival, arg[5].ival, arg[6].ival);
+}
+
+
+static void CAMACScalerRegistrar(void) {
+    iocshRegister(&CAMACScalerSetupFuncDef, CAMACScalerSetupCallFunc);
+    iocshRegister(&CAMACScalerConfigFuncDef, CAMACScalerConfigCallFunc);
+}
+
+epicsExportRegistrar(CAMACScalerRegistrar);

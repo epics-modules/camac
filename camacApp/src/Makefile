@@ -17,6 +17,7 @@ USR_CFLAGS = -DHW_HEADER="<ksc2917.h>"
 # The following are compiled and added to the Support library
 camac_SRCS += camacRecord.c
 camac_SRCS += camacLib.c
+camac_SRCS += camacEpics.c
 
 camac_LIBS += $(EPICS_BASE_IOC_LIBS)
 
