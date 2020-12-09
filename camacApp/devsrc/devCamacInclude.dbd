@@ -1,6 +1,6 @@
 include "base.dbd"
-include "stdSupport.dbd"
-include "stdVXSupport.dbd"
+include "scalerSupport.dbd"
+#include "scalerVXSupport.dbd"
 include "motorRecord.dbd"
 include "devSoftMotor.dbd"
 include "camacSupport.dbd"
