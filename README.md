@@ -14,5 +14,5 @@ From DSP
 
 Additional information:
 * [Home page](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camac.html)
-* [camacRecord.html](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camacRecord.html)
-* [camacReleaseNotes.html](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camacReleaseNotes.html)
+* [camacRecord](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camacRecord.html)
+* [Release Notes](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camacReleaseNotes.html)
