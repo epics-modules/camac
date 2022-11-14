@@ -13,6 +13,6 @@ From DSP
 * QS-450 quad scaler
 
 Additional information:
-* [Home page](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camac.html)
-* [camacRecord](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camacRecord.html)
-* [Release Notes](https://htmlpreview.github.io/?https://github.com/epics-modules/camac/blob/master/documentation/camacReleaseNotes.html)
+* [Home page](https://epics-modules.github.io/camac)
+* [camacRecord](https://epics-modules.github.io/camac/camacRecord.html)
+* [Release Notes](https://epics-modules.github.io/camac/camacReleaseNotes.html)
