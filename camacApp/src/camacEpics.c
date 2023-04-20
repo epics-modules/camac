@@ -1,6 +1,7 @@
 #include <epicsExport.h>
 #include <iocsh.h>
 #include "camacLib.h"
+#include "ksc2917.h"
 
 static const iocshArg kscsetupArg0 = {"num cards", iocshArgInt};
 static const iocshArg kscsetupArg1 = {"addrs", iocshArgString};
