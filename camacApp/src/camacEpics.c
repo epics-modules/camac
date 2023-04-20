@@ -1,7 +1,9 @@
 #include <epicsExport.h>
 #include <iocsh.h>
 #include "camacLib.h"
-#include "ksc2917.h"
+
+// Function prototype
+void    ksc2917_setup(int, char*, int, int);
 
 static const iocshArg kscsetupArg0 = {"num cards", iocshArgInt};
 static const iocshArg kscsetupArg1 = {"addrs", iocshArgString};
